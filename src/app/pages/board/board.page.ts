@@ -17,7 +17,10 @@ import { LocalBoardRepository } from '../../core/services/local-board.repository
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, IonButton, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonMenuButton, IonTitle, IonToolbar],
+  imports: [
+    CommonModule, FormsModule, IonButton, IonContent, IonHeader, IonIcon, IonInput,
+    IonItem, IonLabel, IonList, IonMenuButton, IonTitle, IonToolbar
+  ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
 })
@@ -42,6 +45,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private resizeObserver?: ResizeObserver;
   private layoutFrame: number | null = null;
 
+  // ✅ Ancho fijo (no usar getBoundingClientRect)
+  private readonly ITEM_WIDTH = 307;
+  private readonly GAP = 13;
+
   constructor() {
     addIcons({
       add, checkmark, chevronDown, chevronForward, close, ellipsisHorizontal,
@@ -54,10 +61,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    // Re-layout cuando cambian los items (añadir/eliminar listas)
     this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
+
+    // Re-layout cuando cambia el tamaño de la ventana
     this.resizeObserver = new ResizeObserver(() => this.scheduleMasonryLayout());
     const board = document.querySelector('.board');
     if (board) this.resizeObserver.observe(board);
+
     this.scheduleMasonryLayout();
   }
 
@@ -100,7 +111,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const text = this.newTaskText.trim();
     if (!text) return;
     const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
-    list.tasks.push({ id: crypto.randomUUID(), listId: list.id, text, completed: false, position: maxPosition + 1, createdAt: new Date().toISOString() });
+    list.tasks.push({
+      id: crypto.randomUUID(),
+      listId: list.id,
+      text,
+      completed: false,
+      position: maxPosition + 1,
+      createdAt: new Date().toISOString()
+    });
     this.newTaskText = '';
     this.addingTaskFor = null;
     await this.persist();
@@ -140,17 +158,27 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   toggleCollapsed(listId: string): void {
     if (this.collapsed.has(listId)) this.collapsed.delete(listId);
     else this.collapsed.add(listId);
+    // ✅ Re-layout inmediato al colapsar/expandir
+    this.scheduleMasonryLayout();
   }
 
   showMore(list: ChecklistList): void {
     this.expanded.add(list.id);
+    this.scheduleMasonryLayout();
   }
 
   async addList(): Promise<void> {
     const title = this.newListTitle.trim();
     if (!title || this.board.lists.length >= 50) return;
     const position = this.board.lists.reduce((max, list) => Math.max(max, list.position), -1) + 1;
-    this.board.lists.push({ id: crypto.randomUUID(), boardId: this.board.id, title, position, createdAt: new Date().toISOString(), tasks: [] });
+    this.board.lists.push({
+      id: crypto.randomUUID(),
+      boardId: this.board.id,
+      title,
+      position,
+      createdAt: new Date().toISOString(),
+      tasks: []
+    });
     this.newListTitle = '';
     this.addingList = false;
     await this.persist();
@@ -175,12 +203,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async dropList(targetListId: string, event: DragEvent): Promise<void> {
     event.preventDefault();
     if (!this.draggedListId || this.draggedListId === targetListId) return;
-
     const ordered = this.visibleLists;
     const from = ordered.findIndex((list) => list.id === this.draggedListId);
     const to = ordered.findIndex((list) => list.id === targetListId);
     if (from < 0 || to < 0) return;
-
     const [moved] = ordered.splice(from, 1);
     ordered.splice(to, 0, moved);
     ordered.forEach((list, index) => list.position = index);
@@ -206,16 +232,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     event.preventDefault();
     event.stopPropagation();
     if (!this.draggedTask || this.draggedTask.taskId === targetTaskId) return;
-
     const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
     if (!sourceList) return;
     const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
     if (sourceIndex < 0) return;
-
     const [moved] = sourceList.tasks.splice(sourceIndex, 1);
     const targetIndex = targetList.tasks.findIndex((task) => task.id === targetTaskId);
     targetList.tasks.splice(Math.max(0, targetIndex), 0, moved);
-
     this.reorderTasks(sourceList);
     this.reorderTasks(targetList);
     this.draggedTask = null;
@@ -225,12 +248,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async dropTaskInList(targetList: ChecklistList, event: DragEvent): Promise<void> {
     event.preventDefault();
     if (!this.draggedTask) return;
-
     const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
     if (!sourceList) return;
     const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
     if (sourceIndex < 0) return;
-
     const [moved] = sourceList.tasks.splice(sourceIndex, 1);
     targetList.tasks.push(moved);
     this.reorderTasks(sourceList);
@@ -252,29 +273,36 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  // ✅ Masonry corregido: ancho fijo, no getBoundingClientRect
   private applyMasonryLayout(): void {
     const board = document.querySelector<HTMLElement>('.board');
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
     if (!board || items.length === 0) return;
 
-    const gap = 13;
-    const itemWidth = items[0].getBoundingClientRect().width;
-    if (!itemWidth) return;
-    const columns = Math.max(1, Math.floor((board.clientWidth + gap) / (itemWidth + gap)));
+    const itemWidth = this.ITEM_WIDTH;
+    const columns = Math.max(1, Math.floor((board.clientWidth + this.GAP) / (itemWidth + this.GAP)));
     const heights = new Array(columns).fill(0);
 
     board.style.position = 'relative';
+    board.style.height = 'auto';
+
     items.forEach((item) => {
       item.style.position = 'absolute';
+      item.style.width = `${itemWidth}px`;
+      item.style.left = '0';
+      item.style.top = '0';
     });
+
+    // Forzar reflow para que offsetHeight sea correcto
+    void board.offsetHeight;
 
     items.forEach((item) => {
       const column = heights.indexOf(Math.min(...heights));
-      const x = column * (itemWidth + gap);
+      const x = column * (itemWidth + this.GAP);
       const y = heights[column];
       item.style.left = `${x}px`;
       item.style.top = `${y}px`;
-      heights[column] = y + item.offsetHeight + gap;
+      heights[column] = y + item.offsetHeight + this.GAP;
     });
 
     board.style.height = `${Math.max(...heights, 0)}px`;

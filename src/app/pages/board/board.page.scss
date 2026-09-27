@@ -3,64 +3,351 @@
   --topbar-bg: #17243c;
   --column-bg: #0b1004;
   --task-bg: #292a2c;
-  --task-border: rgba(255,255,255,.06);
+  --task-border: rgba(255, 255, 255, 0.06);
   --text: #f4f5f7;
   --muted: #a8afb9;
   --accent: #7ca9f8;
 }
 
-ion-content.board-content { --background: var(--board-bg); }
-ion-toolbar.topbar { --background: var(--topbar-bg); --color: var(--text); --min-height: 64px; padding-inline: 8px; }
-.board-title { font-size: 18px; font-weight: 800; letter-spacing: -.2px; }
-.toolbar-actions { display:flex; align-items:center; gap:18px; padding-right:12px; }
-.toolbar-icon { font-size:22px; color:#e7ebf2; }
-.avatar-icon { font-size:34px; color:#d4b18b; }
+ion-content.board-content {
+  --background: var(--board-bg);
+}
 
-.board-scroller { height:100%; overflow:auto; padding:14px 6px 30px; }
-.board { position:relative; width:100%; min-height:74px; }
-.checklist-column, .new-list-column { width:307px; border-radius:14px; --item-width:307px; }
-.checklist-column { background:var(--column-bg); padding:8px 7px 9px; box-shadow:0 5px 20px rgba(0,0,0,.12); transition:box-shadow .15s ease, opacity .15s ease; }
-.checklist-column:has(.column-header[draggable="true"]:active) { opacity:.65; }
-.checklist-column.collapsed { padding-bottom:8px; }
-.column-header { display:flex; align-items:center; gap:8px; min-height:40px; padding:0 6px; color:#e9e9e7; cursor:grab; }
-.column-header:active { cursor:grabbing; }
-.column-header strong { flex:1; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.count { color:#adb2b5; font-size:13px; }
-.collapse-button, .delete-list-button { width:29px; height:29px; border:0; background:transparent; color:#9fa4a7; font-size:19px; display:grid; place-items:center; padding:4px; border-radius:6px; }
-.collapse-button:hover { background:rgba(124,169,248,.12); color:#dfe8fb; }
-.delete-list-button:hover { color:#ef7070; background:rgba(239,112,112,.12); }
-.tasks { display:flex; flex-direction:column; gap:8px; min-height:8px; }
-.task { min-height:54px; display:flex; align-items:center; gap:9px; padding:9px 8px; border-radius:9px; background:var(--task-bg); border:1px solid var(--task-border); color:#f1f1f1; cursor:grab; transition:opacity .12s ease, box-shadow .12s ease, transform .12s ease; }
-.task:active { cursor:grabbing; }
-.task:hover { box-shadow:0 2px 10px rgba(0,0,0,.16); }
-.task-text { flex:1; font-size:15px; line-height:1.25; }
-.task.completed .task-text { color:#9fa3a8; text-decoration:line-through; text-decoration-thickness:1.6px; }
-.check-button { width:22px; height:22px; border-radius:6px; border:1.5px solid #92979d; background:transparent; color:#fff; display:grid; place-items:center; padding:0; flex:0 0 22px; }
-.check-button.checked { background:#6f9be7; border-color:#6f9be7; }
-.check-button ion-icon { font-size:16px; }
-.delete-button { width:29px; height:29px; border:0; background:transparent; color:#969ba0; display:grid; place-items:center; border-radius:6px; padding:0; }
-.delete-button:hover { color:#ef7070; background:rgba(239,112,112,.12); }
-.show-more { border:0; background:transparent; color:var(--accent); font-size:13px; font-weight:800; text-align:left; padding:8px 5px 4px; }
-.add-card, .new-list-trigger { width:100%; border:0; background:transparent; color:#9da3a7; text-align:left; padding:11px 7px 4px; font-size:14px; font-weight:700; }
-.add-card ion-icon { vertical-align:-3px; font-size:20px; margin-right:4px; }
-.add-form { display:flex; gap:7px; margin-top:9px; align-items:center; }
-.add-form ion-input, .new-list-form ion-input { --background:#292a2c; --color:#fff; --placeholder-color:#92979d; --padding-start:10px; --padding-end:10px; --border-radius:8px; border:1px solid #46484b; border-radius:8px; flex:1; }
-.add-confirm { width:38px; height:38px; border:0; border-radius:8px; background:#6f9be7; color:#fff; display:grid; place-items:center; }
-.cancel-button { width:34px; height:38px; border:0; border-radius:8px; background:transparent; color:#9da3a7; display:grid; place-items:center; }
-.empty { color:#777d82; text-align:center; padding:15px 8px 8px; font-size:12px; }
-.new-list-column { background: #6f9be7; min-height:74px; padding:7px; }
-.new-list-trigger { color:#d2d5d8; font-size:15px; padding:12px; }
-.new-list-form form { padding:5px; }
-.new-list-actions { display:flex; gap:8px; margin-top:8px; }
-.add-list-button { border:0; border-radius:8px; background:#7ca9f8; color:#101a2d; padding:9px 13px; font-weight:800; }
-.saving-indicator { position:fixed; right:18px; bottom:18px; background:#111827; color:white; border-radius:999px; padding:8px 12px; font-size:12px; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+ion-toolbar.topbar {
+  --background: var(--topbar-bg);
+  --color: var(--text);
+  --min-height: 64px;
+  padding-inline: 8px;
+}
 
+.board-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-right: 12px;
+}
+
+.toolbar-icon {
+  font-size: 22px;
+  color: #e7ebf2;
+}
+
+.avatar-icon {
+  font-size: 34px;
+  color: #d4b18b;
+}
+
+.board-scroller {
+  height: 100%;
+  overflow: auto;
+  padding: 14px 6px 30px;
+}
+
+/* ✅ MASONRY: el board es relativo, las columnas son absolutas */
+.board {
+  position: relative;
+  width: 100%;
+  min-height: 74px;
+}
+
+.checklist-column,
+.new-list-column {
+  width: 307px;
+  border-radius: 14px;
+  /* NO usar display:inline-block ni break-inside aquí */
+}
+
+.checklist-column {
+  background: var(--column-bg);
+  padding: 8px 7px 9px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.checklist-column:has(.column-header[draggable="true"]:active) {
+  opacity: 0.65;
+}
+
+.checklist-column.collapsed {
+  padding-bottom: 8px;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 6px;
+  color: #e9e9e7;
+  cursor: grab;
+}
+
+.column-header:active {
+  cursor: grabbing;
+}
+
+.column-header strong {
+  flex: 1;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: #adb2b5;
+  font-size: 13px;
+}
+
+.collapse-button,
+.delete-list-button {
+  width: 29px;
+  height: 29px;
+  border: 0;
+  background: transparent;
+  color: #9fa4a7;
+  font-size: 19px;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.collapse-button:hover {
+  background: rgba(124, 169, 248, 0.12);
+  color: #dfe8fb;
+}
+
+.delete-list-button:hover {
+  color: #ef7070;
+  background: rgba(239, 112, 112, 0.12);
+}
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 8px;
+}
+
+.task {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 8px;
+  border-radius: 9px;
+  background: var(--task-bg);
+  border: 1px solid var(--task-border);
+  color: #f1f1f1;
+  cursor: grab;
+  transition: opacity 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.task:active {
+  cursor: grabbing;
+}
+
+.task:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+}
+
+.task-text {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.task.completed .task-text {
+  color: #9fa3a8;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.6px;
+}
+
+.check-button {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid #92979d;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex: 0 0 22px;
+}
+
+.check-button.checked {
+  background: #6f9be7;
+  border-color: #6f9be7;
+}
+
+.check-button ion-icon {
+  font-size: 16px;
+}
+
+.delete-button {
+  width: 29px;
+  height: 29px;
+  border: 0;
+  background: transparent;
+  color: #969ba0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.delete-button:hover {
+  color: #ef7070;
+  background: rgba(239, 112, 112, 0.12);
+}
+
+.show-more {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  padding: 8px 5px 4px;
+}
+
+.add-card,
+.new-list-trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #9da3a7;
+  text-align: left;
+  padding: 11px 7px 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.add-card ion-icon {
+  vertical-align: -3px;
+  font-size: 20px;
+  margin-right: 4px;
+}
+
+.add-form {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+  align-items: center;
+}
+
+.add-form ion-input,
+.new-list-form ion-input {
+  --background: #292a2c;
+  --color: #fff;
+  --placeholder-color: #92979d;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --border-radius: 8px;
+  border: 1px solid #46484b;
+  border-radius: 8px;
+  flex: 1;
+}
+
+.add-confirm {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: #6f9be7;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.cancel-button {
+  width: 34px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9da3a7;
+  display: grid;
+  place-items: center;
+}
+
+.empty {
+  color: #777d82;
+  text-align: center;
+  padding: 15px 8px 8px;
+  font-size: 12px;
+}
+
+.new-list-column {
+  background: #6f9be7;
+  min-height: 74px;
+  padding: 7px;
+}
+
+.new-list-trigger {
+  color: #d2d5d8;
+  font-size: 15px;
+  padding: 12px;
+}
+
+.new-list-form form {
+  padding: 5px;
+}
+
+.new-list-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.add-list-button {
+  border: 0;
+  border-radius: 8px;
+  background: #7ca9f8;
+  color: #101a2d;
+  padding: 9px 13px;
+  font-weight: 800;
+}
+
+.saving-indicator {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  background: #111827;
+  color: white;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Responsivo */
 @media (max-width: 700px) {
-  ion-toolbar.topbar { --min-height:56px; }
-  .board-title { font-size:16px; }
-  .toolbar-actions { gap:10px; padding-right:5px; }
-  .toolbar-icon { font-size:19px; }
-  .avatar-icon { font-size:30px; }
-  .board-scroller { padding:10px 8px 24px; }
-  .checklist-column, .new-list-column { width:84vw; }
+  ion-toolbar.topbar {
+    --min-height: 56px;
+  }
+  .board-title {
+    font-size: 16px;
+  }
+  .toolbar-actions {
+    gap: 10px;
+    padding-right: 5px;
+  }
+  .toolbar-icon {
+    font-size: 19px;
+  }
+  .avatar-icon {
+    font-size: 30px;
+  }
+  .board-scroller {
+    padding: 10px 8px 24px;
+  }
 }
