@@ -24,6 +24,108 @@ ion-toolbar.topbar {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.title-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title-display ion-title {
+  margin: 0;
+  padding: 0;
+}
+
+.edit-title-btn {
+  background: transparent;
+  border: 0;
+  color: #9fa4a7;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.edit-title-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.edit-title-btn ion-icon {
+  font-size: 16px;
+}
+
+.title-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title-edit ion-input {
+  --background: rgba(255, 255, 255, 0.08);
+  --color: #fff;
+  --placeholder-color: #9fa4a7;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm-title-btn,
+.cancel-title-btn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.confirm-title-btn {
+  background: #6f9be7;
+  color: #fff;
+}
+
+.confirm-title-btn:hover {
+  background: #8ab0f0;
+}
+
+.cancel-title-btn {
+  background: transparent;
+  color: #9fa4a7;
+}
+
+.cancel-title-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.confirm-title-btn ion-icon,
+.cancel-title-btn ion-icon {
+  font-size: 18px;
 }
 
 .toolbar-actions {
@@ -38,12 +140,6 @@ ion-toolbar.topbar {
   color: #e7ebf2;
 }
 
-.avatar-icon {
-  font-size: 34px;
-  color: #d4b18b;
-}
-
-/* 🔍 Botón lupa */
 .toolbar-icon-btn {
   background: transparent;
   border: 0;
@@ -60,7 +156,11 @@ ion-toolbar.topbar {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* 🔍 Caja de búsqueda */
+.avatar-icon {
+  font-size: 34px;
+  color: #d4b18b;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -113,7 +213,6 @@ ion-toolbar.topbar {
   font-size: 18px;
 }
 
-/* ✨ Resaltado de coincidencias en el título */
 .column-header strong .highlight {
   background: rgba(124, 169, 248, 0.4);
   color: #fff;
@@ -122,7 +221,6 @@ ion-toolbar.topbar {
   font-weight: 800;
 }
 
-/* Mensaje sin resultados */
 .no-results {
   width: 307px;
   background: var(--column-bg);
@@ -149,7 +247,6 @@ ion-toolbar.topbar {
   color: var(--accent);
 }
 
-/* Board y columnas (Masonry) */
 .board-scroller {
   height: 100%;
   overflow: auto;
@@ -434,7 +531,6 @@ ion-toolbar.topbar {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* Responsivo */
 @media (max-width: 700px) {
   ion-toolbar.topbar {
     --min-height: 56px;

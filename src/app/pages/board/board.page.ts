@@ -2,13 +2,12 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  IonButton, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel,
-  IonList, IonMenuButton, IonTitle, IonToolbar
+  IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  add, checkmark, chevronDown, chevronForward, close, ellipsisHorizontal,
-  filter, trash, flash, personCircle, layersOutline, search
+  add, checkmark, chevronDown, chevronForward, close,
+  trash, personCircle, layersOutline, search, pencil
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -18,8 +17,7 @@ import { LocalBoardRepository } from '../../core/services/local-board.repository
   selector: 'app-board',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, IonButton, IonContent, IonHeader, IonIcon, IonInput,
-    IonItem, IonLabel, IonList, IonMenuButton, IonTitle, IonToolbar
+    CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -37,9 +35,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   newTaskText = '';
   busy = false;
 
-  // 🔍 Búsqueda
   searching = false;
   searchQuery = '';
+
+  editingTitle = false;
+  titleDraft = '';
 
   private draggedListId: string | null = null;
   private draggedTask: { listId: string; taskId: string } | null = null;
@@ -54,8 +54,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   constructor() {
     addIcons({
-      add, checkmark, chevronDown, chevronForward, close, ellipsisHorizontal,
-      filter, trash, flash, personCircle, layersOutline, search
+      add, checkmark, chevronDown, chevronForward, close,
+      trash, personCircle, layersOutline, search, pencil
     });
   }
 
@@ -77,7 +77,27 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
   }
 
-  // 🔍 Métodos de búsqueda
+  startEditTitle(): void {
+    this.titleDraft = this.board.title;
+    this.editingTitle = true;
+  }
+
+  confirmEditTitle(): void {
+    const newTitle = this.titleDraft.trim();
+    if (!newTitle) {
+      this.cancelEditTitle();
+      return;
+    }
+    this.board.title = newTitle;
+    this.editingTitle = false;
+    this.persist();
+  }
+
+  cancelEditTitle(): void {
+    this.editingTitle = false;
+    this.titleDraft = '';
+  }
+
   toggleSearch(): void {
     this.searching = !this.searching;
     if (!this.searching) this.clearSearch();
@@ -94,11 +114,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onSearchChange(): void {
-    // Re-layout al cambiar el filtro (puede cambiar la cantidad de columnas visibles)
     this.scheduleMasonryLayout();
   }
 
-  /** Devuelve segmentos del título para resaltar coincidencias sin usar innerHTML. */
   getHighlightedSegments(title: string): { text: string; highlight: boolean }[] {
     if (!this.searchQuery.trim()) return [{ text: title, highlight: false }];
     const query = this.searchQuery.toLowerCase();
