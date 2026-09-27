@@ -1,7 +1,33 @@
 <ion-header>
   <ion-toolbar class="topbar">
-    <ion-title class="board-title">{{ board.title }} </ion-title>
+    <ion-title class="board-title">{{ board.title }} 🚀</ion-title>
     <div class="toolbar-actions" slot="end">
+      <!--  Campo de búsqueda (visible cuando searching=true) -->
+      <div *ngIf="searching" class="search-box">
+        <ion-icon class="search-icon" name="search"></ion-icon>
+        <ion-input
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearchChange()"
+          placeholder="Buscar lista..."
+          class="search-input"
+          (keyup.escape)="closeSearch()"
+          autofocus
+        ></ion-input>
+        <button class="close-search-btn" (click)="closeSearch()" aria-label="Cerrar búsqueda">
+          <ion-icon name="close"></ion-icon>
+        </button>
+      </div>
+
+      <!-- 🔍 Botón lupa (visible cuando searching=false) -->
+      <button
+        *ngIf="!searching"
+        class="toolbar-icon-btn"
+        (click)="toggleSearch()"
+        aria-label="Buscar"
+      >
+        <ion-icon class="toolbar-icon" name="search"></ion-icon>
+      </button>
+
       <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
     </div>
   </ion-toolbar>
@@ -10,7 +36,6 @@
 <ion-content class="board-content">
   <div class="board-scroller">
     <div class="board">
-      <!-- ✅ Cada columna tiene #boardItem para el masonry -->
       <div
         #boardItem
         *ngFor="let list of visibleLists"
@@ -32,7 +57,15 @@
               [name]="isCollapsed(list.id) ? 'chevron-forward' : 'chevron-down'"
             ></ion-icon>
           </button>
-          <strong>{{ list.title }}</strong>
+
+          <!-- ✨ Título con resaltado de coincidencias -->
+          <strong>
+            <span
+              *ngFor="let seg of getHighlightedSegments(list.title)"
+              [class.highlight]="seg.highlight"
+            >{{ seg.text }}</span>
+          </strong>
+
           <span class="count">{{ list.tasks.length }}</span>
           <button
             class="delete-list-button"
@@ -110,7 +143,10 @@
             Mostrar más · {{ hiddenCompletedCount(list) }}
           </button>
 
-          <div *ngIf="pendingTasks(list).length === 0 && completedTasks(list).length === 0" class="empty">
+          <div
+            *ngIf="pendingTasks(list).length === 0 && completedTasks(list).length === 0"
+            class="empty"
+          >
             Sin tareas. Añade una para comenzar.
           </div>
 
@@ -139,8 +175,8 @@
         </div>
       </div>
 
-      <!-- Columna para añadir nueva lista (también con #boardItem) -->
-      <div #boardItem class="new-list-column">
+      <!-- Columna para añadir nueva lista (oculta cuando se busca) -->
+      <div *ngIf="!searching" #boardItem class="new-list-column">
         <button
           *ngIf="!addingList"
           class="new-list-trigger"
@@ -169,6 +205,12 @@
             </div>
           </form>
         </div>
+      </div>
+
+      <!-- Mensaje cuando no hay resultados -->
+      <div *ngIf="searching && visibleLists.length === 0" class="no-results">
+        <ion-icon name="search" class="no-results-icon"></ion-icon>
+        <p>No se encontraron listas que coincidan con "<strong>{{ searchQuery }}</strong>"</p>
       </div>
     </div>
   </div>

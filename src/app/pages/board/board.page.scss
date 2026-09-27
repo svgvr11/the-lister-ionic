@@ -43,13 +43,119 @@ ion-toolbar.topbar {
   color: #d4b18b;
 }
 
+/* 🔍 Botón lupa */
+.toolbar-icon-btn {
+  background: transparent;
+  border: 0;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #e7ebf2;
+  transition: background 0.15s ease;
+}
+
+.toolbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 🔍 Caja de búsqueda */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.search-icon {
+  font-size: 18px;
+  color: #9fa4a7;
+  flex-shrink: 0;
+}
+
+.search-box ion-input {
+  --background: transparent;
+  --color: #fff;
+  --placeholder-color: #9fa4a7;
+  --padding-start: 4px;
+  --padding-end: 4px;
+  width: 220px;
+}
+
+.close-search-btn {
+  background: transparent;
+  border: 0;
+  color: #9fa4a7;
+  cursor: pointer;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.close-search-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.close-search-btn ion-icon {
+  font-size: 18px;
+}
+
+/* ✨ Resaltado de coincidencias en el título */
+.column-header strong .highlight {
+  background: rgba(124, 169, 248, 0.4);
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 800;
+}
+
+/* Mensaje sin resultados */
+.no-results {
+  width: 307px;
+  background: var(--column-bg);
+  border-radius: 14px;
+  padding: 40px 20px;
+  text-align: center;
+  color: #9fa4a7;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.no-results-icon {
+  font-size: 40px;
+  color: #5a6068;
+  margin-bottom: 12px;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.no-results strong {
+  color: var(--accent);
+}
+
+/* Board y columnas (Masonry) */
 .board-scroller {
   height: 100%;
   overflow: auto;
   padding: 14px 6px 30px;
 }
 
-/* ✅ MASONRY: el board es relativo, las columnas son absolutas */
 .board {
   position: relative;
   width: 100%;
@@ -60,7 +166,6 @@ ion-toolbar.topbar {
 .new-list-column {
   width: 307px;
   border-radius: 14px;
-  /* NO usar display:inline-block ni break-inside aquí */
 }
 
 .checklist-column {
@@ -349,5 +454,11 @@ ion-toolbar.topbar {
   }
   .board-scroller {
     padding: 10px 8px 24px;
+  }
+  .search-box ion-input {
+    width: 140px;
+  }
+  .no-results {
+    width: 84vw;
   }
 }

@@ -8,7 +8,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, checkmark, chevronDown, chevronForward, close, ellipsisHorizontal,
-  filter, trash, flash, personCircle, layersOutline
+  filter, trash, flash, personCircle, layersOutline, search
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -37,6 +37,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   newTaskText = '';
   busy = false;
 
+  // 🔍 Búsqueda
+  searching = false;
+  searchQuery = '';
+
   private draggedListId: string | null = null;
   private draggedTask: { listId: string; taskId: string } | null = null;
 
@@ -45,14 +49,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private resizeObserver?: ResizeObserver;
   private layoutFrame: number | null = null;
 
-  // ✅ Ancho fijo (no usar getBoundingClientRect)
   private readonly ITEM_WIDTH = 307;
   private readonly GAP = 13;
 
   constructor() {
     addIcons({
       add, checkmark, chevronDown, chevronForward, close, ellipsisHorizontal,
-      filter, trash, flash, personCircle, layersOutline
+      filter, trash, flash, personCircle, layersOutline, search
     });
   }
 
@@ -61,14 +64,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Re-layout cuando cambian los items (añadir/eliminar listas)
     this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
-
-    // Re-layout cuando cambia el tamaño de la ventana
     this.resizeObserver = new ResizeObserver(() => this.scheduleMasonryLayout());
     const board = document.querySelector('.board');
     if (board) this.resizeObserver.observe(board);
-
     this.scheduleMasonryLayout();
   }
 
@@ -78,8 +77,59 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
   }
 
+  // 🔍 Métodos de búsqueda
+  toggleSearch(): void {
+    this.searching = !this.searching;
+    if (!this.searching) this.clearSearch();
+  }
+
+  closeSearch(): void {
+    this.searching = false;
+    this.clearSearch();
+  }
+
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.scheduleMasonryLayout();
+  }
+
+  onSearchChange(): void {
+    // Re-layout al cambiar el filtro (puede cambiar la cantidad de columnas visibles)
+    this.scheduleMasonryLayout();
+  }
+
+  /** Devuelve segmentos del título para resaltar coincidencias sin usar innerHTML. */
+  getHighlightedSegments(title: string): { text: string; highlight: boolean }[] {
+    if (!this.searchQuery.trim()) return [{ text: title, highlight: false }];
+    const query = this.searchQuery.toLowerCase();
+    const lower = title.toLowerCase();
+    const segments: { text: string; highlight: boolean }[] = [];
+    let lastIdx = 0;
+    let idx = lower.indexOf(query, lastIdx);
+    while (idx !== -1) {
+      if (idx > lastIdx) {
+        segments.push({ text: title.slice(lastIdx, idx), highlight: false });
+      }
+      segments.push({
+        text: title.slice(idx, idx + this.searchQuery.length),
+        highlight: true
+      });
+      lastIdx = idx + this.searchQuery.length;
+      idx = lower.indexOf(query, lastIdx);
+    }
+    if (lastIdx < title.length) {
+      segments.push({ text: title.slice(lastIdx), highlight: false });
+    }
+    return segments;
+  }
+
   get visibleLists(): ChecklistList[] {
-    return [...this.board.lists].sort((a, b) => a.position - b.position);
+    let lists = [...this.board.lists].sort((a, b) => a.position - b.position);
+    if (this.searching && this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      lists = lists.filter((l) => l.title.toLowerCase().includes(q));
+    }
+    return lists;
   }
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
@@ -112,12 +162,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (!text) return;
     const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
     list.tasks.push({
-      id: crypto.randomUUID(),
-      listId: list.id,
-      text,
-      completed: false,
-      position: maxPosition + 1,
-      createdAt: new Date().toISOString()
+      id: crypto.randomUUID(), listId: list.id, text, completed: false,
+      position: maxPosition + 1, createdAt: new Date().toISOString()
     });
     this.newTaskText = '';
     this.addingTaskFor = null;
@@ -158,7 +204,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   toggleCollapsed(listId: string): void {
     if (this.collapsed.has(listId)) this.collapsed.delete(listId);
     else this.collapsed.add(listId);
-    // ✅ Re-layout inmediato al colapsar/expandir
     this.scheduleMasonryLayout();
   }
 
@@ -172,12 +217,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (!title || this.board.lists.length >= 50) return;
     const position = this.board.lists.reduce((max, list) => Math.max(max, list.position), -1) + 1;
     this.board.lists.push({
-      id: crypto.randomUUID(),
-      boardId: this.board.id,
-      title,
-      position,
-      createdAt: new Date().toISOString(),
-      tasks: []
+      id: crypto.randomUUID(), boardId: this.board.id, title, position,
+      createdAt: new Date().toISOString(), tasks: []
     });
     this.newListTitle = '';
     this.addingList = false;
@@ -273,7 +314,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // ✅ Masonry corregido: ancho fijo, no getBoundingClientRect
   private applyMasonryLayout(): void {
     const board = document.querySelector<HTMLElement>('.board');
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
@@ -293,7 +333,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       item.style.top = '0';
     });
 
-    // Forzar reflow para que offsetHeight sea correcto
     void board.offsetHeight;
 
     items.forEach((item) => {
