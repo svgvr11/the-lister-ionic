@@ -1,0 +1,109 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar class="topbar">
+    <ion-title class="board-title">{{ board.title }}</ion-title>
+    <div slot="end" class="toolbar-actions">
+      <ion-icon name="person-circle" class="avatar-icon"></ion-icon>
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="board-content">
+  <div class="board-scroller">
+    <div class="board">
+      <section
+        #boardItem
+        class="checklist-column"
+        *ngFor="let list of visibleLists; trackBy: trackById"
+        [class.collapsed]="isCollapsed(list.id)"
+        (dragover)="dragOverList($event)"
+        (drop)="dropList(list.id, $event)">
+
+        <div
+          class="column-header"
+          draggable="true"
+          (dragstart)="startListDrag(list.id, $event)"
+          (dragend)="clearDragState()">
+          <button class="collapse-button" (click)="toggleCollapsed(list.id)" [attr.aria-label]="isCollapsed(list.id) ? 'Expandir lista' : 'Colapsar lista'">
+            <ion-icon [name]="isCollapsed(list.id) ? 'chevron-forward' : 'chevron-down'"></ion-icon>
+          </button>
+          <strong>{{ list.title }}</strong>
+          <span class="count">{{ list.tasks.length }}</span>
+          <button class="delete-list-button" (click)="deleteList(list.id)" aria-label="Eliminar lista" title="Eliminar lista">
+            <ion-icon name="trash"></ion-icon>
+          </button>
+        </div>
+
+        <ng-container *ngIf="!isCollapsed(list.id)">
+          <div class="tasks" (dragover)="dragOverTask($event)" (drop)="dropTaskInList(list, $event)">
+            <div
+              class="task"
+              draggable="true"
+              *ngFor="let task of pendingTasks(list); trackBy: trackById"
+              (dragstart)="startTaskDrag(list.id, task.id, $event)"
+              (dragend)="clearDragState()"
+              (dragover)="dragOverTask($event)"
+              (drop)="dropTask(list, task.id, $event)">
+              <button class="check-button" [class.checked]="task.completed" (click)="toggleTask(list, task)" [attr.aria-label]="task.completed ? 'Marcar pendiente' : 'Marcar lista'">
+                <ion-icon *ngIf="task.completed" name="checkmark"></ion-icon>
+              </button>
+              <span class="task-text">{{ task.text }}</span>
+              <button class="delete-button" (click)="deleteTask(list, task.id)" aria-label="Eliminar tarea">
+                <ion-icon name="trash"></ion-icon>
+              </button>
+            </div>
+
+            <ng-container *ngFor="let task of visibleCompletedTasks(list); trackBy: trackById">
+              <div
+                class="task completed"
+                draggable="true"
+                (dragstart)="startTaskDrag(list.id, task.id, $event)"
+                (dragend)="clearDragState()"
+                (dragover)="dragOverTask($event)"
+                (drop)="dropTask(list, task.id, $event)">
+                <button class="check-button checked" (click)="toggleTask(list, task)" aria-label="Marcar pendiente">
+                  <ion-icon name="checkmark"></ion-icon>
+                </button>
+                <span class="task-text">{{ task.text }}</span>
+                <button class="delete-button" (click)="deleteTask(list, task.id)" aria-label="Eliminar tarea">
+                  <ion-icon name="trash"></ion-icon>
+                </button>
+              </div>
+            </ng-container>
+
+            <button *ngIf="hiddenCompletedCount(list) > 0" class="show-more" (click)="showMore(list)">
+              Mostrar más · {{ hiddenCompletedCount(list) }}
+            </button>
+
+            <div class="empty" *ngIf="list.tasks.length === 0">Sin tareas. Añade una para comenzar.</div>
+          </div>
+
+          <form *ngIf="addingTaskFor === list.id" class="add-form" (ngSubmit)="addTask(list)">
+            <ion-input name="task" [(ngModel)]="newTaskText" maxlength="120" placeholder="Nombre de la tarea" autofocus></ion-input>
+            <button class="add-confirm" type="submit"><ion-icon name="add"></ion-icon></button>
+            <button class="cancel-button" type="button" (click)="cancelAddingTask()"><ion-icon name="close"></ion-icon></button>
+          </form>
+
+          <button *ngIf="addingTaskFor !== list.id" class="add-card" (click)="startAddingTask(list.id)">
+            <ion-icon name="add"></ion-icon> Añadir tarea
+          </button>
+        </ng-container>
+      </section>
+
+      <section #boardItem class="new-list-column" *ngIf="!addingList && visibleLists.length < 50">
+        <button class="new-list-trigger" (click)="addingList = true">＋ Añadir lista de checklist</button>
+      </section>
+
+      <section #boardItem class="new-list-column new-list-form" *ngIf="addingList">
+        <form (ngSubmit)="addList()">
+          <ion-input name="list" [(ngModel)]="newListTitle" maxlength="60" placeholder="Nombre de la lista" autofocus></ion-input>
+          <div class="new-list-actions">
+            <button class="add-list-button" type="submit">Añadir lista</button>
+            <button class="cancel-button" type="button" (click)="cancelAddList()"><ion-icon name="close"></ion-icon></button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <div class="saving-indicator" *ngIf="busy">Guardando…</div>
+</ion-content>
