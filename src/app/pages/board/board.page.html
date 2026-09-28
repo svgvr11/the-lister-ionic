@@ -50,14 +50,46 @@
         <ion-icon class="toolbar-icon" name="search"></ion-icon>
       </button>
 
-      <button *ngIf="authEnabled" class="toolbar-icon-btn account-button" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
-        <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
-      </button>
+      <div *ngIf="authEnabled" class="account-menu-wrap">
+        <button
+          class="toolbar-icon-btn account-button"
+          (click)="toggleAccountMenu()"
+          aria-label="Abrir menú de usuario"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="accountMenuOpen"
+          title="Opciones de usuario"
+        >
+          <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+        </button>
+      </div>
     </div>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="board-content">
+  <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
+    <p class="account-menu-heading">Color del tablero</p>
+    <div class="theme-options">
+      <button
+        *ngFor="let theme of themes"
+        class="theme-option"
+        [class.selected]="activeTheme.id === theme.id"
+        [style.--swatch-color]="theme.background"
+        role="menuitemradio"
+        [attr.aria-checked]="activeTheme.id === theme.id"
+        [attr.aria-label]="theme.name"
+        [title]="theme.name"
+        (click)="selectTheme(theme)"
+      >
+        <ion-icon *ngIf="activeTheme.id === theme.id" name="checkmark"></ion-icon>
+      </button>
+    </div>
+    <button class="menu-logout" role="menuitem" (click)="logout()">
+      <ion-icon name="log-out"></ion-icon>
+      <span>Cerrar sesión</span>
+    </button>
+  </section>
+
   <div class="board-scroller">
     <div *ngIf="board.lists.length === 0" class="board-empty-state">
       Añade una lista para comenzar

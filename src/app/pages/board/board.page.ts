@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  add, checkmark, chevronDown, chevronForward, close,
+  add, checkmark, chevronDown, chevronForward, close, logOut,
   trash, personCircle, layersOutline, search, pencil
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
@@ -33,6 +33,24 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   board!: ChecklistBoard;
   currentUserEmail = '';
   readonly authEnabled = this.auth.enabled;
+  readonly themes = [
+    { id: 'lavender', name: 'Lavanda', background: '#eee8f8', toolbar: '#ddd2ef', accent: '#8870ad', fab: '#9780bb' },
+    { id: 'sky', name: 'Celeste', background: '#e6f2fb', toolbar: '#d1e6f5', accent: '#5686ac', fab: '#739fbe' },
+    { id: 'mint', name: 'Menta', background: '#e7f4ed', toolbar: '#d2e9dc', accent: '#52836a', fab: '#6a9b7f' },
+    { id: 'rose', name: 'Rosa', background: '#f8e9ed', toolbar: '#f0d6df', accent: '#ac657e', fab: '#bf7e94' },
+    { id: 'peach', name: 'Durazno', background: '#fbefe4', toolbar: '#f4dfca', accent: '#a8754e', fab: '#bd8c64' },
+    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052' },
+    { id: 'pearl', name: 'Perla', background: '#edf0f2', toolbar: '#dce2e7', accent: '#647681', fab: '#82929d' },
+    { id: 'aqua', name: 'Aqua', background: '#e3f3f1', toolbar: '#cde7e3', accent: '#4c827f', fab: '#6b9a96' }
+  ];
+  activeTheme = this.themes[0];
+  accountMenuOpen = false;
+
+  @HostBinding('style.--board-bg') boardBackground = this.activeTheme.background;
+  @HostBinding('style.--topbar-bg') toolbarBackground = this.activeTheme.toolbar;
+  @HostBinding('style.--accent') themeAccent = this.activeTheme.accent;
+  @HostBinding('style.--fab-color') themeFab = this.activeTheme.fab;
+  @HostBinding('style.--fab-hover') themeFabHover = this.activeTheme.accent;
   expanded = new Set<string>();
   collapsed = new Set<string>();
   addingTaskFor: string | null = null;
@@ -61,7 +79,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   constructor() {
     addIcons({
       add, checkmark, chevronDown, chevronForward, close,
-      trash, personCircle, layersOutline, search, pencil
+      trash, personCircle, layersOutline, search, pencil, logOut
     });
   }
 
@@ -69,12 +87,49 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const session = this.auth.session;
     this.currentUserEmail = session?.user.email ?? '';
     this.repository.initializeForUser(session?.user.id ?? null);
+    this.restoreTheme(session?.user.id ?? null);
     this.subscription = this.repository.watchBoard().subscribe((board) => this.board = board);
   }
 
+  toggleAccountMenu(): void {
+    this.accountMenuOpen = !this.accountMenuOpen;
+  }
+
+  selectTheme(theme: typeof this.themes[number]): void {
+    this.activeTheme = theme;
+    this.applyTheme(theme);
+    const userId = this.auth.session?.user.id ?? 'local';
+    localStorage.setItem(`checklist-trello-theme-v1:${userId}`, theme.id);
+    this.accountMenuOpen = false;
+  }
+
   async logout(): Promise<void> {
+    this.accountMenuOpen = false;
     await this.auth.signOut();
     await this.router.navigateByUrl('/login', { replaceUrl: true });
+  }
+
+  @HostListener('document:keydown.escape')
+  closeAccountMenuOnEscape(): void {
+    this.accountMenuOpen = false;
+  }
+
+  private restoreTheme(userId: string | null): void {
+    const key = `checklist-trello-theme-v1:${userId ?? 'local'}`;
+    const savedThemeId = localStorage.getItem(key);
+    const savedTheme = this.themes.find((theme) => theme.id === savedThemeId);
+    if (savedTheme) {
+      this.activeTheme = savedTheme;
+      this.applyTheme(savedTheme);
+    }
+  }
+
+  private applyTheme(theme: typeof this.themes[number]): void {
+    this.boardBackground = theme.background;
+    this.toolbarBackground = theme.toolbar;
+    this.themeAccent = theme.accent;
+    this.themeFab = theme.fab;
+    this.themeFabHover = theme.accent;
   }
 
   ngAfterViewInit(): void {
