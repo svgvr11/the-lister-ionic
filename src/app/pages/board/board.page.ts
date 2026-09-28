@@ -77,6 +77,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
   }
 
+  // ✏️ Edición de título
   startEditTitle(): void {
     this.titleDraft = this.board.title;
     this.editingTitle = true;
@@ -98,6 +99,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.titleDraft = '';
   }
 
+  // ✨ Toggle del panel FAB (en lugar de solo abrir)
+  toggleAddList(): void {
+    this.addingList = !this.addingList;
+    if (this.addingList) {
+      this.newListTitle = '';
+    }
+  }
+
+  // 🔍 Búsqueda
   toggleSearch(): void {
     this.searching = !this.searching;
     if (!this.searching) this.clearSearch();
@@ -239,7 +249,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       createdAt: new Date().toISOString(), tasks: []
     });
     this.newListTitle = '';
-    this.addingList = false;
+    this.addingList = false; // ✨ Cerrar el panel al crear
     await this.persist();
   }
 
