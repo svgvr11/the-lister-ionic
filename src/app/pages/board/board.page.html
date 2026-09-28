@@ -67,6 +67,11 @@
 </ion-header>
 
 <ion-content class="board-content">
+  <div *ngIf="loadingBoard" class="board-empty-state" role="status">Cargando tablero...</div>
+  <div *ngIf="boardError" class="board-error" role="alert">{{ boardError }}</div>
+  <div *ngIf="saveError" class="board-save-error" role="alert">{{ saveError }}</div>
+
+  <ng-container *ngIf="!loadingBoard && !boardError">
   <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
     <p class="account-menu-heading">Color del tablero</p>
     <div class="theme-options">
@@ -274,4 +279,5 @@
       </div>
     </form>
   </div>
+  </ng-container>
 </ion-content>

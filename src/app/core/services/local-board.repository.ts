@@ -19,20 +19,31 @@ export class LocalBoardRepository extends BoardRepository {
     this.subject.next(structuredClone(board));
   }
 
-  initializeForUser(userId: string | null): void {
+  async initializeForUser(userId: string | null): Promise<void> {
     this.storageKey = userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
     this.subject.next(this.load());
   }
 
+  getStoredBoardForUser(userId: string): ChecklistBoard | null {
+    for (const key of [`${STORAGE_KEY}:${userId}`, STORAGE_KEY]) {
+      const storedBoard = this.readBoard(key);
+      if (storedBoard) return storedBoard;
+    }
+    return null;
+  }
+
   private load(): ChecklistBoard {
+    return this.readBoard(this.storageKey) ?? this.createEmptyBoard();
+  }
+
+  private readBoard(key: string): ChecklistBoard | null {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = localStorage.getItem(key);
       if (raw) return JSON.parse(raw) as ChecklistBoard;
     } catch (error) {
       console.warn('No se pudo leer localStorage', error);
     }
-
-    return this.createEmptyBoard();
+    return null;
   }
 
   private createEmptyBoard(): ChecklistBoard {

@@ -13,7 +13,9 @@ import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { AuthService } from '../../core/services/auth.service';
+import { BoardRepository } from '../../core/services/board.repository';
 import { LocalBoardRepository } from '../../core/services/local-board.repository';
+import { SupabaseBoardRepository } from '../../core/services/supabase-board.repository';
 
 @Component({
   selector: 'app-board',
@@ -25,12 +27,19 @@ import { LocalBoardRepository } from '../../core/services/local-board.repository
   styleUrls: ['./board.page.scss']
 })
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
-  private readonly repository = inject(LocalBoardRepository);
+  private readonly localRepository = inject(LocalBoardRepository);
+  private readonly supabaseRepository = inject(SupabaseBoardRepository);
+  private repository: BoardRepository = this.localRepository;
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private subscription?: Subscription;
 
-  board!: ChecklistBoard;
+  board: ChecklistBoard = {
+    id: '', title: 'Cargando tablero...', createdAt: new Date().toISOString(), lists: []
+  };
+  loadingBoard = true;
+  boardError = '';
+  saveError = '';
   currentUserEmail = '';
   readonly authEnabled = this.auth.enabled;
   readonly themes = [
@@ -84,11 +93,36 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
+    void this.initializeBoard();
+  }
+
+  private async initializeBoard(): Promise<void> {
     const session = this.auth.session;
     this.currentUserEmail = session?.user.email ?? '';
-    this.repository.initializeForUser(session?.user.id ?? null);
-    this.restoreTheme(session?.user.id ?? null);
-    this.subscription = this.repository.watchBoard().subscribe((board) => this.board = board);
+    try {
+      if (this.auth.enabled && !session) {
+        await this.router.navigateByUrl('/login', { replaceUrl: true });
+        return;
+      }
+
+      if (session) {
+        await this.localRepository.initializeForUser(session.user.id);
+        const localBoard = this.localRepository.getStoredBoardForUser(session.user.id);
+        this.repository = this.supabaseRepository;
+        await this.repository.initializeForUser(session.user.id, localBoard);
+      } else {
+        this.repository = this.localRepository;
+        await this.repository.initializeForUser(null);
+      }
+
+      this.restoreTheme(session?.user.id ?? null);
+      this.subscription = this.repository.watchBoard().subscribe((board) => this.board = board);
+    } catch (error) {
+      console.error('No se pudo cargar el tablero sincronizado', error);
+      this.boardError = 'No se pudo cargar el tablero desde la nube. Comprueba la conexión y la configuración de Supabase.';
+    } finally {
+      this.loadingBoard = false;
+    }
   }
 
   toggleAccountMenu(): void {
@@ -456,9 +490,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   private async persist(): Promise<void> {
     this.busy = true;
+    this.saveError = '';
     try {
       await this.repository.saveBoard(this.board);
       this.scheduleMasonryLayout();
+    } catch (error) {
+      console.error('No se pudo guardar el tablero sincronizado', error);
+      this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
     } finally {
       this.busy = false;
     }

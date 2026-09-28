@@ -335,6 +335,27 @@ ion-toolbar.topbar {
   text-align: center;
 }
 
+.board-error,
+.board-save-error {
+  position: fixed;
+  z-index: 250;
+  left: 50%;
+  width: min(560px, calc(100% - 32px));
+  padding: 14px 16px;
+  color: #762d32;
+  background: #fff0f0;
+  border: 1px solid #e7bfc2;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(24, 38, 64, 0.16);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.board-error { top: 86px; }
+.board-save-error { bottom: 24px; }
+
 .board {
   position: relative;
   width: 100%;
