@@ -255,7 +255,7 @@
   </button>
 
   <!-- ✨ Panel que se despliega al hacer click en el FAB -->
-  <div *ngIf="addingList" class="fab-panel" @fadeIn>
+  <div *ngIf="addingList" class="fab-panel">
     <div class="fab-panel-header">
       <strong>Nueva lista</strong>
       <button class="fab-panel-close" (click)="cancelAddList()" aria-label="Cerrar">
@@ -268,7 +268,6 @@
         name="newListTitle"
         placeholder="Título de la lista..."
         class="fab-input"
-        autofocus
       ></ion-input>
       <div class="fab-panel-actions">
         <button type="submit" class="fab-submit-btn">Crear lista</button>
