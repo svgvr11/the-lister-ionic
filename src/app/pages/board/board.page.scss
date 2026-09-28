@@ -255,6 +255,16 @@ ion-toolbar.topbar {
   padding: 14px 6px 30px;
 }
 
+.board-empty-state {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  color: #e7ebf2;
+  font-size: 18px;
+  font-weight: 650;
+  text-align: center;
+}
+
 .board {
   position: relative;
   width: 100%;

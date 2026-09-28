@@ -50,15 +50,20 @@
         <ion-icon class="toolbar-icon" name="search"></ion-icon>
       </button>
 
-      <ion-icon class="toolbar-icon" name="layers-outline"></ion-icon>
-      <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+      <button *ngIf="authEnabled" class="toolbar-icon-btn account-button" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
+        <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+      </button>
     </div>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="board-content">
   <div class="board-scroller">
-    <div class="board">
+    <div *ngIf="board.lists.length === 0" class="board-empty-state">
+      Añade una lista para comenzar
+    </div>
+
+    <div *ngIf="board.lists.length > 0" class="board">
       <div
         #boardItem
         *ngFor="let list of visibleLists"

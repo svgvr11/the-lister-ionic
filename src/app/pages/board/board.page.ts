@@ -10,7 +10,9 @@ import {
   trash, personCircle, layersOutline, search, pencil
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
+import { AuthService } from '../../core/services/auth.service';
 import { LocalBoardRepository } from '../../core/services/local-board.repository';
 
 @Component({
@@ -24,9 +26,13 @@ import { LocalBoardRepository } from '../../core/services/local-board.repository
 })
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly repository = inject(LocalBoardRepository);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   private subscription?: Subscription;
 
   board!: ChecklistBoard;
+  currentUserEmail = '';
+  readonly authEnabled = this.auth.enabled;
   expanded = new Set<string>();
   collapsed = new Set<string>();
   addingTaskFor: string | null = null;
@@ -60,7 +66,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
+    const session = this.auth.session;
+    this.currentUserEmail = session?.user.email ?? '';
+    this.repository.initializeForUser(session?.user.id ?? null);
     this.subscription = this.repository.watchBoard().subscribe((board) => this.board = board);
+  }
+
+  async logout(): Promise<void> {
+    await this.auth.signOut();
+    await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
   ngAfterViewInit(): void {

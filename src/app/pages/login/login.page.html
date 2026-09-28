@@ -1,0 +1,20 @@
+<ion-content [fullscreen]="true" class="login-content">
+  <main class="login-layout">
+    <section class="form-panel" aria-labelledby="login-title">
+      <div class="form-heading">
+        <p class="form-kicker">CHECKLIST / TRELLO</p>
+        <h1 id="login-title">Iniciar sesión</h1>
+        <p class="form-description">Accede a tu tablero personal.</p>
+      </div>
+
+      <div class="login-actions">
+        <p *ngIf="errorMessage" class="form-message error" role="alert">{{ errorMessage }}</p>
+        <ion-button expand="block" [disabled]="busy" (click)="signInWithGoogle()">
+          <ion-spinner *ngIf="busy" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!busy" slot="start" name="logo-google"></ion-icon>
+          <span>{{ busy ? 'Conectando con Google…' : 'Continuar con Google' }}</span>
+        </ion-button>
+      </div>
+    </section>
+  </main>
+</ion-content>
