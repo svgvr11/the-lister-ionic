@@ -1,20 +1,34 @@
 <ion-content [fullscreen]="true" class="login-content">
-  <main class="login-layout">
-    <section class="form-panel" aria-labelledby="login-title">
+  <main class="login-stage">
+    <div class="login-stack">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true">
+          <ion-icon name="list-outline"></ion-icon>
+        </div>
+
       <div class="form-heading">
-        <p class="form-kicker">CHECKLIST / TRELLO</p>
-        <h1 id="login-title">Iniciar sesión</h1>
-        <p class="form-description">Accede a tu tablero personal.</p>
+          <h1 id="login-title">The Lister</h1>
+          <p class="form-description">ULTIMATE TODO LIST VIEWER</p>
       </div>
 
       <div class="login-actions">
         <p *ngIf="errorMessage" class="form-message error" role="alert">{{ errorMessage }}</p>
-        <ion-button expand="block" [disabled]="busy" (click)="signInWithGoogle()">
+        <ion-button class="google-button" expand="block" [disabled]="busy" (click)="signInWithGoogle()">
           <ion-spinner *ngIf="busy" name="crescent"></ion-spinner>
-          <ion-icon *ngIf="!busy" slot="start" name="logo-google"></ion-icon>
-          <span>{{ busy ? 'Conectando con Google…' : 'Continuar con Google' }}</span>
+          <span *ngIf="!busy" slot="start" class="google-mark" aria-hidden="true">G</span>
+          <span class="google-button-label">{{ busy ? 'Conectando con Google…' : 'Continuar con Google' }}</span>
         </ion-button>
       </div>
-    </section>
+
+        <ul class="feature-list" aria-label="Características">
+          <li><ion-icon name="checkmark-circle-outline"></ion-icon><span>Listas sincronizadas en tiempo real</span></li>
+          <li><ion-icon name="checkmark-circle-outline"></ion-icon><span>Organización visual minimalista</span></li>
+          <li><ion-icon name="checkmark-circle-outline"></ion-icon><span>Hasta 50 listas personalizadas</span></li>
+        </ul>
+      </section>
+
+      <p class="version-label"><span aria-hidden="true"></span>v1.0.0</p>
+    </div>
   </main>
+  <footer class="login-footer">2026 SugarLabz</footer>
 </ion-content>
