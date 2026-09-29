@@ -59,7 +59,10 @@
           [attr.aria-expanded]="accountMenuOpen"
           title="Opciones de usuario"
         >
-          <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+          <img *ngIf="currentUserAvatarUrl; else defaultAvatar" class="avatar-image" [src]="currentUserAvatarUrl" alt="Foto de perfil" referrerpolicy="no-referrer" />
+          <ng-template #defaultAvatar>
+            <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+          </ng-template>
         </button>
       </div>
     </div>
@@ -73,6 +76,13 @@
 
   <ng-container *ngIf="!loadingBoard && !boardError">
   <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
+    <div class="account-profile">
+      <img *ngIf="currentUserAvatarUrl" class="profile-image" [src]="currentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
+      <div class="profile-identity">
+        <strong>{{ currentUserName }}</strong>
+        <span>{{ currentUserEmail }}</span>
+      </div>
+    </div>
     <p class="account-menu-heading">Color del tablero</p>
     <div class="theme-options">
       <button
@@ -281,3 +291,4 @@
   </div>
   </ng-container>
 </ion-content>
+<footer class="app-footer">2026 SugarLabs</footer>

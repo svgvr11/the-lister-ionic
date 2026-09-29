@@ -40,7 +40,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   loadingBoard = true;
   boardError = '';
   saveError = '';
+  currentUserName = '';
   currentUserEmail = '';
+  currentUserAvatarUrl = '';
   readonly authEnabled = this.auth.enabled;
   readonly themes = [
     { id: 'lavender', name: 'Lavanda', background: '#eee8f8', toolbar: '#ddd2ef', accent: '#8870ad', fab: '#9780bb' },
@@ -99,6 +101,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private async initializeBoard(): Promise<void> {
     const session = this.auth.session;
     this.currentUserEmail = session?.user.email ?? '';
+    const metadata = session?.user.user_metadata;
+    this.currentUserName = String(metadata?.['full_name'] ?? metadata?.['name'] ?? metadata?.['given_name'] ?? this.currentUserEmail.split('@')[0]);
+    this.currentUserAvatarUrl = String(metadata?.['avatar_url'] ?? metadata?.['picture'] ?? '');
     try {
       if (this.auth.enabled && !session) {
         await this.router.navigateByUrl('/login', { replaceUrl: true });

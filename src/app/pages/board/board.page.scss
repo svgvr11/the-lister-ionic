@@ -1,4 +1,9 @@
 :host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   --board-bg: #eee8f8;
   --topbar-bg: #ddd2ef;
   --column-bg: #0b1004;
@@ -9,9 +14,12 @@
   --accent: #8870ad;
   --fab-color: #9780bb;
   --fab-hover: #8870ad;
+  --app-footer-height: 30px;
 }
 
 ion-content.board-content {
+  flex: 1 1 auto;
+  min-height: 0;
   --background: var(--board-bg);
 }
 
@@ -163,6 +171,15 @@ ion-toolbar.topbar {
   color: #586b85;
 }
 
+.avatar-image {
+  width: 34px;
+  height: 34px;
+  display: block;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .account-menu {
   position: fixed;
   z-index: 300;
@@ -177,6 +194,49 @@ ion-toolbar.topbar {
   border-radius: 8px;
   box-shadow: 0 14px 34px rgba(24, 38, 64, 0.2);
   animation: fabSlideUp 0.22s ease;
+}
+
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 2px 0 14px;
+  margin-bottom: 13px;
+  border-bottom: 1px solid #e8ebf0;
+}
+
+.profile-image {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-identity strong,
+.profile-identity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-identity strong {
+  color: #25334a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-identity span {
+  color: #687589;
+  font-size: 12px;
 }
 
 .account-menu-heading {
@@ -232,6 +292,20 @@ ion-toolbar.topbar {
 }
 
 .menu-logout ion-icon { font-size: 18px; }
+
+.app-footer {
+  z-index: 1;
+  flex: 0 0 var(--app-footer-height);
+  height: var(--app-footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #526075;
+  background: var(--topbar-bg);
+  border-top: 1px solid rgba(37, 51, 74, 0.12);
+  font-size: 11px;
+  font-weight: 600;
+}
 
 .search-box {
   display: flex;
@@ -602,7 +676,7 @@ ion-toolbar.topbar {
 .fab-add-list {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: calc(var(--app-footer-height) + 10px);
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -641,7 +715,7 @@ ion-toolbar.topbar {
 .fab-panel {
   position: fixed;
   right: 24px;
-  bottom: 96px;
+  bottom: calc(var(--app-footer-height) + 96px);
   width: 320px;
   background: var(--column-bg);
   border-radius: 14px;
@@ -743,6 +817,7 @@ ion-toolbar.topbar {
 
 /* Responsivo */
 @media (max-width: 700px) {
+  :host { height: 100dvh; }
   ion-toolbar.topbar {
     --min-height: 56px;
   }
