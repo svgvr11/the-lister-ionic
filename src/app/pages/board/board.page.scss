@@ -16,7 +16,7 @@
   --fab-color: #9780bb;
   --fab-hover: #8870ad;
   --app-footer-height: 30px;
-  --board-header-height: 40px;
+  --board-header-height: 70px;
 }
 
 ion-content.board-content {
@@ -28,23 +28,24 @@ ion-content.board-content {
 ion-toolbar.topbar {
   --background: #fff;
   --color: #25334a;
-  --min-height: 40px;
-  height: 40px;
-  padding: 0;
+  --min-height: 0;
+  height: auto;
+  padding: 15px 0;
 }
 
 ion-header {
   position: relative;
   z-index: 300;
   overflow: visible;
-  flex: 0 0 40px;
-  height: 40px;
+  flex: 0 0 auto;
+  height: auto;
 }
 
 .toolbar-inner {
   position: relative;
   width: 100%;
-  height: 40px;
+  height: auto;
+  min-height: 40px;
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(240px, min(44vw, 483px)) minmax(190px, 1fr);
   align-items: center;
@@ -173,11 +174,6 @@ ion-header {
   min-width: 0;
 }
 
-.toolbar-icon {
-  font-size: 22px;
-  color: #25334a;
-}
-
 .list-counter {
   height: 23px;
   display: inline-flex;
@@ -209,22 +205,6 @@ ion-header {
   height: 9px;
   background: #f5f6fc;
   border-radius: 50%;
-}
-
-.toolbar-icon-btn {
-  background: transparent;
-  border: 0;
-  padding: 6px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  color: #25334a;
-  transition: background 0.15s ease;
-}
-
-.toolbar-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .avatar-icon {
@@ -400,11 +380,6 @@ ion-header {
   border: 1px solid #dfe3ec;
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(24, 36, 59, 0.03);
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(10px); }
-  to   { opacity: 1; transform: translateX(0); }
 }
 
 .search-icon {
@@ -1079,18 +1054,32 @@ ion-header {
 /* Responsivo */
 @media (max-width: 700px) {
   :host { height: 100dvh; }
-  ion-header { flex-basis: 40px; height: 40px; }
+  :host { --board-header-height: 106px; }
+  ion-header { flex-basis: auto; height: auto; }
   ion-toolbar.topbar {
-    --min-height: 40px;
-    height: 40px;
+    --min-height: 0;
+    height: auto;
+    padding: 15px 0;
   }
   .toolbar-inner {
-    grid-template-columns: minmax(72px, auto) minmax(90px, 1fr) auto;
-    gap: 8px;
-    padding: 0 9px;
+    height: auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(40px, auto) 36px;
+    gap: 0 8px;
+    padding: 0 12px;
+  }
+  .title-wrapper { grid-column: 1; grid-row: 1; }
+  .toolbar-actions { grid-column: 2; grid-row: 1; }
+  .search-box {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    height: 29px;
+    margin: 0 0 3px;
   }
   .account-menu {
-    right: 9px;
+    top: var(--board-header-height);
+    right: 12px;
     width: min(286px, calc(100vw - 18px));
   }
   .board-title {
@@ -1122,20 +1111,20 @@ ion-header {
     min-width: 0;
     font-size: 10px;
   }
-  .search-box { height: 27px; gap: 5px; padding-inline: 7px; }
+  .search-box { gap: 5px; padding-inline: 7px; }
   .no-results {
     width: 84vw;
   }
   .fab-add-list {
     right: 16px;
-    bottom: 16px;
+    bottom: calc(var(--app-footer-height) + 2px);
     width: 54px;
     height: 54px;
   }
   .fab-panel {
     right: 16px;
     left: 16px;
-    bottom: 82px;
+    bottom: calc(var(--app-footer-height) + 68px);
     width: auto;
     padding: 22px;
   }
