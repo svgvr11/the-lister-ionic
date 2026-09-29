@@ -490,8 +490,30 @@ ion-header {
   padding: 14px 6px 30px;
 }
 
+.current-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 14px;
+  margin: 5px 15px 15px;
+  color: #4d45dd;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.35px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.date-indicator {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  background: #8bc9a6;
+  border-radius: 50%;
+}
+
 .board-empty-state {
-  min-height: 100%;
+  min-height: calc(100% - 55px);
   display: grid;
   place-items: center;
   color: #25334a;

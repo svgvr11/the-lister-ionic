@@ -40,6 +40,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   loadingBoard = true;
   boardError = '';
   saveError = '';
+  private readonly currentDate = new Date();
+  readonly currentDateIso = [
+    this.currentDate.getFullYear(),
+    String(this.currentDate.getMonth() + 1).padStart(2, '0'),
+    String(this.currentDate.getDate()).padStart(2, '0')
+  ].join('-');
+  readonly currentDateLabel = new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(this.currentDate);
   currentUserName = '';
   currentUserEmail = '';
   currentUserAvatarUrl = '';
