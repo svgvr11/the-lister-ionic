@@ -108,7 +108,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private resizeObserver?: ResizeObserver;
   private layoutFrame: number | null = null;
 
-  private readonly ITEM_WIDTH = 358;
   private readonly GAP = 22;
 
   constructor() {
@@ -480,8 +479,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
     if (!board || items.length === 0) return;
 
-    const itemWidth = Math.min(this.ITEM_WIDTH, board.clientWidth);
-    const columns = Math.max(1, Math.floor((board.clientWidth + this.GAP) / (itemWidth + this.GAP)));
+    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    const columns = isMobile ? 1 : 3;
+    const itemWidth = isMobile
+      ? Math.min(board.clientWidth, 520)
+      : Math.max(0, (board.clientWidth - this.GAP * (columns - 1)) / columns);
     const heights = new Array(columns).fill(0);
 
     board.style.position = 'relative';
@@ -498,7 +500,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
     items.forEach((item) => {
       const column = heights.indexOf(Math.min(...heights));
-      const x = column * (itemWidth + this.GAP);
+      const x = isMobile
+        ? (board.clientWidth - itemWidth) / 2
+        : column * (itemWidth + this.GAP);
       const y = heights[column];
       item.style.left = `${x}px`;
       item.style.top = `${y}px`;
