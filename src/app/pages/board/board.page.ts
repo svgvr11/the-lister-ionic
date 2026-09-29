@@ -7,8 +7,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, checkmark, chevronDown, chevronForward, close, logOut,
-  trash, personCircle, layersOutline, search, pencil
-} from 'ionicons/icons';
+  trash, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -82,12 +81,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   @HostBinding('style.--accent') themeAccent = this.activeTheme.accent;
   @HostBinding('style.--fab-color') themeFab = this.activeTheme.fab;
   @HostBinding('style.--fab-hover') themeFabHover = this.activeTheme.accent;
-  expanded = new Set<string>();
   collapsed = new Set<string>();
-  addingTaskFor: string | null = null;
   addingList = false;
   newListTitle = '';
-  newTaskText = '';
+  taskDrafts: Record<string, string> = {};
   busy = false;
 
   searching = false;
@@ -104,14 +101,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private resizeObserver?: ResizeObserver;
   private layoutFrame: number | null = null;
 
-  private readonly ITEM_WIDTH = 307;
-  private readonly GAP = 13;
+  private readonly ITEM_WIDTH = 358;
+  private readonly GAP = 22;
 
   constructor() {
-    addIcons({
-      add, checkmark, chevronDown, chevronForward, close,
-      trash, personCircle, layersOutline, search, pencil, logOut
-    });
+    addIcons({pencil,checkmark,close,search,personCircle,logOut,trash,add,returnDownBack,checkmarkCircle,chevronDown,chevronForward,layersOutline});
   }
 
   ngOnInit(): void {
@@ -298,13 +292,22 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
   }
 
-  visibleCompletedTasks(list: ChecklistList): ChecklistTask[] {
-    const completed = this.completedTasks(list);
-    return this.expanded.has(list.id) ? completed : completed.slice(0, 3);
+  completedTaskCount(list: ChecklistList): number {
+    return list.tasks.reduce((count, task) => count + Number(task.completed), 0);
   }
 
-  hiddenCompletedCount(list: ChecklistList): number {
-    return Math.max(0, this.completedTasks(list).length - this.visibleCompletedTasks(list).length);
+  listProgressPercent(list: ChecklistList): number {
+    if (!list.tasks.length) return 0;
+    return Math.round((this.completedTaskCount(list) / list.tasks.length) * 100);
+  }
+
+  isListComplete(list: ChecklistList): boolean {
+    return list.tasks.length > 0 && this.completedTaskCount(list) === list.tasks.length;
+  }
+
+  taskCounterLabel(list: ChecklistList): string {
+    if (this.isListComplete(list)) return '100% Hecho';
+    return `${this.completedTaskCount(list)}/${list.tasks.length}`;
   }
 
   isCollapsed(listId: string): boolean {
@@ -316,32 +319,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   async addTask(list: ChecklistList): Promise<void> {
-    const text = this.newTaskText.trim();
+    const text = (this.taskDrafts[list.id] ?? '').trim();
     if (!text) return;
     const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
     list.tasks.push({
       id: crypto.randomUUID(), listId: list.id, text, completed: false,
       position: maxPosition + 1, createdAt: new Date().toISOString()
     });
-    this.newTaskText = '';
-    this.addingTaskFor = null;
+    this.taskDrafts[list.id] = '';
     await this.persist();
-  }
-
-  startAddingTask(listId: string): void {
-    this.addingTaskFor = listId;
-    this.newTaskText = '';
-  }
-
-  cancelAddingTask(): void {
-    this.addingTaskFor = null;
-    this.newTaskText = '';
   }
 
   async toggleTask(list: ChecklistList, task: ChecklistTask): Promise<void> {
     task.completed = !task.completed;
     this.reorderTasks(list);
-    if (!task.completed) this.expanded.delete(list.id);
     await this.persist();
   }
 
@@ -354,7 +345,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async deleteList(listId: string): Promise<void> {
     this.board.lists = this.board.lists.filter((list) => list.id !== listId);
     this.collapsed.delete(listId);
-    this.expanded.delete(listId);
     this.reorderLists();
     await this.persist();
   }
@@ -362,11 +352,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   toggleCollapsed(listId: string): void {
     if (this.collapsed.has(listId)) this.collapsed.delete(listId);
     else this.collapsed.add(listId);
-    this.scheduleMasonryLayout();
-  }
-
-  showMore(list: ChecklistList): void {
-    this.expanded.add(list.id);
     this.scheduleMasonryLayout();
   }
 
@@ -477,7 +462,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
     if (!board || items.length === 0) return;
 
-    const itemWidth = this.ITEM_WIDTH;
+    const itemWidth = Math.min(this.ITEM_WIDTH, board.clientWidth);
     const columns = Math.max(1, Math.floor((board.clientWidth + this.GAP) / (itemWidth + this.GAP)));
     const heights = new Array(columns).fill(0);
 

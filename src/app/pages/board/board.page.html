@@ -121,6 +121,7 @@
         *ngFor="let list of visibleLists"
         class="checklist-column"
         [class.collapsed]="isCollapsed(list.id)"
+        [class.list-complete]="isListComplete(list)"
         draggable="true"
         (dragstart)="startListDrag(list.id, $event)"
         (dragover)="dragOverList($event)"
@@ -128,6 +129,7 @@
         (dragend)="clearDragState()"
       >
         <div class="column-header">
+          <span class="drag-handle" aria-hidden="true"></span>
           <button
             class="collapse-button"
             (click)="toggleCollapsed(list.id)"
@@ -145,7 +147,10 @@
             >{{ seg.text }}</span>
           </strong>
 
-          <span class="count">{{ list.tasks.length }}</span>
+          <span class="task-counter" [class.complete-counter]="isListComplete(list)">
+            <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
+            {{ taskCounterLabel(list) }}
+          </span>
           <button
             class="delete-list-button"
             (click)="deleteList(list.id)"
@@ -153,6 +158,15 @@
           >
             <ion-icon name="trash"></ion-icon>
           </button>
+        </div>
+
+        <div *ngIf="!isCollapsed(list.id)" class="list-progress-track" role="progressbar"
+          [attr.aria-valuenow]="completedTaskCount(list)"
+          [attr.aria-valuemin]="0"
+          [attr.aria-valuemax]="list.tasks.length"
+          [attr.aria-label]="'Progreso de ' + list.title"
+        >
+          <span class="list-progress-fill" [style.width.%]="listProgressPercent(list)"></span>
         </div>
 
         <div
@@ -189,7 +203,7 @@
           </div>
 
           <div
-            *ngFor="let task of visibleCompletedTasks(list); trackBy: trackById"
+            *ngFor="let task of completedTasks(list); trackBy: trackById"
             class="task completed"
             draggable="true"
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
@@ -214,14 +228,6 @@
             </button>
           </div>
 
-          <button
-            *ngIf="hiddenCompletedCount(list) > 0"
-            class="show-more"
-            (click)="showMore(list)"
-          >
-            Mostrar más · {{ hiddenCompletedCount(list) }}
-          </button>
-
           <div
             *ngIf="pendingTasks(list).length === 0 && completedTasks(list).length === 0"
             class="empty"
@@ -229,28 +235,24 @@
             Sin tareas. Añade una para comenzar.
           </div>
 
-          <button
-            *ngIf="!isCollapsed(list.id) && addingTaskFor !== list.id"
-            class="add-card"
-            (click)="startAddingTask(list.id)"
-          >
-            <ion-icon name="add"></ion-icon> Añadir tarea
-          </button>
-
-          <div *ngIf="addingTaskFor === list.id" class="add-form">
+          <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list)">
+            <ion-icon name="add" aria-hidden="true"></ion-icon>
             <ion-input
-              [(ngModel)]="newTaskText"
-              placeholder="Nueva tarea..."
-              (keyup.enter)="addTask(list)"
-              autofocus
+              [(ngModel)]="taskDrafts[list.id]"
+              [name]="'task-' + list.id"
+              placeholder="Añadir tarea a esta lista..."
+              aria-label="Añadir tarea a esta lista"
+              (keydown.enter)="$event.preventDefault(); addTask(list)"
             ></ion-input>
-            <button class="add-confirm" (click)="addTask(list)" aria-label="Confirmar">
+            <button
+              class="add-confirm"
+              type="submit"
+              [disabled]="!taskDrafts[list.id]?.trim()"
+              aria-label="Añadir tarea"
+            >
               <ion-icon name="checkmark"></ion-icon>
             </button>
-            <button class="cancel-button" (click)="cancelAddingTask()" aria-label="Cancelar">
-              <ion-icon name="close"></ion-icon>
-            </button>
-          </div>
+          </form>
         </div>
       </div>
 
