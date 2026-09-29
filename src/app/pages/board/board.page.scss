@@ -1,4 +1,5 @@
 :host {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -15,6 +16,7 @@
   --fab-color: #9780bb;
   --fab-hover: #8870ad;
   --app-footer-height: 30px;
+  --board-header-height: 35px;
 }
 
 ion-content.board-content {
@@ -32,11 +34,15 @@ ion-toolbar.topbar {
 }
 
 ion-header {
+  position: relative;
+  z-index: 300;
+  overflow: visible;
   flex: 0 0 35px;
   height: 35px;
 }
 
 .toolbar-inner {
+  position: relative;
   width: 100%;
   height: 35px;
   display: grid;
@@ -44,6 +50,7 @@ ion-header {
   align-items: center;
   gap: clamp(10px, 2vw, 24px);
   padding: 0 16px;
+  overflow: visible;
 }
 
 .board-title {
@@ -257,19 +264,18 @@ ion-header {
 }
 
 .account-menu {
-  position: fixed;
-  z-index: 300;
-  top: calc(env(safe-area-inset-top) + 74px);
-  right: 12px;
-  width: 248px;
+  position: absolute;
+  z-index: 400;
+  top: var(--board-header-height);
+  right: 16px;
+  width: 286px;
   max-width: calc(100vw - 24px);
-  padding: 14px;
+  padding: 14px 16px;
   color: #26364d;
   background: #fff;
   border: 1px solid #dce1e8;
   border-radius: 8px;
   box-shadow: 0 14px 34px rgba(24, 38, 64, 0.2);
-  animation: fabSlideUp 0.22s ease;
 }
 
 .account-profile {
@@ -324,8 +330,8 @@ ion-header {
 
 .theme-options {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
   padding-bottom: 14px;
 }
 
@@ -1000,6 +1006,10 @@ ion-header {
     grid-template-columns: minmax(72px, auto) minmax(90px, 1fr) auto;
     gap: 8px;
     padding: 0 9px;
+  }
+  .account-menu {
+    right: 9px;
+    width: min(286px, calc(100vw - 18px));
   }
   .board-title {
     font-size: 12px;

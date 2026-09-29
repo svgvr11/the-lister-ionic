@@ -61,9 +61,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     { id: 'mint', name: 'Menta', background: '#e7f4ed', toolbar: '#d2e9dc', accent: '#52836a', fab: '#6a9b7f' },
     { id: 'rose', name: 'Rosa', background: '#f8e9ed', toolbar: '#f0d6df', accent: '#ac657e', fab: '#bf7e94' },
     { id: 'peach', name: 'Durazno', background: '#fbefe4', toolbar: '#f4dfca', accent: '#a8754e', fab: '#bd8c64' },
-    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052' },
-    { id: 'pearl', name: 'Perla', background: '#edf0f2', toolbar: '#dce2e7', accent: '#647681', fab: '#82929d' },
-    { id: 'aqua', name: 'Aqua', background: '#e3f3f1', toolbar: '#cde7e3', accent: '#4c827f', fab: '#6b9a96' }
+    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052' }
   ];
   activeTheme = this.themes[0];
   accountMenuOpen = false;

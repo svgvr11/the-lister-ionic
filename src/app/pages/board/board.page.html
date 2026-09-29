@@ -65,9 +65,40 @@
           </button>
         </div>
       </div>
+
     </div>
   </ion-toolbar>
 </ion-header>
+
+<section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
+  <div class="account-profile">
+    <img *ngIf="currentUserAvatarUrl" class="profile-image" [src]="currentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
+    <div class="profile-identity">
+      <strong>{{ currentUserName }}</strong>
+      <span>{{ currentUserEmail }}</span>
+    </div>
+  </div>
+  <p class="account-menu-heading">Color del tablero</p>
+  <div class="theme-options">
+    <button
+      *ngFor="let theme of themes"
+      class="theme-option"
+      [class.selected]="activeTheme.id === theme.id"
+      [style.--swatch-color]="theme.background"
+      role="menuitemradio"
+      [attr.aria-checked]="activeTheme.id === theme.id"
+      [attr.aria-label]="theme.name"
+      [title]="theme.name"
+      (click)="selectTheme(theme)"
+    >
+      <ion-icon *ngIf="activeTheme.id === theme.id" name="checkmark"></ion-icon>
+    </button>
+  </div>
+  <button class="menu-logout" role="menuitem" (click)="logout()">
+    <ion-icon name="log-out"></ion-icon>
+    <span>Cerrar sesión</span>
+  </button>
+</section>
 
 <ion-content class="board-content">
   <div *ngIf="loadingBoard" class="board-empty-state" role="status">Cargando tablero...</div>
@@ -75,36 +106,6 @@
   <div *ngIf="saveError" class="board-save-error" role="alert">{{ saveError }}</div>
 
   <ng-container *ngIf="!loadingBoard && !boardError">
-  <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
-    <div class="account-profile">
-      <img *ngIf="currentUserAvatarUrl" class="profile-image" [src]="currentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
-      <div class="profile-identity">
-        <strong>{{ currentUserName }}</strong>
-        <span>{{ currentUserEmail }}</span>
-      </div>
-    </div>
-    <p class="account-menu-heading">Color del tablero</p>
-    <div class="theme-options">
-      <button
-        *ngFor="let theme of themes"
-        class="theme-option"
-        [class.selected]="activeTheme.id === theme.id"
-        [style.--swatch-color]="theme.background"
-        role="menuitemradio"
-        [attr.aria-checked]="activeTheme.id === theme.id"
-        [attr.aria-label]="theme.name"
-        [title]="theme.name"
-        (click)="selectTheme(theme)"
-      >
-        <ion-icon *ngIf="activeTheme.id === theme.id" name="checkmark"></ion-icon>
-      </button>
-    </div>
-    <button class="menu-logout" role="menuitem" (click)="logout()">
-      <ion-icon name="log-out"></ion-icon>
-      <span>Cerrar sesión</span>
-    </button>
-  </section>
-
   <div class="board-scroller">
     <div class="current-date" aria-label="Fecha actual">
       <span class="date-indicator" aria-hidden="true"></span>
