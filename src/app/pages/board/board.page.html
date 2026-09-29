@@ -1,69 +1,69 @@
 <ion-header>
   <ion-toolbar class="topbar">
-    <div class="title-wrapper">
-      <div *ngIf="!editingTitle" class="title-display">
-        <ion-title class="board-title">{{ board.title }} </ion-title>
-        <button class="edit-title-btn" (click)="startEditTitle()" aria-label="Editar título">
-          <ion-icon name="pencil"></ion-icon>
-        </button>
+    <div class="toolbar-inner">
+      <div class="title-wrapper">
+        <div *ngIf="!editingTitle" class="title-display">
+          <ion-title class="board-title">{{ board.title }}</ion-title>
+          <button class="edit-title-btn" (click)="startEditTitle()" aria-label="Editar título">
+            <ion-icon name="pencil"></ion-icon>
+          </button>
+        </div>
+
+        <div *ngIf="editingTitle" class="title-edit">
+          <ion-input
+            [(ngModel)]="titleDraft"
+            class="title-input"
+            (keyup.enter)="confirmEditTitle()"
+            (keyup.escape)="cancelEditTitle()"
+            autofocus
+          ></ion-input>
+          <button class="confirm-title-btn" (click)="confirmEditTitle()" aria-label="Confirmar">
+            <ion-icon name="checkmark"></ion-icon>
+          </button>
+          <button class="cancel-title-btn" (click)="cancelEditTitle()" aria-label="Cancelar">
+            <ion-icon name="close"></ion-icon>
+          </button>
+        </div>
       </div>
 
-      <div *ngIf="editingTitle" class="title-edit">
-        <ion-input
-          [(ngModel)]="titleDraft"
-          class="title-input"
-          (keyup.enter)="confirmEditTitle()"
-          (keyup.escape)="cancelEditTitle()"
-          autofocus
-        ></ion-input>
-        <button class="confirm-title-btn" (click)="confirmEditTitle()" aria-label="Confirmar">
-          <ion-icon name="checkmark"></ion-icon>
-        </button>
-        <button class="cancel-title-btn" (click)="cancelEditTitle()" aria-label="Cancelar">
-          <ion-icon name="close"></ion-icon>
-        </button>
-      </div>
-    </div>
-
-    <div class="toolbar-actions" slot="end">
-      <div *ngIf="searching" class="search-box">
+      <label class="search-box" aria-label="Buscar en tus listas">
         <ion-icon class="search-icon" name="search"></ion-icon>
         <ion-input
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()"
-          placeholder="Buscar lista..."
+          placeholder="Buscar en tus listas..."
           class="search-input"
           (keyup.escape)="closeSearch()"
-          autofocus
         ></ion-input>
-        <button class="close-search-btn" (click)="closeSearch()" aria-label="Cerrar búsqueda">
+        <button class="close-search-btn" type="button" (click)="closeSearch()" aria-label="Limpiar búsqueda">
           <ion-icon name="close"></ion-icon>
         </button>
-      </div>
+      </label>
 
-      <button
-        *ngIf="!searching"
-        class="toolbar-icon-btn"
-        (click)="toggleSearch()"
-        aria-label="Buscar"
-      >
-        <ion-icon class="toolbar-icon" name="search"></ion-icon>
-      </button>
+      <div class="toolbar-actions">
+        <div class="list-counter" role="status" [attr.aria-label]="board.lists.length + ' de 50 listas usadas'">
+          <span class="counter-ring" [style.--list-progress]="listProgress">
+            <span class="counter-ring-center"></span>
+          </span>
+          <span class="counter-label">{{ board.lists.length }} / 50 listas</span>
+        </div>
 
-      <div *ngIf="authEnabled" class="account-menu-wrap">
-        <button
-          class="toolbar-icon-btn account-button"
-          (click)="toggleAccountMenu()"
-          aria-label="Abrir menú de usuario"
-          aria-haspopup="menu"
-          [attr.aria-expanded]="accountMenuOpen"
-          title="Opciones de usuario"
-        >
-          <img *ngIf="currentUserAvatarUrl; else defaultAvatar" class="avatar-image" [src]="currentUserAvatarUrl" alt="Foto de perfil" referrerpolicy="no-referrer" />
-          <ng-template #defaultAvatar>
-            <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
-          </ng-template>
-        </button>
+        <div *ngIf="authEnabled" class="account-menu-wrap">
+          <button
+            class="account-button"
+            (click)="toggleAccountMenu()"
+            aria-label="Abrir menú de usuario"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="accountMenuOpen"
+            title="Opciones de usuario"
+          >
+            <img *ngIf="currentUserAvatarUrl; else defaultAvatar" class="avatar-image" [src]="currentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
+            <ng-template #defaultAvatar>
+              <ion-icon class="avatar-icon" name="person-circle"></ion-icon>
+            </ng-template>
+            <span class="toolbar-user-name">{{ currentUserName }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </ion-toolbar>
@@ -263,8 +263,10 @@
   <button
     class="fab-add-list"
     [class.open]="addingList"
+    [disabled]="isAtListLimit"
     (click)="toggleAddList()"
-    aria-label="Añadir lista"
+    [attr.aria-label]="isAtListLimit ? 'Límite de 50 listas alcanzado' : 'Añadir lista'"
+    [title]="isAtListLimit ? 'Límite de 50 listas alcanzado' : 'Añadir lista'"
   >
     <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
   </button>

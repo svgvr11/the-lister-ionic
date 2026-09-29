@@ -57,6 +57,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   activeTheme = this.themes[0];
   accountMenuOpen = false;
 
+  get listProgress(): string {
+    return `${Math.min(this.board.lists.length, 50) / 50 * 100}%`;
+  }
+
+  get isAtListLimit(): boolean {
+    return this.board.lists.length >= 50;
+  }
+
   @HostBinding('style.--board-bg') boardBackground = this.activeTheme.background;
   @HostBinding('style.--topbar-bg') toolbarBackground = this.activeTheme.toolbar;
   @HostBinding('style.--accent') themeAccent = this.activeTheme.accent;
@@ -209,6 +217,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   // ✨ Toggle del panel FAB (en lugar de solo abrir)
   toggleAddList(): void {
+    if (!this.addingList && this.isAtListLimit) return;
     this.addingList = !this.addingList;
     if (this.addingList) {
       this.newListTitle = '';
@@ -232,6 +241,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onSearchChange(): void {
+    this.searching = Boolean(this.searchQuery.trim());
     this.scheduleMasonryLayout();
   }
 
@@ -350,7 +360,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   async addList(): Promise<void> {
     const title = this.newListTitle.trim();
-    if (!title || this.board.lists.length >= 50) return;
+    if (!title || this.isAtListLimit) return;
     const position = this.board.lists.reduce((max, list) => Math.max(max, list.position), -1) + 1;
     this.board.lists.push({
       id: crypto.randomUUID(), boardId: this.board.id, title, position,
