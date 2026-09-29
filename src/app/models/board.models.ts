@@ -11,6 +11,7 @@ export interface ChecklistList {
   id: string;
   boardId: string;
   title: string;
+  visualColor?: string;
   position: number;
   createdAt: string;
   tasks: ChecklistTask[];

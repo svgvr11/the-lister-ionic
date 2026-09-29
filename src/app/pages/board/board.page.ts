@@ -82,6 +82,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   collapsed = new Set<string>();
   addingList = false;
   newListTitle = '';
+  readonly visualColors = [
+    { name: 'Índigo', value: '#5145e8' },
+    { name: 'Menta', value: '#5be9b0' },
+    { name: 'Celeste', value: '#d3defe' },
+    { name: 'Coral', value: '#ffd4d0' },
+    { name: 'Lavanda', value: '#cfd8ff' }
+  ];
+  selectedVisualColor = this.visualColors[0].value;
+  placeNewListAtStart = true;
   taskDrafts: Record<string, string> = {};
   busy = false;
 
@@ -225,6 +234,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.addingList = !this.addingList;
     if (this.addingList) {
       this.newListTitle = '';
+      this.selectedVisualColor = this.visualColors[0].value;
+      this.placeNewListAtStart = true;
     }
   }
 
@@ -356,13 +367,22 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async addList(): Promise<void> {
     const title = this.newListTitle.trim();
     if (!title || this.isAtListLimit) return;
-    const position = this.board.lists.reduce((max, list) => Math.max(max, list.position), -1) + 1;
-    this.board.lists.push({
-      id: crypto.randomUUID(), boardId: this.board.id, title, position,
-      createdAt: new Date().toISOString(), tasks: []
-    });
+    const orderedLists = [...this.board.lists].sort((a, b) => a.position - b.position);
+    const newList: ChecklistList = {
+      id: crypto.randomUUID(),
+      boardId: this.board.id,
+      title,
+      visualColor: this.selectedVisualColor,
+      position: this.placeNewListAtStart ? 0 : orderedLists.length,
+      createdAt: new Date().toISOString(),
+      tasks: []
+    };
+    if (this.placeNewListAtStart) orderedLists.unshift(newList);
+    else orderedLists.push(newList);
+    orderedLists.forEach((list, index) => list.position = index);
+    this.board.lists = orderedLists;
     this.newListTitle = '';
-    this.addingList = false; // ✨ Cerrar el panel al crear
+    this.addingList = false;
     await this.persist();
   }
 
@@ -489,7 +509,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private reorderLists(): void {
-    this.visibleLists.forEach((list, index) => list.position = index);
+    [...this.board.lists]
+      .sort((a, b) => a.position - b.position)
+      .forEach((list, index) => list.position = index);
   }
 
   private reorderTasks(list: ChecklistList): void {

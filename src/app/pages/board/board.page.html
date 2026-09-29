@@ -148,7 +148,11 @@
             >{{ seg.text }}</span>
           </strong>
 
-          <span class="task-counter" [class.complete-counter]="isListComplete(list)">
+          <span
+            class="task-counter"
+            [class.complete-counter]="isListComplete(list)"
+            [style.--list-visual-color]="list.visualColor || themeAccent"
+          >
             <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
             {{ taskCounterLabel(list) }}
           </span>
@@ -279,7 +283,7 @@
     <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
   </button>
 
-  <!-- ✨ Panel que se despliega al hacer click en el FAB -->
+  <!-- Panel para crear una lista -->
   <div *ngIf="addingList" class="fab-panel">
     <div class="fab-panel-header">
       <strong>Nueva lista</strong>
@@ -288,17 +292,52 @@
       </button>
     </div>
     <form (ngSubmit)="addList()" class="fab-panel-form">
+      <label class="fab-field-label" for="new-list-title">Nombre de la lista</label>
       <ion-input
+        id="new-list-title"
         [(ngModel)]="newListTitle"
         name="newListTitle"
-        placeholder="Título de la lista..."
+        placeholder="Escribe el nombre de la lista..."
         class="fab-input"
+        (keyup.enter)="$event.preventDefault(); addList()"
       ></ion-input>
+
+      <fieldset class="visual-color-field">
+        <legend>Identificador visual</legend>
+        <div class="visual-color-options">
+          <button
+            *ngFor="let color of visualColors"
+            type="button"
+            class="visual-color-option"
+            [class.selected]="selectedVisualColor === color.value"
+            [style.--visual-color]="color.value"
+            [attr.aria-label]="color.name"
+            [attr.aria-pressed]="selectedVisualColor === color.value"
+            [title]="color.name"
+            (click)="selectedVisualColor = color.value"
+          >
+            <ion-icon *ngIf="selectedVisualColor === color.value" name="checkmark"></ion-icon>
+          </button>
+        </div>
+      </fieldset>
+
+      <label class="place-first-option">
+        <span class="place-first-copy">
+          <ion-icon name="layers-outline" aria-hidden="true"></ion-icon>
+          <span>Ubicar al inicio del tablero</span>
+        </span>
+        <input type="checkbox" name="placeAtStart" [(ngModel)]="placeNewListAtStart" />
+      </label>
+
       <div class="fab-panel-actions">
-        <button type="submit" class="fab-submit-btn">Crear lista</button>
+        <button type="button" class="fab-cancel-btn" (click)="cancelAddList()">Cancelar</button>
+        <button type="submit" class="fab-submit-btn" [disabled]="!newListTitle.trim() || isAtListLimit">
+          <ion-icon name="add"></ion-icon>
+          Crear lista
+        </button>
       </div>
     </form>
   </div>
   </ng-container>
 </ion-content>
-<footer class="app-footer">2026 SugarLabs</footer>
+<footer class="app-footer">2026 SugarLabs / The Lister</footer>
