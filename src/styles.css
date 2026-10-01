@@ -1,4 +1,24 @@
-html, body { margin: 0; padding: 0; height: 100%; background: #192c50; }
-body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-* { box-sizing: border-box; }
-button, input { font: inherit; }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #f5f6ff;
+}
+body {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+button,
+input {
+  font: inherit;
+}
