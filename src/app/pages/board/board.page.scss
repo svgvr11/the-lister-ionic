@@ -60,19 +60,33 @@ ion-header {
   width: auto;
   padding: 0;
   color: #172236;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.title-wrapper {
+.board-title-block {
   display: flex;
   align-items: center;
-  flex: 1;
   min-width: 0;
+  margin: 0 15px 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  display: block;
+  border-radius: 10px;
+  object-fit: contain;
 }
 
 .title-display {
@@ -101,8 +115,8 @@ ion-header {
 }
 
 .edit-title-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(23, 34, 54, 0.08);
+  color: #172236;
 }
 
 .edit-title-btn ion-icon {
@@ -118,14 +132,14 @@ ion-header {
 }
 
 .title-edit ion-input {
-  --background: rgba(255, 255, 255, 0.08);
-  --color: #fff;
+  --background: #fff;
+  --color: #172236;
   --placeholder-color: #9fa4a7;
-  --padding-start: 10px;
-  --padding-end: 10px;
-  --border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --border-radius: 10px;
+  border: 1px solid #dfe3ec;
+  border-radius: 10px;
   flex: 1;
   min-width: 0;
 }
@@ -1065,7 +1079,8 @@ ion-header {
     gap: 0 8px;
     padding: 0 12px;
   }
-  .title-wrapper { grid-column: 1; grid-row: 1; }
+  .brand { grid-column: 1; grid-row: 1; }
+  .brand-logo { width: 34px; height: 34px; }
   .toolbar-actions { grid-column: 2; grid-row: 1; }
   .search-box {
     grid-column: 1 / -1;
@@ -1080,7 +1095,10 @@ ion-header {
     width: min(286px, calc(100vw - 18px));
   }
   .board-title {
-    font-size: 12px;
+    font-size: 24px;
+  }
+  .board-title-block {
+    margin: 0 8px 14px;
   }
   .toolbar-actions {
     gap: 6px;

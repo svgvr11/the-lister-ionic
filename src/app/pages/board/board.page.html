@@ -1,29 +1,14 @@
 <ion-header>
   <ion-toolbar class="topbar">
     <div class="toolbar-inner">
-      <div class="title-wrapper">
-        <div *ngIf="!editingTitle" class="title-display">
-          <ion-title class="board-title">{{ board.title }}</ion-title>
-          <button class="edit-title-btn" (click)="startEditTitle()" aria-label="Editar título">
-            <ion-icon name="pencil"></ion-icon>
-          </button>
-        </div>
-
-        <div *ngIf="editingTitle" class="title-edit">
-          <ion-input
-            [(ngModel)]="titleDraft"
-            class="title-input"
-            (keyup.enter)="confirmEditTitle()"
-            (keyup.escape)="cancelEditTitle()"
-            autofocus
-          ></ion-input>
-          <button class="confirm-title-btn" (click)="confirmEditTitle()" aria-label="Confirmar">
-            <ion-icon name="checkmark"></ion-icon>
-          </button>
-          <button class="cancel-title-btn" (click)="cancelEditTitle()" aria-label="Cancelar">
-            <ion-icon name="close"></ion-icon>
-          </button>
-        </div>
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="assets/app-icon.svg"
+          alt="The Lister"
+          width="40"
+          height="40"
+        />
       </div>
 
       <label class="search-box" aria-label="Buscar en tus listas">
@@ -110,6 +95,31 @@
     <div class="current-date" aria-label="Fecha actual">
       <span class="date-indicator" aria-hidden="true"></span>
       <time [attr.datetime]="currentDateIso">{{ currentDateLabel }}</time>
+    </div>
+
+    <div class="board-title-block">
+      <div *ngIf="!editingTitle" class="title-display">
+        <ion-title class="board-title">{{ board.title }}</ion-title>
+        <button class="edit-title-btn" (click)="startEditTitle()" aria-label="Editar título">
+          <ion-icon name="pencil"></ion-icon>
+        </button>
+      </div>
+
+      <div *ngIf="editingTitle" class="title-edit">
+        <ion-input
+          [(ngModel)]="titleDraft"
+          class="title-input"
+          (keyup.enter)="confirmEditTitle()"
+          (keyup.escape)="cancelEditTitle()"
+          autofocus
+        ></ion-input>
+        <button class="confirm-title-btn" (click)="confirmEditTitle()" aria-label="Confirmar">
+          <ion-icon name="checkmark"></ion-icon>
+        </button>
+        <button class="cancel-title-btn" (click)="cancelEditTitle()" aria-label="Cancelar">
+          <ion-icon name="close"></ion-icon>
+        </button>
+      </div>
     </div>
 
     <div *ngIf="board.lists.length === 0" class="board-empty-state">
