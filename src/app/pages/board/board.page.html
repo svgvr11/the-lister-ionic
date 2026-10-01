@@ -116,7 +116,7 @@
       Añade una lista para comenzar
     </div>
 
-    <div *ngIf="board.lists.length > 0" class="board">
+    <div *ngIf="visibleLists.length > 0" class="board">
       <div
         #boardItem
         *ngFor="let list of visibleLists"
@@ -261,11 +261,12 @@
         </div>
       </div>
 
-      <!-- Mensaje cuando no hay resultados de búsqueda -->
-      <div *ngIf="searching && visibleLists.length === 0" class="no-results">
-        <ion-icon name="search" class="no-results-icon"></ion-icon>
-        <p>No se encontraron listas que coincidan con "<strong>{{ searchQuery }}</strong>"</p>
-      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay resultados de búsqueda -->
+    <div *ngIf="searching && visibleLists.length === 0" class="no-results">
+      <ion-icon name="search" class="no-results-icon" aria-hidden="true"></ion-icon>
+      <p>No se encontraron listas que coincidan con &ldquo;<strong>{{ searchQuery }}</strong>&rdquo;</p>
     </div>
   </div>
 
