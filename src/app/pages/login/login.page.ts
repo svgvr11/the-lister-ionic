@@ -3,7 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonButton, IonContent, IonIcon, IonSpinner } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, listOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline } from 'ionicons/icons';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -21,7 +21,7 @@ export class LoginPage implements OnInit {
   errorMessage = '';
 
   constructor() {
-    addIcons({ checkmarkCircleOutline, listOutline });
+    addIcons({ checkmarkCircleOutline });
   }
 
   async ngOnInit(): Promise<void> {

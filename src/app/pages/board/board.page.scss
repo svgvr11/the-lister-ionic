@@ -15,6 +15,8 @@
   --accent: #8870ad;
   --fab-color: #9780bb;
   --fab-hover: #8870ad;
+  /* Superficie fija de header y footer: no cambia con el tema del tablero. */
+  --topbar-surface: #fff;
   --app-footer-height: 30px;
   --board-header-height: 70px;
 }
@@ -26,7 +28,7 @@ ion-content.board-content {
 }
 
 ion-toolbar.topbar {
-  --background: #fff;
+  --background: var(--topbar-surface);
   --color: #25334a;
   --min-height: 0;
   height: auto;
@@ -363,7 +365,7 @@ ion-header {
   align-items: center;
   justify-content: center;
   color: #526075;
-  background: var(--topbar-bg);
+  background: var(--topbar-surface);
   border-top: 1px solid rgba(37, 51, 74, 0.12);
   font-size: 11px;
   font-weight: 600;
