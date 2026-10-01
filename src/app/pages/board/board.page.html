@@ -133,7 +133,7 @@
         class="checklist-column"
         [class.collapsed]="isCollapsed(list.id)"
         [class.list-complete]="isListComplete(list)"
-        draggable="true"
+        [draggable]="editingListId !== list.id"
         (dragstart)="startListDrag(list.id, $event)"
         (dragover)="dragOverList($event)"
         (drop)="dropList(list.id, $event)"
@@ -151,12 +151,31 @@
             ></ion-icon>
           </button>
 
-          <strong>
-            <span
-              *ngFor="let seg of getHighlightedSegments(list.title)"
-              [class.highlight]="seg.highlight"
-            >{{ seg.text }}</span>
-          </strong>
+          <div *ngIf="editingListId === list.id" class="list-title-edit">
+            <ion-input
+              [(ngModel)]="listTitleDraft"
+              [name]="'list-title-' + list.id"
+              class="list-title-input"
+              (click)="$event.stopPropagation()"
+              (keyup.enter)="confirmEditList(list)"
+              (keyup.escape)="cancelEditList()"
+              autofocus
+            ></ion-input>
+            <button type="button" class="confirm-title-btn" (click)="confirmEditList(list)" aria-label="Confirmar nombre de lista">
+              <ion-icon name="checkmark"></ion-icon>
+            </button>
+            <button type="button" class="cancel-title-btn" (click)="cancelEditList()" aria-label="Cancelar edición de lista">
+              <ion-icon name="close"></ion-icon>
+            </button>
+          </div>
+          <div *ngIf="editingListId !== list.id" class="list-title-display">
+            <strong>
+              <span
+                *ngFor="let seg of getHighlightedSegments(list.title)"
+                [class.highlight]="seg.highlight"
+              >{{ seg.text }}</span>
+            </strong>
+          </div>
 
           <span
             class="task-counter"
@@ -166,6 +185,16 @@
             <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
             {{ taskCounterLabel(list) }}
           </span>
+          <button
+            type="button"
+            class="edit-list-button"
+            (mousedown)="$event.stopPropagation()"
+            (click)="startEditList(list, $event)"
+            aria-label="Editar nombre de lista"
+            title="Editar lista"
+          >
+            <ion-icon name="pencil"></ion-icon>
+          </button>
           <button
             class="delete-list-button"
             (click)="deleteList(list.id)"
@@ -193,7 +222,7 @@
           <div
             *ngFor="let task of pendingTasks(list); trackBy: trackById"
             class="task"
-            draggable="true"
+            [draggable]="!isEditingTask(task.id)"
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
             (dragover)="dragOverTask($event)"
             (drop)="dropTask(list, task.id, $event)"
@@ -207,7 +236,33 @@
             >
               <ion-icon *ngIf="task.completed" name="checkmark"></ion-icon>
             </button>
-            <span class="task-text">{{ task.text }}</span>
+            <button
+              *ngIf="!isEditingTask(task.id); else pendingTaskEditor"
+              type="button"
+              class="task-text task-edit-trigger"
+              (mousedown)="$event.stopPropagation()"
+              (click)="startEditTask(task, $event)"
+              [attr.aria-label]="'Editar tarea: ' + task.text"
+            >{{ task.text }}</button>
+            <ng-template #pendingTaskEditor>
+              <div class="task-edit">
+                <ion-input
+                  [(ngModel)]="taskTextDraft"
+                  [name]="'edit-task-' + task.id"
+                  class="task-edit-input"
+                  (click)="$event.stopPropagation()"
+                  (keyup.enter)="confirmEditTask(task)"
+                  (keyup.escape)="cancelEditTask()"
+                  autofocus
+                ></ion-input>
+                <button type="button" class="confirm-title-btn" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
+                  <ion-icon name="checkmark"></ion-icon>
+                </button>
+                <button type="button" class="cancel-title-btn" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
+                  <ion-icon name="close"></ion-icon>
+                </button>
+              </div>
+            </ng-template>
             <button
               class="delete-button"
               (click)="deleteTask(list, task.id)"
@@ -220,7 +275,7 @@
           <div
             *ngFor="let task of completedTasks(list); trackBy: trackById"
             class="task completed"
-            draggable="true"
+            [draggable]="!isEditingTask(task.id)"
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
             (dragover)="dragOverTask($event)"
             (drop)="dropTask(list, task.id, $event)"
@@ -233,7 +288,33 @@
             >
               <ion-icon name="checkmark"></ion-icon>
             </button>
-            <span class="task-text">{{ task.text }}</span>
+            <button
+              *ngIf="!isEditingTask(task.id); else completedTaskEditor"
+              type="button"
+              class="task-text task-edit-trigger"
+              (mousedown)="$event.stopPropagation()"
+              (click)="startEditTask(task, $event)"
+              [attr.aria-label]="'Editar tarea: ' + task.text"
+            >{{ task.text }}</button>
+            <ng-template #completedTaskEditor>
+              <div class="task-edit">
+                <ion-input
+                  [(ngModel)]="taskTextDraft"
+                  [name]="'edit-task-' + task.id"
+                  class="task-edit-input"
+                  (click)="$event.stopPropagation()"
+                  (keyup.enter)="confirmEditTask(task)"
+                  (keyup.escape)="cancelEditTask()"
+                  autofocus
+                ></ion-input>
+                <button type="button" class="confirm-title-btn" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
+                  <ion-icon name="checkmark"></ion-icon>
+                </button>
+                <button type="button" class="cancel-title-btn" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
+                  <ion-icon name="close"></ion-icon>
+                </button>
+              </div>
+            </ng-template>
             <button
               class="delete-button"
               (click)="deleteTask(list, task.id)"

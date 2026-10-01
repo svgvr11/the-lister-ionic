@@ -99,6 +99,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   editingTitle = false;
   titleDraft = '';
+  editingListId: string | null = null;
+  listTitleDraft = '';
+  editingTaskId: string | null = null;
+  taskTextDraft = '';
 
   private draggedListId: string | null = null;
   private draggedTask: { listId: string; taskId: string } | null = null;
@@ -225,6 +229,54 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelEditTitle(): void {
     this.editingTitle = false;
     this.titleDraft = '';
+  }
+
+  startEditList(list: ChecklistList, event: Event): void {
+    event.stopPropagation();
+    this.editingListId = list.id;
+    this.listTitleDraft = list.title;
+  }
+
+  async confirmEditList(list: ChecklistList): Promise<void> {
+    const title = this.listTitleDraft.trim();
+    if (!title) {
+      this.cancelEditList();
+      return;
+    }
+    list.title = title;
+    this.cancelEditList();
+    await this.persist();
+  }
+
+  cancelEditList(): void {
+    this.editingListId = null;
+    this.listTitleDraft = '';
+  }
+
+  startEditTask(task: ChecklistTask, event: Event): void {
+    event.stopPropagation();
+    this.editingTaskId = task.id;
+    this.taskTextDraft = task.text;
+  }
+
+  async confirmEditTask(task: ChecklistTask): Promise<void> {
+    const text = this.taskTextDraft.trim();
+    if (!text) {
+      this.cancelEditTask();
+      return;
+    }
+    task.text = text;
+    this.cancelEditTask();
+    await this.persist();
+  }
+
+  cancelEditTask(): void {
+    this.editingTaskId = null;
+    this.taskTextDraft = '';
+  }
+
+  isEditingTask(taskId: string): boolean {
+    return this.editingTaskId === taskId;
   }
 
   // ✨ Toggle del panel FAB (en lugar de solo abrir)
