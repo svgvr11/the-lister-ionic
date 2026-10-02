@@ -66,7 +66,10 @@
       <span>{{ currentUserEmail }}</span>
     </div>
   </div>
-  <p class="account-menu-heading">Color del tablero</p>
+  <div class="account-menu-heading">
+    <span>Color del tablero</span>
+    <span class="account-menu-theme-name">{{ activeTheme.name }}</span>
+  </div>
   <div class="theme-options">
     <button
       *ngFor="let theme of themes"
@@ -82,6 +85,40 @@
       <ion-icon *ngIf="activeTheme.id === theme.id" name="checkmark"></ion-icon>
     </button>
   </div>
+  <!-- Botón de donación local: mismo enlace y estilo que el widget oficial de Ko-fi,
+     sin depender de su script ni de fuentes externas. -->
+  <a
+    class="donation-button"
+    role="menuitem"
+    [style.--donation-color]="activeTheme.donation"
+    [attr.aria-label]="donationMessage + ' — apoyar al desarrollo de la app en Ko-fi'"
+    [href]="donationUrl"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <svg class="donation-cup" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <path
+        d="M4.5 7.5h11v6.5a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4V7.5Z"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M15.5 9h1.6a2.4 2.4 0 0 1 0 4.8h-1.6"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+      />
+      <path d="M3 21h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+      <path
+        d="M8 4.4c-.9-.8.9-1.5 0-2.3M12 4.4c-.9-.8.9-1.5 0-2.3"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+      />
+    </svg>
+    <span class="donation-label">{{ donationMessage }}</span>
+  </a>
   <button class="menu-logout" role="menuitem" (click)="logout()">
     <ion-icon name="log-out"></ion-icon>
     <span>Cerrar sesión</span>

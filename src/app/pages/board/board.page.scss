@@ -333,10 +333,21 @@ ion-header {
 }
 
 .account-menu-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 12px;
   color: #647084;
   font-size: 12px;
   font-weight: 700;
+}
+
+.account-menu-theme-name {
+  color: #8b93a7;
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .theme-options {
@@ -366,6 +377,89 @@ ion-header {
 }
 
 .theme-option ion-icon { font-size: 18px; }
+
+/* Botón de donación de Ko-fi, implementado localmente para no depender del
+   script ni de las fuentes que carga el widget oficial. El color lo fija el
+   tema activo mediante la variable --donation-color. */
+.donation-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  margin-bottom: 16px;
+  padding: 0 16px;
+  color: #fff;
+  background: var(--donation-color);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  text-shadow: 0 1px 1px rgba(34, 34, 34, 0.12);
+  transition: filter 0.15s ease;
+}
+
+.donation-button:hover,
+.donation-button:focus-visible {
+  filter: brightness(0.93);
+}
+
+.donation-button:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.donation-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mismo balanceo de la taza que usaba el widget original (kofi-wiggle). */
+.donation-cup {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  animation: donation-wiggle 3s infinite;
+  transform-origin: 50% 80%;
+}
+
+@keyframes donation-wiggle {
+  0%,
+  60% {
+    transform: rotate(0) scale(1);
+  }
+  75% {
+    transform: rotate(0) scale(1.12);
+  }
+  80% {
+    transform: rotate(0) scale(1.1);
+  }
+  84% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  88% {
+    transform: rotate(10deg) scale(1.1);
+  }
+  92% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  96% {
+    transform: rotate(10deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(0) scale(1);
+  }
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .donation-cup {
+    animation: none;
+  }
+}
 
 .menu-logout {
   width: 100%;

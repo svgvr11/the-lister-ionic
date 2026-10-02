@@ -56,15 +56,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   currentUserAvatarUrl = '';
   readonly authEnabled = this.auth.enabled;
   readonly themes = [
-    { id: 'lavender', name: 'Lavanda', background: '#eee8f8', toolbar: '#ddd2ef', accent: '#8870ad', fab: '#9780bb' },
-    { id: 'sky', name: 'Celeste', background: '#e6f2fb', toolbar: '#d1e6f5', accent: '#5686ac', fab: '#739fbe' },
-    { id: 'mint', name: 'Menta', background: '#e7f4ed', toolbar: '#d2e9dc', accent: '#52836a', fab: '#6a9b7f' },
-    { id: 'rose', name: 'Rosa', background: '#f8e9ed', toolbar: '#f0d6df', accent: '#ac657e', fab: '#bf7e94' },
-    { id: 'peach', name: 'Durazno', background: '#fbefe4', toolbar: '#f4dfca', accent: '#a8754e', fab: '#bd8c64' },
-    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052' }
+    { id: 'lavender', name: 'Lavanda', background: '#eee8f8', toolbar: '#ddd2ef', accent: '#8870ad', fab: '#9780bb', donation: '#e8eeff' },
+    { id: 'sky', name: 'Celeste', background: '#e6f2fb', toolbar: '#d1e6f5', accent: '#5686ac', fab: '#739fbe', donation: '#dfe9f8' },
+    { id: 'mint', name: 'Menta', background: '#e7f4ed', toolbar: '#d2e9dc', accent: '#52836a', fab: '#6a9b7f', donation: '#ddefe6' },
+    { id: 'rose', name: 'Rosa', background: '#f8e9ed', toolbar: '#f0d6df', accent: '#ac657e', fab: '#bf7e94', donation: '#fae6ea' },
+    { id: 'peach', name: 'Durazno', background: '#fbefe4', toolbar: '#f4dfca', accent: '#a8754e', fab: '#bd8c64', donation: '#fbeada' },
+    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052', donation: '#f8f1d8' }
   ];
   activeTheme = this.themes[0];
   accountMenuOpen = false;
+  readonly donationMessage = '!Me gusta la app!';
+  readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
 
   get listProgress(): string {
     return `${Math.min(this.board.lists.length, 50) / 50 * 100}%`;
@@ -165,12 +167,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.accountMenuOpen = false;
   }
 
+  /** Aplica y persiste el tema. El menú de perfil sigue abierto para poder seguir probando colores. */
   selectTheme(theme: typeof this.themes[number]): void {
     this.activeTheme = theme;
     this.applyTheme(theme);
     const userId = this.auth.session?.user.id ?? 'local';
     localStorage.setItem(`checklist-trello-theme-v1:${userId}`, theme.id);
-    this.accountMenuOpen = false;
   }
 
   async logout(): Promise<void> {
