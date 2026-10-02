@@ -14,6 +14,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - Persistencia local como fallback cuando Supabase Auth no está configurado.
 - Acceso con cuenta de Google mediante Supabase Auth.
 - Botón de donación de Ko-fi en el menú de perfil, implementado localmente (sin scripts ni fuentes externas) y con el color del tema de tablero seleccionado.
+- Botón **Basurero** en el menú de perfil, al lado izquierdo de *Cerrar sesión*, que abre la pantalla de papelera (actualmente vacía).
 - Cada color de tablero muestra su nombre junto al título "Color del tablero".
 - Los datos se guardan como JSON en una fila por usuario, con Row Level Security (RLS).
 - Esquema SQL incluido en `supabase/schema.sql`.
@@ -60,12 +61,14 @@ Si las credenciales no están configuradas, la app omite el login y abre el tabl
 
 ```text
 src/app/
-├── core/services/
-│   ├── auth.guard.ts
-│   ├── auth.service.ts
-│   ├── board.repository.ts
-│   ├── local-board.repository.ts
-│   └── supabase-board.repository.ts
+├── core/
+│   ├── board-themes.ts
+│   ├── services/
+│   │   ├── auth.guard.ts
+│   │   ├── auth.service.ts
+│   │   ├── board.repository.ts
+│   │   ├── local-board.repository.ts
+│   │   └── supabase-board.repository.ts
 ├── models/
 │   └── board.models.ts
 ├── pages/login/
@@ -76,6 +79,10 @@ src/app/
 │   ├── board.page.html
 │   ├── board.page.scss
 │   └── board.page.ts
+├── pages/trash/
+│   ├── trash.page.html
+│   ├── trash.page.scss
+│   └── trash.page.ts
 ├── app.component.ts
 └── app.routes.ts
 supabase/schema.sql

@@ -1,0 +1,112 @@
+:host {
+  /* El host es la página del router outlet: se posiciona como .ion-page para
+     superponerse al tablero en lugar de apilarse debajo. */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  --board-bg: #eee8f8;
+  /* Superficie fija de header y footer: no cambia con el tema del tablero. */
+  --topbar-surface: #fff;
+  --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  --app-footer-height: calc(30px + var(--app-safe-area-bottom));
+}
+
+ion-header {
+  position: relative;
+  z-index: 300;
+  flex: 0 0 auto;
+  height: auto;
+  padding-top: var(--app-safe-area-top);
+  background: var(--topbar-surface);
+}
+
+ion-toolbar.topbar {
+  --background: var(--topbar-surface);
+  --color: #25334a;
+  --min-height: 0;
+  height: auto;
+  padding: 15px 0;
+}
+
+.toolbar-inner {
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.back-btn {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #25334a;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.back-btn:hover {
+  background: rgba(23, 34, 54, 0.08);
+}
+
+.back-btn:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.back-btn ion-icon {
+  font-size: 20px;
+}
+
+.trash-title {
+  margin: 0;
+  padding: 0;
+  color: #172236;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+ion-content.trash-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  --background: var(--board-bg);
+}
+
+.app-footer {
+  z-index: 1;
+  flex: 0 0 var(--app-footer-height);
+  height: var(--app-footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #526075;
+  background: var(--topbar-surface);
+  border-top: 1px solid rgba(37, 51, 74, 0.12);
+  padding-bottom: var(--app-safe-area-bottom);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Responsivo */
+@media (max-width: 700px) {
+  ion-header { flex-basis: auto; height: auto; }
+  .toolbar-inner { padding: 0 12px; }
+  .trash-title { font-size: 20px; }
+}

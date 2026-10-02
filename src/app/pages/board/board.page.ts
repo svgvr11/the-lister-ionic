@@ -7,10 +7,11 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, checkmark, chevronDown, chevronForward, close, logOut,
-  trash, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree } from 'ionicons/icons';
+  trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
+import { BoardTheme, BOARD_THEMES, DEFAULT_BOARD_THEME, readStoredTheme, storeTheme } from '../../core/board-themes';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardRepository } from '../../core/services/board.repository';
 import { LocalBoardRepository } from '../../core/services/local-board.repository';
@@ -55,15 +56,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   currentUserEmail = '';
   currentUserAvatarUrl = '';
   readonly authEnabled = this.auth.enabled;
-  readonly themes = [
-    { id: 'lavender', name: 'Lavanda', background: '#eee8f8', toolbar: '#ddd2ef', accent: '#8870ad', fab: '#9780bb', donation: '#e8eeff' },
-    { id: 'sky', name: 'Celeste', background: '#e6f2fb', toolbar: '#d1e6f5', accent: '#5686ac', fab: '#739fbe', donation: '#dfe9f8' },
-    { id: 'mint', name: 'Menta', background: '#e7f4ed', toolbar: '#d2e9dc', accent: '#52836a', fab: '#6a9b7f', donation: '#ddefe6' },
-    { id: 'rose', name: 'Rosa', background: '#f8e9ed', toolbar: '#f0d6df', accent: '#ac657e', fab: '#bf7e94', donation: '#fae6ea' },
-    { id: 'peach', name: 'Durazno', background: '#fbefe4', toolbar: '#f4dfca', accent: '#a8754e', fab: '#bd8c64', donation: '#fbeada' },
-    { id: 'butter', name: 'Vainilla', background: '#f6f2da', toolbar: '#eae3b9', accent: '#928238', fab: '#b1a052', donation: '#f8f1d8' }
-  ];
-  activeTheme = this.themes[0];
+  readonly themes = BOARD_THEMES;
+  activeTheme: BoardTheme = DEFAULT_BOARD_THEME;
   accountMenuOpen = false;
   readonly donationMessage = '!Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
@@ -120,7 +114,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
   constructor() {
-    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward});
+    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward});
   }
 
   ngOnInit(): void {
@@ -168,11 +162,16 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /** Aplica y persiste el tema. El menú de perfil sigue abierto para poder seguir probando colores. */
-  selectTheme(theme: typeof this.themes[number]): void {
+  selectTheme(theme: BoardTheme): void {
     this.activeTheme = theme;
     this.applyTheme(theme);
-    const userId = this.auth.session?.user.id ?? 'local';
-    localStorage.setItem(`checklist-trello-theme-v1:${userId}`, theme.id);
+    storeTheme(this.auth.session?.user.id ?? null, theme);
+  }
+
+  /** Cierra el menú de perfil y abre la pantalla de basurero. */
+  async openTrash(): Promise<void> {
+    this.accountMenuOpen = false;
+    await this.router.navigateByUrl('/trash');
   }
 
   async logout(): Promise<void> {
@@ -190,16 +189,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private restoreTheme(userId: string | null): void {
-    const key = `checklist-trello-theme-v1:${userId ?? 'local'}`;
-    const savedThemeId = localStorage.getItem(key);
-    const savedTheme = this.themes.find((theme) => theme.id === savedThemeId);
-    if (savedTheme) {
-      this.activeTheme = savedTheme;
-      this.applyTheme(savedTheme);
-    }
+    const savedTheme = readStoredTheme(userId);
+    this.activeTheme = savedTheme;
+    this.applyTheme(savedTheme);
   }
 
-  private applyTheme(theme: typeof this.themes[number]): void {
+  private applyTheme(theme: BoardTheme): void {
     this.boardBackground = theme.background;
     this.toolbarBackground = theme.toolbar;
     this.themeAccent = theme.accent;

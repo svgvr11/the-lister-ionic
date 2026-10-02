@@ -119,10 +119,17 @@
     </svg>
     <span class="donation-label">{{ donationMessage }}</span>
   </a>
-  <button class="menu-logout" role="menuitem" (click)="logout()">
-    <ion-icon name="log-out"></ion-icon>
-    <span>Cerrar sesión</span>
-  </button>
+  <!-- Acciones de la cuenta: el basurero va a la izquierda del cierre de sesión. -->
+  <div class="account-menu-actions">
+    <button class="menu-action menu-trash" role="menuitem" (click)="openTrash()">
+      <ion-icon name="trash-bin-outline"></ion-icon>
+      <span>Basurero</span>
+    </button>
+    <button class="menu-action menu-logout" role="menuitem" (click)="logout()">
+      <ion-icon name="log-out"></ion-icon>
+      <span>Cerrar sesión</span>
+    </button>
+  </div>
 </section>
 
 <ion-content class="board-content">
