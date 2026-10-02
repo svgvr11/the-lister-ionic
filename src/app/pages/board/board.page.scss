@@ -22,6 +22,13 @@
   --board-header-height: calc(70px + var(--app-safe-area-top));
 }
 
+/* Sin ion-button, el ion-ripple-effect solo hereda el color del botón. Esta
+   regla hace que --ripple-color tenga efecto y, si no se define, siga el
+   color del propio botón (currentColor). */
+ion-ripple-effect {
+  color: var(--ripple-color, currentColor);
+}
+
 ion-content.board-content {
   flex: 1 1 auto;
   min-height: 0;
@@ -106,6 +113,8 @@ ion-header {
 }
 
 .edit-title-btn {
+  position: relative;
+  overflow: hidden;
   background: transparent;
   border: 0;
   color: #9fa4a7;
@@ -150,6 +159,8 @@ ion-header {
 
 .confirm-title-btn,
 .cancel-title-btn {
+  position: relative;
+  overflow: hidden;
   width: 34px;
   height: 34px;
   border: 0;
@@ -358,6 +369,8 @@ ion-header {
 }
 
 .theme-option {
+  position: relative;
+  overflow: hidden;
   width: 38px;
   height: 38px;
   display: grid;
@@ -382,6 +395,8 @@ ion-header {
    script ni de las fuentes que carga el widget oficial. El color lo fija el
    tema activo mediante la variable --donation-color. */
 .donation-button {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,6 +407,9 @@ ion-header {
   color: #fff;
   background: var(--donation-color);
   border-radius: 10px;
+  /* El texto es blanco sobre un pastel claro: un ripple currentColor sería
+     invisible. Se usa el tinta de la app para que el feedback se vea. */
+  --ripple-color: #172236;
   font-size: 14px;
   font-weight: 700;
   text-align: center;
@@ -471,6 +489,8 @@ ion-header {
 }
 
 .menu-action {
+  position: relative;
+  overflow: hidden;
   flex: 0 1 auto;
   min-width: 0;
   min-height: 42px;
@@ -567,6 +587,8 @@ ion-header {
 }
 
 .close-search-btn {
+  position: relative;
+  overflow: hidden;
   background: transparent;
   border: 0;
   color: #7d8493;
@@ -757,6 +779,8 @@ ion-header {
 }
 
 .edit-list-button {
+  position: relative;
+  overflow: hidden;
   width: 25px;
   height: 25px;
   flex: 0 0 25px;
@@ -791,6 +815,8 @@ ion-header {
 
 .collapse-button,
 .delete-list-button {
+  position: relative;
+  overflow: hidden;
   width: 18px;
   height: 22px;
   flex: 0 0 18px;
@@ -940,6 +966,12 @@ ion-header {
   border: 1px solid #dbe5ff;
   background: transparent;
   color: #fff;
+  position: relative;
+  overflow: hidden;
+  /* El color del botón es blanco (es el del checkmark sobre fondo verde), así
+     que currentColor daría un ripple invisible sobre la tarjeta blanca.
+     Este gris azulado se ve tanto sin marcar como marcado. */
+  --ripple-color: #667187;
   display: grid;
   place-items: center;
   padding: 0;
@@ -955,6 +987,8 @@ ion-header {
 }
 
 .delete-button {
+  position: relative;
+  overflow: hidden;
   width: 19px;
   height: 22px;
   flex: 0 0 19px;
@@ -1044,6 +1078,8 @@ ion-header {
 }
 
 .add-confirm {
+  position: relative;
+  overflow: hidden;
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
@@ -1060,6 +1096,8 @@ ion-header {
 .add-confirm ion-icon { font-size: 14px; }
 
 .completed-toggle {
+  position: relative;
+  overflow: hidden;
   align-self: center;
   display: inline-flex;
   align-items: center;
@@ -1112,6 +1150,8 @@ ion-header {
 /* ✨ FAB - Botón flotante para añadir lista */
 .fab-add-list {
   position: fixed;
+  /* El ripple es bounded: sin esto se sale del círculo de 60px. */
+  overflow: hidden;
   right: 24px;
   bottom: calc(var(--app-footer-height) + 10px);
   width: 60px;
@@ -1201,6 +1241,8 @@ ion-header {
 }
 
 .fab-panel-close {
+  position: relative;
+  overflow: hidden;
   background: transparent;
   border: 0;
   color: #5c6372;
@@ -1264,12 +1306,17 @@ ion-header {
 }
 
 .visual-color-option {
+  position: relative;
+  overflow: hidden;
   width: 31px;
   height: 31px;
   display: grid;
   place-items: center;
   padding: 0;
   color: #fff;
+  /* Una de las muestras es índigo oscuro: con currentColor (tinta oscura) el
+     ripple no se vería ahí. El blanco además coincide con el checkmark. */
+  --ripple-color: #ffffff;
   background: var(--visual-color);
   border: 2px solid #fff;
   border-radius: 50%;
@@ -1325,6 +1372,8 @@ ion-header {
 }
 
 .fab-submit-btn {
+  position: relative;
+  overflow: hidden;
   border: 0;
   border-radius: 9px;
   background: var(--fab-color);
@@ -1350,6 +1399,8 @@ ion-header {
 }
 
 .fab-cancel-btn {
+  position: relative;
+  overflow: hidden;
   padding: 10px 14px;
   color: #4e5668;
   background: transparent;
@@ -1480,6 +1531,8 @@ ion-header {
 }
 
 .delete-list-actions button {
+  position: relative;
+  overflow: hidden;
   min-width: 0;
   min-height: 34px;
   flex: 1;

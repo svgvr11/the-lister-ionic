@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostBinding, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar } from '@ionic/angular/standalone';
+import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown, chevronForward,
@@ -35,6 +35,7 @@ export class TrashPage implements OnInit, OnDestroy {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly navController = inject(NavController);
   private subscription?: Subscription;
   private countdownTimer?: ReturnType<typeof setInterval>;
 
@@ -97,9 +98,15 @@ export class TrashPage implements OnInit, OnDestroy {
     this.pendingAction = null;
   }
 
-  /** Botón "Volver a mi tablero" del estado vacío y flecha del encabezado. */
+  /**
+   * Botón "Volver a mi tablero" del estado vacío y flecha del encabezado.
+   *
+   * navigateBack saca la página del stack del router outlet, de modo que la
+   * transición es de retroceso. Si la página se abrió directamente en /trash
+   * no hay historial que deshacer y cae a esa misma ruta hacia adelante.
+   */
   goBack(): void {
-    void this.router.navigateByUrl('/board');
+    void this.navController.navigateBack('/board');
   }
 
   private async loadTrash(): Promise<void> {

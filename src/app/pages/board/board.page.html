@@ -20,8 +20,9 @@
           class="search-input"
           (keyup.escape)="closeSearch()"
         ></ion-input>
-        <button class="close-search-btn" type="button" (click)="closeSearch()" aria-label="Limpiar búsqueda">
+        <button class="close-search-btn ion-activatable" type="button" (click)="closeSearch()" aria-label="Limpiar búsqueda">
           <ion-icon name="close"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
       </label>
 
@@ -73,7 +74,7 @@
   <div class="theme-options">
     <button
       *ngFor="let theme of themes"
-      class="theme-option"
+      class="theme-option ion-activatable"
       [class.selected]="activeTheme.id === theme.id"
       [style.--swatch-color]="theme.background"
       role="menuitemradio"
@@ -83,12 +84,13 @@
       (click)="selectTheme(theme)"
     >
       <ion-icon *ngIf="activeTheme.id === theme.id" name="checkmark"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
     </button>
   </div>
   <!-- Botón de donación local: mismo enlace y estilo que el widget oficial de Ko-fi,
      sin depender de su script ni de fuentes externas. -->
   <a
-    class="donation-button"
+    class="donation-button ion-activatable"
     role="menuitem"
     [style.--donation-color]="activeTheme.donation"
     [attr.aria-label]="donationMessage + ' — apoyar al desarrollo de la app en Ko-fi'"
@@ -118,16 +120,19 @@
       />
     </svg>
     <span class="donation-label">{{ donationMessage }}</span>
+    <ion-ripple-effect></ion-ripple-effect>
   </a>
   <!-- Acciones de la cuenta: el basurero va a la izquierda del cierre de sesión. -->
   <div class="account-menu-actions">
-    <button class="menu-action menu-trash" role="menuitem" (click)="openTrash()">
+    <button class="menu-action menu-trash ion-activatable" role="menuitem" (click)="openTrash()">
       <ion-icon name="trash-bin-outline"></ion-icon>
       <span>Basurero</span>
+      <ion-ripple-effect></ion-ripple-effect>
     </button>
-    <button class="menu-action menu-logout" role="menuitem" (click)="logout()">
+    <button class="menu-action menu-logout ion-activatable" role="menuitem" (click)="logout()">
       <ion-icon name="log-out"></ion-icon>
       <span>Cerrar sesión</span>
+      <ion-ripple-effect></ion-ripple-effect>
     </button>
   </div>
 </section>
@@ -147,8 +152,9 @@
     <div class="board-title-block">
       <div *ngIf="!editingTitle" class="title-display">
         <ion-title class="board-title">{{ board.title }}</ion-title>
-        <button class="edit-title-btn" (click)="startEditTitle()" aria-label="Editar título">
+        <button class="edit-title-btn ion-activatable" (click)="startEditTitle()" aria-label="Editar título">
           <ion-icon name="pencil"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
 
@@ -161,11 +167,13 @@
           (keyup.escape)="cancelEditTitle()"
           autofocus
         ></ion-input>
-        <button class="confirm-title-btn" (click)="confirmEditTitle()" aria-label="Confirmar">
+        <button class="confirm-title-btn ion-activatable" (click)="confirmEditTitle()" aria-label="Confirmar">
           <ion-icon name="checkmark"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
-        <button class="cancel-title-btn" (click)="cancelEditTitle()" aria-label="Cancelar">
+        <button class="cancel-title-btn ion-activatable" (click)="cancelEditTitle()" aria-label="Cancelar">
           <ion-icon name="close"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
     </div>
@@ -190,13 +198,14 @@
         <div class="column-header">
           <span class="drag-handle" aria-hidden="true"></span>
           <button
-            class="collapse-button"
+            class="collapse-button ion-activatable"
             (click)="toggleCollapsed(list.id)"
             [attr.aria-label]="isCollapsed(list.id) ? 'Expandir' : 'Colapsar'"
           >
             <ion-icon
               [name]="isCollapsed(list.id) ? 'chevron-forward' : 'chevron-down'"
             ></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
 
           <div *ngIf="editingListId === list.id" class="list-title-edit">
@@ -210,11 +219,13 @@
               (keyup.escape)="cancelEditList()"
               autofocus
             ></ion-input>
-            <button type="button" class="confirm-title-btn" (click)="confirmEditList(list)" aria-label="Confirmar nombre de lista">
+            <button type="button" class="confirm-title-btn ion-activatable" (click)="confirmEditList(list)" aria-label="Confirmar nombre de lista">
               <ion-icon name="checkmark"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
-            <button type="button" class="cancel-title-btn" (click)="cancelEditList()" aria-label="Cancelar edición de lista">
+            <button type="button" class="cancel-title-btn ion-activatable" (click)="cancelEditList()" aria-label="Cancelar edición de lista">
               <ion-icon name="close"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
           </div>
           <div *ngIf="editingListId !== list.id" class="list-title-display">
@@ -236,20 +247,22 @@
           </span>
           <button
             type="button"
-            class="edit-list-button"
+            class="edit-list-button ion-activatable"
             (mousedown)="$event.stopPropagation()"
             (click)="startEditList(list, $event)"
             aria-label="Editar nombre de lista"
             title="Editar lista"
           >
             <ion-icon name="pencil"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
           <button
-            class="delete-list-button"
+            class="delete-list-button ion-activatable"
             (click)="requestDeleteList(list)"
             aria-label="Eliminar lista"
           >
             <ion-icon name="trash"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
         </div>
 
@@ -279,12 +292,13 @@
           >
             <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
             <button
-              class="check-button"
+              class="check-button ion-activatable"
               (click)="toggleTask(list, task)"
               [class.checked]="task.completed"
               [attr.aria-label]="task.completed ? 'Desmarcar' : 'Marcar'"
             >
               <ion-icon *ngIf="task.completed" name="checkmark"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
             <button
               *ngIf="!isEditingTask(task.id); else pendingTaskEditor"
@@ -306,20 +320,23 @@
                   (keyup.escape)="cancelEditTask()"
                   autofocus
                 ></ion-input>
-                <button type="button" class="confirm-title-btn" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
+                <button type="button" class="confirm-title-btn ion-activatable" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
                   <ion-icon name="checkmark"></ion-icon>
+                  <ion-ripple-effect></ion-ripple-effect>
                 </button>
-                <button type="button" class="cancel-title-btn" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
+                <button type="button" class="cancel-title-btn ion-activatable" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
                   <ion-icon name="close"></ion-icon>
+                  <ion-ripple-effect></ion-ripple-effect>
                 </button>
               </div>
             </ng-template>
             <button
-              class="delete-button"
+              class="delete-button ion-activatable"
               (click)="deleteTask(list, task.id)"
               aria-label="Eliminar tarea"
             >
               <ion-icon name="trash"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
           </div>
 
@@ -334,11 +351,12 @@
           >
             <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
             <button
-              class="check-button checked"
+              class="check-button checked ion-activatable"
               (click)="toggleTask(list, task)"
               aria-label="Desmarcar"
             >
               <ion-icon name="checkmark"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
             <button
               *ngIf="!isEditingTask(task.id); else completedTaskEditor"
@@ -360,27 +378,30 @@
                   (keyup.escape)="cancelEditTask()"
                   autofocus
                 ></ion-input>
-                <button type="button" class="confirm-title-btn" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
+                <button type="button" class="confirm-title-btn ion-activatable" (click)="confirmEditTask(task)" aria-label="Guardar tarea">
                   <ion-icon name="checkmark"></ion-icon>
+                  <ion-ripple-effect></ion-ripple-effect>
                 </button>
-                <button type="button" class="cancel-title-btn" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
+                <button type="button" class="cancel-title-btn ion-activatable" (click)="cancelEditTask()" aria-label="Cancelar edición de tarea">
                   <ion-icon name="close"></ion-icon>
+                  <ion-ripple-effect></ion-ripple-effect>
                 </button>
               </div>
             </ng-template>
             <button
-              class="delete-button"
+              class="delete-button ion-activatable"
               (click)="deleteTask(list, task.id)"
               aria-label="Eliminar tarea"
             >
               <ion-icon name="trash"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
           </div>
 
           <button
             *ngIf="shouldShowCompletedToggle(list)"
             type="button"
-            class="completed-toggle"
+            class="completed-toggle ion-activatable"
             [class.expanded]="isCompletedExpanded(list.id)"
             (click)="toggleCompletedTasks(list)"
             [attr.aria-expanded]="isCompletedExpanded(list.id)"
@@ -389,6 +410,7 @@
             <ion-icon name="chevron-down" aria-hidden="true"></ion-icon>
             <span>{{ isCompletedExpanded(list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas' }}</span>
             <span *ngIf="!isCompletedExpanded(list.id)" class="completed-toggle-count">({{ hiddenCompletedCount(list) }})</span>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
 
           <div
@@ -410,12 +432,13 @@
               (keydown.enter)="$event.preventDefault(); addTask(list, taskInput)"
             ></ion-input>
             <button
-              class="add-confirm"
+              class="add-confirm ion-activatable"
               type="submit"
               [disabled]="!taskDrafts[list.id]?.trim()"
               aria-label="Añadir tarea"
             >
               <ion-icon name="checkmark"></ion-icon>
+              <ion-ripple-effect></ion-ripple-effect>
             </button>
           </form>
         </div>
@@ -434,7 +457,7 @@
 
   <!-- ✨ Botón flotante (FAB) para añadir lista -->
   <button
-    class="fab-add-list"
+    class="fab-add-list ion-activatable"
     [class.open]="addingList"
     [disabled]="isAtListLimit"
     (click)="toggleAddList()"
@@ -442,6 +465,7 @@
     [title]="isAtListLimit ? 'Límite de 50 listas alcanzado' : 'Añadir lista'"
   >
     <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
+    <ion-ripple-effect></ion-ripple-effect>
   </button>
 
   <!-- Capa transparente: captura los clics fuera del panel para cerrarlo. -->
@@ -451,8 +475,9 @@
   <div *ngIf="addingList" class="fab-panel">
     <div class="fab-panel-header">
       <strong>Nueva lista</strong>
-      <button class="fab-panel-close" (click)="cancelAddList()" aria-label="Cerrar">
+      <button class="fab-panel-close ion-activatable" (click)="cancelAddList()" aria-label="Cerrar">
         <ion-icon name="close"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
     </div>
     <form (ngSubmit)="addList()" class="fab-panel-form">
@@ -473,7 +498,7 @@
           <button
             *ngFor="let color of visualColors"
             type="button"
-            class="visual-color-option"
+            class="visual-color-option ion-activatable"
             [class.selected]="selectedVisualColor === color.value"
             [style.--visual-color]="color.value"
             [attr.aria-label]="color.name"
@@ -482,6 +507,7 @@
             (click)="selectedVisualColor = color.value"
           >
             <ion-icon *ngIf="selectedVisualColor === color.value" name="checkmark"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
         </div>
       </fieldset>
@@ -495,10 +521,11 @@
       </label>
 
       <div class="fab-panel-actions">
-        <button type="button" class="fab-cancel-btn" (click)="cancelAddList()">Cancelar</button>
-        <button type="submit" class="fab-submit-btn" [disabled]="!newListTitle.trim() || isAtListLimit">
+        <button type="button" class="fab-cancel-btn ion-activatable" (click)="cancelAddList()">Cancelar<ion-ripple-effect></ion-ripple-effect></button>
+        <button type="submit" class="fab-submit-btn ion-activatable" [disabled]="!newListTitle.trim() || isAtListLimit">
           <ion-icon name="add"></ion-icon>
           Crear lista
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
     </form>
@@ -552,12 +579,14 @@
     </div>
 
     <div class="delete-list-actions">
-      <button type="button" class="delete-list-cancel" autofocus (click)="cancelDeleteList()">
+      <button type="button" class="delete-list-cancel ion-activatable" autofocus (click)="cancelDeleteList()">
         Cancelar
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
-      <button type="button" class="delete-list-confirm" (click)="confirmDeleteList()">
+      <button type="button" class="delete-list-confirm ion-activatable" (click)="confirmDeleteList()">
         <ion-icon name="trash" aria-hidden="true"></ion-icon>
         Eliminar lista
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
     </div>
   </section>

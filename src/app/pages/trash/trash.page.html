@@ -1,8 +1,9 @@
 <ion-header>
   <ion-toolbar class="topbar">
     <div class="toolbar-inner">
-      <button class="back-btn" type="button" (click)="goBack()" aria-label="Volver al tablero">
+      <button class="back-btn ion-activatable" type="button" (click)="goBack()" aria-label="Volver al tablero">
         <ion-icon name="chevron-back"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
       <h1 class="trash-title">Basurero</h1>
     </div>
@@ -18,13 +19,14 @@
     </div>
     <button
       type="button"
-      class="empty-trash-btn"
+      class="empty-trash-btn ion-activatable"
       [disabled]="isEmpty"
       (click)="requestEmptyTrash()"
       [attr.aria-label]="isEmpty ? 'No hay listas para vaciar' : 'Vaciar basurero'"
     >
       <ion-icon name="trash-bin-outline" aria-hidden="true"></ion-icon>
       <span>Vaciar basurero</span>
+      <ion-ripple-effect></ion-ripple-effect>
     </button>
   </section>
 
@@ -41,9 +43,10 @@
       </span>
       <h2 class="trash-empty-title">El basurero está vacío</h2>
       <p class="trash-empty-subtitle">No tienes listas eliminadas recientemente.</p>
-      <button type="button" class="back-board-btn" (click)="goBack()">
+      <button type="button" class="back-board-btn ion-activatable" (click)="goBack()">
         <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
         <span>Volver a Mi tablero</span>
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
     </section>
 
@@ -58,12 +61,13 @@
         <header class="trash-card-header">
           <button
             type="button"
-            class="collapse-button"
+            class="collapse-button ion-activatable"
             (click)="toggleCollapsed(entry.list.id)"
             [attr.aria-label]="isCollapsed(entry.list.id) ? 'Expandir tareas' : 'Colapsar tareas'"
             [attr.aria-expanded]="!isCollapsed(entry.list.id)"
           >
             <ion-icon [name]="isCollapsed(entry.list.id) ? 'chevron-forward' : 'chevron-down'"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
 
           <!-- Título solo lectura: en el basurero no se edita nada. -->
@@ -123,7 +127,7 @@
           <button
             *ngIf="shouldShowCompletedToggle(entry.list)"
             type="button"
-            class="completed-toggle"
+            class="completed-toggle ion-activatable"
             [class.expanded]="isCompletedExpanded(entry.list.id)"
             (click)="toggleCompletedTasks(entry.list.id)"
             [attr.aria-expanded]="isCompletedExpanded(entry.list.id)"
@@ -132,19 +136,22 @@
             <ion-icon name="chevron-down" aria-hidden="true"></ion-icon>
             <span>{{ isCompletedExpanded(entry.list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas' }}</span>
             <span *ngIf="!isCompletedExpanded(entry.list.id)" class="completed-toggle-count">({{ hiddenCompletedCount(entry.list) }})</span>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
 
           <p *ngIf="entry.list.tasks.length === 0" class="trash-tasks-empty">Esta lista no tenía tareas.</p>
         </div>
 
         <footer class="trash-card-actions">
-          <button type="button" class="restore-btn" (click)="restore(entry)">
+          <button type="button" class="restore-btn ion-activatable" (click)="restore(entry)">
             <ion-icon name="arrow-undo-outline" aria-hidden="true"></ion-icon>
             <span>Restaurar lista</span>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
-          <button type="button" class="purge-btn" (click)="requestPurge(entry)">
+          <button type="button" class="purge-btn ion-activatable" (click)="requestPurge(entry)">
             <ion-icon name="trash" aria-hidden="true"></ion-icon>
             <span>Eliminar permanentemente</span>
+            <ion-ripple-effect></ion-ripple-effect>
           </button>
         </footer>
       </article>
@@ -181,12 +188,14 @@
     </div>
 
     <div class="trash-dialog-actions">
-      <button type="button" class="trash-dialog-cancel" autofocus (click)="cancelPendingAction()">
+      <button type="button" class="trash-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
         Cancelar
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
-      <button type="button" class="trash-dialog-confirm" (click)="confirmPendingAction()">
+      <button type="button" class="trash-dialog-confirm ion-activatable" (click)="confirmPendingAction()">
         <ion-icon name="trash" aria-hidden="true"></ion-icon>
         {{ confirmActionLabel }}
+        <ion-ripple-effect></ion-ripple-effect>
       </button>
     </div>
   </section>
