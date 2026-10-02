@@ -277,7 +277,7 @@
           </div>
 
           <div
-            *ngFor="let task of completedTasks(list); trackBy: trackById"
+            *ngFor="let task of visibleCompletedTasks(list); trackBy: trackById"
             class="task completed"
             [draggable]="!isEditingTask(task.id)"
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
@@ -329,6 +329,20 @@
               <ion-icon name="trash"></ion-icon>
             </button>
           </div>
+
+          <button
+            *ngIf="shouldShowCompletedToggle(list)"
+            type="button"
+            class="completed-toggle"
+            [class.expanded]="isCompletedExpanded(list.id)"
+            (click)="toggleCompletedTasks(list)"
+            [attr.aria-expanded]="isCompletedExpanded(list.id)"
+            [attr.aria-label]="isCompletedExpanded(list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'"
+          >
+            <ion-icon name="chevron-down" aria-hidden="true"></ion-icon>
+            <span>{{ isCompletedExpanded(list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas' }}</span>
+            <span *ngIf="!isCompletedExpanded(list.id)" class="completed-toggle-count">({{ hiddenCompletedCount(list) }})</span>
+          </button>
 
           <div
             *ngIf="pendingTasks(list).length === 0 && completedTasks(list).length === 0"

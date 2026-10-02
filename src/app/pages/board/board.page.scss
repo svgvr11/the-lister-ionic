@@ -908,6 +908,36 @@ ion-header {
 .add-confirm:not(:disabled):hover { color: #087750; background: #e0f0e9; }
 .add-confirm ion-icon { font-size: 14px; }
 
+.completed-toggle {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--fab-color);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.completed-toggle:hover {
+  background: color-mix(in srgb, var(--fab-color) 14%, transparent);
+}
+
+.completed-toggle ion-icon {
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.completed-toggle.expanded ion-icon {
+  transform: rotate(180deg);
+}
+
 .empty {
   color: #777d82;
   text-align: center;

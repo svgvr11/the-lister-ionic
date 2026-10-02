@@ -80,6 +80,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   @HostBinding('style.--fab-color') themeFab = this.activeTheme.fab;
   @HostBinding('style.--fab-hover') themeFabHover = this.activeTheme.accent;
   collapsed = new Set<string>();
+  expandedCompleted = new Set<string>();
   addingList = false;
   newListTitle = '';
   readonly visualColors = [
@@ -114,6 +115,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private layoutFrame: number | null = null;
 
   private readonly GAP = 22;
+  private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
   constructor() {
     addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward});
@@ -354,6 +356,32 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
   }
 
+  isCompletedExpanded(listId: string): boolean {
+    return this.expandedCompleted.has(listId);
+  }
+
+  visibleCompletedTasks(list: ChecklistList): ChecklistTask[] {
+    const completed = this.completedTasks(list);
+    if (this.isCompletedExpanded(list.id) || completed.length <= this.COMPLETED_PREVIEW_LIMIT) {
+      return completed;
+    }
+    return completed.slice(0, this.COMPLETED_PREVIEW_LIMIT);
+  }
+
+  hiddenCompletedCount(list: ChecklistList): number {
+    return Math.max(0, this.completedTasks(list).length - this.COMPLETED_PREVIEW_LIMIT);
+  }
+
+  shouldShowCompletedToggle(list: ChecklistList): boolean {
+    return this.completedTasks(list).length > this.COMPLETED_PREVIEW_LIMIT;
+  }
+
+  toggleCompletedTasks(list: ChecklistList): void {
+    if (this.expandedCompleted.has(list.id)) this.expandedCompleted.delete(list.id);
+    else this.expandedCompleted.add(list.id);
+    this.scheduleMasonryLayout();
+  }
+
   completedTaskCount(list: ChecklistList): number {
     return list.tasks.reduce((count, task) => count + Number(task.completed), 0);
   }
@@ -409,6 +437,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async deleteList(listId: string): Promise<void> {
     this.board.lists = this.board.lists.filter((list) => list.id !== listId);
     this.collapsed.delete(listId);
+    this.expandedCompleted.delete(listId);
     this.reorderLists();
     await this.persist();
   }
