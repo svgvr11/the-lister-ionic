@@ -461,13 +461,13 @@ ion-header {
   }
 }
 
-/* Fila de acciones de la cuenta: basurero a la izquierda y cierre de sesión a la derecha. */
+/* Fila de acciones de la cuenta: basurero a la izquierda y cierre de sesión a la derecha.
+   Sin borde superior: la separación la aporta el margen contra el botón de donación. */
 .account-menu-actions {
   display: flex;
   align-items: stretch;
   gap: 8px;
-  padding-top: 2px;
-  border-top: 1px solid #e8ebf0;
+  margin-top: 12px;
 }
 
 .menu-action {

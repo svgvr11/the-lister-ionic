@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
@@ -12,10 +12,9 @@ import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { BoardTheme, BOARD_THEMES, DEFAULT_BOARD_THEME, readStoredTheme, storeTheme } from '../../core/board-themes';
+import { purgeExpiredLists } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
-import { BoardRepository } from '../../core/services/board.repository';
-import { LocalBoardRepository } from '../../core/services/local-board.repository';
-import { SupabaseBoardRepository } from '../../core/services/supabase-board.repository';
+import { BoardSessionService } from '../../core/services/board-session.service';
 
 @Component({
   selector: 'app-board',
@@ -27,9 +26,7 @@ import { SupabaseBoardRepository } from '../../core/services/supabase-board.repo
   styleUrls: ['./board.page.scss']
 })
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
-  private readonly localRepository = inject(LocalBoardRepository);
-  private readonly supabaseRepository = inject(SupabaseBoardRepository);
-  private repository: BoardRepository = this.localRepository;
+  private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private subscription?: Subscription;
@@ -107,6 +104,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChildren('boardItem', { read: ElementRef })
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('boardGrid', { read: ElementRef, static: false })
+  private boardGrid?: ElementRef<HTMLElement>;
   private resizeObserver?: ResizeObserver;
   private layoutFrame: number | null = null;
 
@@ -133,24 +132,26 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      if (session) {
-        await this.localRepository.initializeForUser(session.user.id);
-        const localBoard = this.localRepository.getStoredBoardForUser(session.user.id);
-        this.repository = this.supabaseRepository;
-        await this.repository.initializeForUser(session.user.id, localBoard);
-      } else {
-        this.repository = this.localRepository;
-        await this.repository.initializeForUser(null);
-      }
-
       this.restoreTheme(session?.user.id ?? null);
-      this.subscription = this.repository.watchBoard().subscribe((board) => this.board = board);
+      this.subscription = (await this.session.open()).subscribe((board) => this.applyBoard(board));
     } catch (error) {
       console.error('No se pudo cargar el tablero sincronizado', error);
       this.boardError = 'No se pudo cargar el tablero desde la nube. Comprueba la conexión y la configuración de Supabase.';
     } finally {
       this.loadingBoard = false;
     }
+  }
+
+  /** Publica el tablero recibido y descarta del basurero lo que ya cumplió los 7 días. */
+  private applyBoard(board: ChecklistBoard): void {
+    const purged = purgeExpiredLists(board);
+    this.board = board;
+    // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
+    // hay que observar y maquetar en cuanto se pinta la rejilla.
+    this.observeBoardGrid();
+    this.scheduleMasonryLayout();
+    // Sin este guardado, una lista vencida volvería a aparecer en el próximo inicio.
+    if (purged) void this.persist();
   }
 
   toggleAccountMenu(): void {
@@ -204,10 +205,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   ngAfterViewInit(): void {
     this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
-    this.resizeObserver = new ResizeObserver(() => this.scheduleMasonryLayout());
-    const board = document.querySelector('.board');
-    if (board) this.resizeObserver.observe(board);
+    this.observeBoardGrid();
     this.scheduleMasonryLayout();
+  }
+
+  /**
+   * Conecta el ResizeObserver al contenedor del tablero. Se vuelve a llamar cada vez
+   * que llegan datos porque, mientras la carga es asíncrona (Supabase), en ngAfterViewInit
+   * el tablero todavía no existe y el observador nunca quedaría conectado.
+   */
+  private observeBoardGrid(): void {
+    const board = this.boardGrid?.nativeElement;
+    if (!board) return;
+    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
+    this.resizeObserver.observe(board);
   }
 
   ngOnDestroy(): void {
@@ -437,10 +448,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.persist();
   }
 
-  async deleteList(listId: string): Promise<void> {
-    this.board.lists = this.board.lists.filter((list) => list.id !== listId);
-    this.collapsed.delete(listId);
-    this.expandedCompleted.delete(listId);
+  /**
+   * Descarta la lista al basurero en lugar de borrarla: queda guardada 7 días
+   * y se puede restaurar desde la pantalla de Basurero.
+   */
+  async moveListToTrash(list: ChecklistList): Promise<void> {
+    this.board.lists = this.board.lists.filter((item) => item.id !== list.id);
+    this.board.trashedLists = [
+      ...(this.board.trashedLists ?? []),
+      { list: { ...list, tasks: [...list.tasks] }, deletedAt: new Date().toISOString() }
+    ];
+    this.collapsed.delete(list.id);
+    this.expandedCompleted.delete(list.id);
     this.reorderLists();
     await this.persist();
   }
@@ -457,7 +476,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const list = this.listToDelete;
     if (!list) return;
     this.listToDelete = null;
-    await this.deleteList(list.id);
+    await this.moveListToTrash(list);
   }
 
   toggleCollapsed(listId: string): void {
@@ -586,9 +605,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private applyMasonryLayout(): void {
-    const board = document.querySelector<HTMLElement>('.board');
+    const board = this.boardGrid?.nativeElement;
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
-    if (!board || items.length === 0) return;
+    if (!board) return;
+    if (items.length === 0) {
+      board.style.height = '';
+      return;
+    }
+    // Con ancho 0 la página está oculta o todavía sin maquetar (pasa al volver del
+    // basurero). Grabar las posiciones con ancho 0 deja las tarjetas superpuestas y
+    // nada las arregla después, así que se sale sin tocar nada: el ResizeObserver
+    // reintenta en cuanto el contenedor recupera su tamaño.
+    if (board.clientWidth === 0) return;
 
     const isMobile = window.matchMedia('(max-width: 700px)').matches;
     const columns = isMobile ? 1 : 3;
@@ -643,7 +671,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.busy = true;
     this.saveError = '';
     try {
-      await this.repository.saveBoard(this.board);
+      await this.session.save(this.board);
       this.scheduleMasonryLayout();
     } catch (error) {
       console.error('No se pudo guardar el tablero sincronizado', error);

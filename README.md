@@ -14,7 +14,12 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - Persistencia local como fallback cuando Supabase Auth no está configurado.
 - Acceso con cuenta de Google mediante Supabase Auth.
 - Botón de donación de Ko-fi en el menú de perfil, implementado localmente (sin scripts ni fuentes externas) y con el color del tema de tablero seleccionado.
-- Botón **Basurero** en el menú de perfil, al lado izquierdo de *Cerrar sesión*, que abre la pantalla de papelera (actualmente vacía).
+- Botón **Basurero** en el menú de perfil, al lado izquierdo de *Cerrar sesión*, que abre la pantalla de papelera.
+- Las listas eliminadas del tablero no se borran al instante: pasan al **basurero** y se eliminan de forma permanente después de **7 días**.
+- El basurero muestra la cuenta atrás de cada lista; el color del badge escala a medida que se acerca el borrado (gris → ámbar → rojo) y en el último día la lista se tiñe de rojo.
+- Desde el basurero se puede **restaurar** una lista (vuelve al tablero con sus tareas) o **eliminarla permanentemente**, una a una o vaciando todo el basurero.
+- El basurero muestra las listas de la más reciente a la más antigua (el orden lo fija la fecha de descarte, por eso no se pueden arrastrar para reordenar).
+- En el basurero el título y las tareas son de solo lectura: no se pueden editar. Las tareas completadas conservan el **Mostrar tareas completadas** del tablero, pero el estado es solo visual y no se guarda.
 - Cada color de tablero muestra su nombre junto al título "Color del tablero".
 - Los datos se guardan como JSON en una fila por usuario, con Row Level Security (RLS).
 - Esquema SQL incluido en `supabase/schema.sql`.
@@ -63,9 +68,11 @@ Si las credenciales no están configuradas, la app omite el login y abre el tabl
 src/app/
 ├── core/
 │   ├── board-themes.ts
+│   ├── trash.ts
 │   ├── services/
 │   │   ├── auth.guard.ts
 │   │   ├── auth.service.ts
+│   │   ├── board-session.service.ts
 │   │   ├── board.repository.ts
 │   │   ├── local-board.repository.ts
 │   │   └── supabase-board.repository.ts

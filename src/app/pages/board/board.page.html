@@ -174,7 +174,7 @@
       Añade una lista para comenzar
     </div>
 
-    <div *ngIf="visibleLists.length > 0" class="board">
+    <div *ngIf="visibleLists.length > 0" class="board" #boardGrid>
       <div
         #boardItem
         *ngFor="let list of visibleLists; trackBy: trackById"
@@ -525,7 +525,8 @@
     </div>
     <h2 id="delete-list-title">¿Deseas eliminar esta lista?</h2>
     <p id="delete-list-description">
-      Esta acción no se puede deshacer. Se eliminarán permanentemente la lista y todas sus tareas asociadas.
+      La lista se moverá al basurero y se eliminará permanentemente después de 7 días.
+      Mientras tanto podrás restaurarla desde el Basurero.
     </p>
 
     <div class="delete-list-preview">

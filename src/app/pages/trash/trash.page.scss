@@ -14,6 +14,14 @@
   --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   --app-footer-height: calc(30px + var(--app-safe-area-bottom));
+  /* Tokens de la pantalla: los botones de acción no cambian con el tema del tablero. */
+  --trash-ink: #172236;
+  --trash-muted: #6b7383;
+  --trash-placeholder: #9fa4a7;
+  --trash-restore-ink: #4a45cf;
+  --trash-restore-bg: #eef0ff;
+  --trash-danger-ink: #e11d48;
+  --trash-danger-bg: #ffeff2;
 }
 
 ion-header {
@@ -89,6 +97,645 @@ ion-content.trash-content {
   --background: var(--board-bg);
 }
 
+/* ── Aviso de retención ────────────────────────────────────────────────── */
+
+.trash-notice {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid rgba(37, 51, 74, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.trash-notice-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--trash-muted);
+}
+
+.trash-notice-copy ion-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: #8a93a5;
+}
+
+.trash-notice-copy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.empty-trash-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  color: #5b6577;
+  background: #f4f6fb;
+  border: 1px solid #e2e6f0;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.empty-trash-btn ion-icon {
+  font-size: 14px;
+}
+
+.empty-trash-btn:not(:disabled):hover {
+  color: var(--trash-danger-ink);
+  background: var(--trash-danger-bg);
+  border-color: #f6ccd5;
+}
+
+.empty-trash-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Estado vacío ──────────────────────────────────────────────────────── */
+
+.trash-empty {
+  min-height: calc(100% - 54px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px 60px;
+  text-align: center;
+}
+
+.trash-empty-icon {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  color: #7f8aa0;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(34, 47, 76, 0.06);
+}
+
+.trash-empty-icon ion-icon {
+  font-size: 28px;
+}
+
+.trash-empty-title {
+  margin: 0;
+  color: var(--trash-ink);
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+/* El subtítulo va en tono placeholder, tal como se pidió para el estado vacío. */
+.trash-empty-subtitle {
+  margin: 7px 0 0;
+  color: var(--trash-placeholder);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.back-board-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 26px;
+  padding: 9px 16px;
+  color: var(--trash-ink);
+  background: #fff;
+  border: 1px solid #e1e5ed;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(34, 47, 76, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.back-board-btn ion-icon {
+  font-size: 15px;
+}
+
+.back-board-btn:hover {
+  background: #f6f7fa;
+  border-color: #d3d9e6;
+}
+
+/* ── Rejilla de listas descartadas ─────────────────────────────────────── */
+
+.trash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-items: start;
+  gap: 18px;
+  padding: 18px 16px 30px;
+}
+
+.trash-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 14px 12px;
+  color: var(--trash-ink);
+  background: #fff;
+  border: 1px solid #edf0f6;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(34, 47, 76, 0.05);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Último día: la lista completa se tiñe de rojo. */
+.trash-card.urgent-card {
+  background: #fff7f7;
+  border-color: #f5c6cc;
+  box-shadow: 0 4px 14px rgba(193, 30, 58, 0.12);
+}
+
+.trash-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 28px;
+}
+
+.collapse-button {
+  width: 18px;
+  height: 22px;
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #526075;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.collapse-button:hover {
+  color: #283951;
+  background: #f1f4fa;
+}
+
+/* Título solo lectura: sin input ni lapicero, como pide el basurero. */
+.trash-card-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--trash-ink);
+  font-size: 15px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.urgent-card .trash-card-title {
+  color: #b4232f;
+}
+
+/* ── Badges: contador de tareas y cuenta atrás ─────────────────────────── */
+
+.task-counter {
+  min-width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  color: #26364d;
+  background: color-mix(in srgb, var(--list-visual-color, #5145e8) 18%, white);
+  border: 1px solid color-mix(in srgb, var(--list-visual-color, #5145e8) 28%, white);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.task-counter.complete-counter {
+  color: #087750;
+  background: #e0f0e9;
+  font-weight: 700;
+}
+
+.counter-status-dot {
+  width: 6px;
+  height: 6px;
+  background: #087750;
+  border-radius: 50%;
+}
+
+.countdown-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.countdown-badge ion-icon {
+  font-size: 11px;
+}
+
+/* Escalada de urgencia: gris → ámbar → rojo al acercarse el borrado. */
+.countdown-normal {
+  color: #526075;
+  background: #f1f4fa;
+  border-color: #e1e6f0;
+}
+
+.countdown-warning {
+  color: #8a5a08;
+  background: #fdf3dc;
+  border-color: #f4e0ae;
+}
+
+.countdown-danger {
+  color: var(--trash-danger-ink);
+  background: var(--trash-danger-bg);
+  border-color: #f6ccd5;
+  font-weight: 700;
+}
+
+.list-progress-track {
+  height: 5px;
+  overflow: hidden;
+  margin: 10px 0 12px;
+  background: #e7edfb;
+  border-radius: 999px;
+}
+
+.list-progress-fill {
+  display: block;
+  height: 100%;
+  background: #087750;
+  border-radius: inherit;
+  transition: width 0.24s ease;
+}
+
+/* ── Tareas en solo lectura ─────────────────────────────────────────────── */
+
+.trash-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+}
+
+.trash-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 22px;
+  padding: 2px 3px;
+  /* Las tareas nunca son editables en el basurero, así que van en tono placeholder. */
+  color: var(--trash-placeholder);
+}
+
+.check-indicator {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7dce8;
+  border-radius: 5px;
+  background: #fafbfd;
+  color: #fff;
+}
+
+.check-indicator.checked {
+  background: #c3c9d6;
+  border-color: #c3c9d6;
+}
+
+.check-indicator ion-icon {
+  font-size: 13px;
+}
+
+.trash-task .task-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Las completadas conservan el tachado, también en tono placeholder. */
+.trash-task.completed .task-text {
+  color: #b6bac3;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.6px;
+}
+
+/* Toggle de completadas: mismo aspecto que en el tablero, pero solo lectura. */
+.completed-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 3px 8px;
+  color: var(--trash-restore-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.completed-toggle:hover {
+  background: var(--trash-restore-bg);
+}
+
+.completed-toggle ion-icon {
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.completed-toggle.expanded ion-icon {
+  transform: rotate(180deg);
+}
+
+.completed-toggle-count {
+  color: var(--trash-placeholder);
+  font-weight: 600;
+}
+
+.trash-tasks-empty {
+  margin: 0;
+  padding: 10px 0 4px;
+  color: var(--trash-placeholder);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Acciones al pie de la tarjeta ──────────────────────────────────────── */
+
+/* Sin borde superior: las acciones se separan del contenido solo con espacio. */
+.trash-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.trash-card-actions button {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.trash-card-actions button ion-icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.restore-btn {
+  color: var(--trash-restore-ink);
+  background: var(--trash-restore-bg);
+  border-color: #dcdcfb !important;
+}
+
+.restore-btn:hover {
+  background: #e2e4ff;
+  border-color: #c7c9f6 !important;
+}
+
+.purge-btn {
+  color: var(--trash-danger-ink);
+  background: var(--trash-danger-bg);
+  border-color: #f6ccd5 !important;
+}
+
+.purge-btn:hover {
+  background: #ffe1e6;
+  border-color: #f0aebb !important;
+}
+
+/* ── Diálogo de confirmación ────────────────────────────────────────────── */
+
+.trash-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(26, 33, 48, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.trash-dialog {
+  width: min(100%, 420px);
+  padding: 18px 16px 14px;
+  color: var(--trash-ink);
+  background: #fff;
+  border: 1px solid #e9ecf2;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  text-align: center;
+  animation: trashDialogEnter 0.16s ease-out;
+}
+
+@keyframes trashDialogEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.trash-dialog-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+  color: var(--trash-danger-ink);
+  background: #fff1f3;
+  border-radius: 50%;
+}
+
+.trash-dialog-icon ion-icon {
+  font-size: 19px;
+}
+
+.trash-dialog h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.trash-dialog > p {
+  max-width: 330px;
+  margin: 5px auto 12px;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.trash-dialog-preview {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  text-align: left;
+  background: #f5f7fc;
+  border: 1px solid #e4e8f1;
+  border-radius: 9px;
+}
+
+.trash-dialog-preview-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trash-dialog-preview-copy strong,
+.trash-dialog-preview-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trash-dialog-preview-copy strong {
+  color: #25334a;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.trash-dialog-preview-copy > span {
+  color: #737d8e;
+  font-size: 9px;
+}
+
+.trash-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.trash-dialog-actions button {
+  min-width: 0;
+  min-height: 34px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.trash-dialog-cancel {
+  color: #303b4e;
+  background: #fff;
+}
+
+.trash-dialog-cancel:hover {
+  background: #f6f7fa;
+}
+
+.trash-dialog-confirm {
+  color: #fff;
+  background: var(--trash-danger-ink);
+  border-color: var(--trash-danger-ink) !important;
+}
+
+.trash-dialog-confirm:hover {
+  background: #be123c;
+}
+
+.trash-dialog-confirm ion-icon {
+  font-size: 13px;
+}
+
+.trash-status {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: #25334a;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.trash-error {
+  position: fixed;
+  z-index: 250;
+  left: 50%;
+  width: min(560px, calc(100% - 32px));
+  padding: 14px 16px;
+  color: #762d32;
+  background: #fff0f0;
+  border: 1px solid #e7bfc2;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(24, 38, 64, 0.16);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.trash-error { top: calc(96px + var(--app-safe-area-top)); }
+.trash-save-error { top: auto; bottom: calc(24px + var(--app-safe-area-bottom)); }
+
+.saving-indicator {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + var(--app-safe-area-bottom));
+  padding: 8px 12px;
+  color: #fff;
+  background: #111827;
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+}
+
 .app-footer {
   z-index: 1;
   flex: 0 0 var(--app-footer-height);
@@ -109,4 +756,40 @@ ion-content.trash-content {
   ion-header { flex-basis: auto; height: auto; }
   .toolbar-inner { padding: 0 12px; }
   .trash-title { font-size: 20px; }
+
+  /* En móvil el aviso y el botón se apilan para que el texto no quede apretado. */
+  .trash-notice {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  .empty-trash-btn {
+    justify-content: center;
+  }
+
+  .trash-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px 12px 26px;
+  }
+
+  .trash-empty {
+    min-height: calc(100% - 92px);
+    padding: 24px 16px 48px;
+  }
+
+  .trash-empty-title { font-size: 17px; }
+  .trash-empty-subtitle { font-size: 12px; }
+  .trash-error { top: calc(92px + var(--app-safe-area-top)); }
+}
+
+/* Con dos o más tarjetas, el botón de eliminar permanente necesita más ancho
+   para no recortar el texto; se hace que ambos ocupen la misma base. */
+@media (max-width: 380px) {
+  .trash-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

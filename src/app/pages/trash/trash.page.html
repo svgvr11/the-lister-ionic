@@ -9,6 +9,187 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="trash-content"></ion-content>
+<ion-content class="trash-content">
+  <!-- Aviso de retención: siempre visible, incluso con el basurero vacío. -->
+  <section class="trash-notice" role="note">
+    <div class="trash-notice-copy">
+      <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+      <p>{{ retentionNotice }}</p>
+    </div>
+    <button
+      type="button"
+      class="empty-trash-btn"
+      [disabled]="isEmpty"
+      (click)="requestEmptyTrash()"
+      [attr.aria-label]="isEmpty ? 'No hay listas para vaciar' : 'Vaciar basurero'"
+    >
+      <ion-icon name="trash-bin-outline" aria-hidden="true"></ion-icon>
+      <span>Vaciar basurero</span>
+    </button>
+  </section>
+
+  <div *ngIf="loading" class="trash-status" role="status">Cargando basurero...</div>
+  <div *ngIf="loadError" class="trash-error" role="alert">{{ loadError }}</div>
+  <div *ngIf="saveError" class="trash-error trash-save-error" role="alert">{{ saveError }}</div>
+  <div *ngIf="busy" class="saving-indicator">Guardando…</div>
+
+  <ng-container *ngIf="!loading && !loadError">
+    <!-- Estado vacío: sin listas descartadas, con salida de vuelta al tablero. -->
+    <section *ngIf="isEmpty" class="trash-empty" aria-live="polite">
+      <span class="trash-empty-icon" aria-hidden="true">
+        <ion-icon name="trash-bin-outline"></ion-icon>
+      </span>
+      <h2 class="trash-empty-title">El basurero está vacío</h2>
+      <p class="trash-empty-subtitle">No tienes listas eliminadas recientemente.</p>
+      <button type="button" class="back-board-btn" (click)="goBack()">
+        <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
+        <span>Volver a Mi tablero</span>
+      </button>
+    </section>
+
+    <!-- Listas descartadas: cuenta atrás, tareas en solo lectura y acciones al pie. -->
+    <div *ngIf="!isEmpty" class="trash-grid">
+      <article
+        *ngFor="let entry of trashedLists"
+        class="trash-card"
+        [class.urgent-card]="isUrgent(entry)"
+        [style.--list-visual-color]="entry.list.visualColor"
+      >
+        <header class="trash-card-header">
+          <button
+            type="button"
+            class="collapse-button"
+            (click)="toggleCollapsed(entry.list.id)"
+            [attr.aria-label]="isCollapsed(entry.list.id) ? 'Expandir tareas' : 'Colapsar tareas'"
+            [attr.aria-expanded]="!isCollapsed(entry.list.id)"
+          >
+            <ion-icon [name]="isCollapsed(entry.list.id) ? 'chevron-forward' : 'chevron-down'"></ion-icon>
+          </button>
+
+          <!-- Título solo lectura: en el basurero no se edita nada. -->
+          <strong class="trash-card-title" [title]="entry.list.title">{{ entry.list.title }}</strong>
+
+          <span
+            class="task-counter"
+            [class.complete-counter]="isListComplete(entry.list)"
+          >
+            <span class="counter-status-dot" *ngIf="isListComplete(entry.list)" aria-hidden="true"></span>
+            {{ taskCounterLabel(entry.list) }}
+          </span>
+
+          <span
+            class="countdown-badge"
+            [ngClass]="urgencyClass(entry)"
+            role="status"
+            [attr.aria-label]="'Se elimina en ' + countdownLabel(entry)"
+          >
+            <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+            {{ countdownLabel(entry) }}
+          </span>
+        </header>
+
+        <div
+          *ngIf="!isCollapsed(entry.list.id)"
+          class="list-progress-track"
+          role="progressbar"
+          [attr.aria-valuenow]="completedTaskCount(entry.list)"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="entry.list.tasks.length"
+          [attr.aria-label]="'Progreso de ' + entry.list.title"
+        >
+          <span class="list-progress-fill" [style.width.%]="listProgressPercent(entry.list)"></span>
+        </div>
+
+        <div *ngIf="!isCollapsed(entry.list.id)" class="trash-tasks">
+          <div
+            *ngFor="let task of pendingTasks(entry.list)"
+            class="trash-task"
+          >
+            <span class="check-indicator" aria-hidden="true"></span>
+            <span class="task-text">{{ task.text }}</span>
+          </div>
+
+          <div
+            *ngFor="let task of visibleCompletedTasks(entry.list)"
+            class="trash-task completed"
+          >
+            <span class="check-indicator checked" aria-hidden="true">
+              <ion-icon name="checkmark"></ion-icon>
+            </span>
+            <span class="task-text">{{ task.text }}</span>
+          </div>
+
+          <!-- Toggle de solo lectura: misma vista previa que el tablero, sin persistir. -->
+          <button
+            *ngIf="shouldShowCompletedToggle(entry.list)"
+            type="button"
+            class="completed-toggle"
+            [class.expanded]="isCompletedExpanded(entry.list.id)"
+            (click)="toggleCompletedTasks(entry.list.id)"
+            [attr.aria-expanded]="isCompletedExpanded(entry.list.id)"
+            [attr.aria-label]="isCompletedExpanded(entry.list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'"
+          >
+            <ion-icon name="chevron-down" aria-hidden="true"></ion-icon>
+            <span>{{ isCompletedExpanded(entry.list.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas' }}</span>
+            <span *ngIf="!isCompletedExpanded(entry.list.id)" class="completed-toggle-count">({{ hiddenCompletedCount(entry.list) }})</span>
+          </button>
+
+          <p *ngIf="entry.list.tasks.length === 0" class="trash-tasks-empty">Esta lista no tenía tareas.</p>
+        </div>
+
+        <footer class="trash-card-actions">
+          <button type="button" class="restore-btn" (click)="restore(entry)">
+            <ion-icon name="arrow-undo-outline" aria-hidden="true"></ion-icon>
+            <span>Restaurar lista</span>
+          </button>
+          <button type="button" class="purge-btn" (click)="requestPurge(entry)">
+            <ion-icon name="trash" aria-hidden="true"></ion-icon>
+            <span>Eliminar permanentemente</span>
+          </button>
+        </footer>
+      </article>
+    </div>
+  </ng-container>
+</ion-content>
+
+<!-- Confirmación para las acciones definitivas; replica el diálogo de borrado del tablero. -->
+<div
+  *ngIf="pendingAction"
+  class="trash-dialog-overlay"
+  (click)="cancelPendingAction()"
+  (keydown.escape)="cancelPendingAction()"
+>
+  <section
+    class="trash-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="trash-dialog-title"
+    aria-describedby="trash-dialog-description"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="trash-dialog-icon" aria-hidden="true">
+      <ion-icon name="trash"></ion-icon>
+    </div>
+    <h2 id="trash-dialog-title">{{ confirmTitle }}</h2>
+    <p id="trash-dialog-description">{{ confirmMessage }}</p>
+
+    <div *ngIf="confirmListTitle" class="trash-dialog-preview">
+      <span class="trash-dialog-preview-copy">
+        <strong>{{ confirmListTitle }}</strong>
+        <span>Lista descartada</span>
+      </span>
+    </div>
+
+    <div class="trash-dialog-actions">
+      <button type="button" class="trash-dialog-cancel" autofocus (click)="cancelPendingAction()">
+        Cancelar
+      </button>
+      <button type="button" class="trash-dialog-confirm" (click)="confirmPendingAction()">
+        <ion-icon name="trash" aria-hidden="true"></ion-icon>
+        {{ confirmActionLabel }}
+      </button>
+    </div>
+  </section>
+</div>
 
 <footer class="app-footer">2026 SugarLabz / The Lister</footer>
