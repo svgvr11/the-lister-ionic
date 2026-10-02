@@ -380,7 +380,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return item.id;
   }
 
-  async addTask(list: ChecklistList): Promise<void> {
+  async addTask(list: ChecklistList, input?: IonInput): Promise<void> {
     const text = (this.taskDrafts[list.id] ?? '').trim();
     if (!text) return;
     const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
@@ -389,6 +389,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       position: maxPosition + 1, createdAt: new Date().toISOString()
     });
     this.taskDrafts[list.id] = '';
+    // Mantener el foco en el input para poder añadir varias tareas seguidas.
+    input?.setFocus();
     await this.persist();
   }
 

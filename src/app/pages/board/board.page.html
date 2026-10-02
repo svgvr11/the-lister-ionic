@@ -130,7 +130,7 @@
     <div *ngIf="visibleLists.length > 0" class="board">
       <div
         #boardItem
-        *ngFor="let list of visibleLists"
+        *ngFor="let list of visibleLists; trackBy: trackById"
         class="checklist-column"
         [class.collapsed]="isCollapsed(list.id)"
         [class.list-complete]="isListComplete(list)"
@@ -337,15 +337,16 @@
             Sin tareas. Añade una para comenzar.
           </div>
 
-          <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list)">
+          <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list, taskInput)">
             <ion-icon name="add" aria-hidden="true"></ion-icon>
             <ion-input
+              #taskInput
               autocapitalize="sentences"
               [(ngModel)]="taskDrafts[list.id]"
               [name]="'task-' + list.id"
               placeholder="Añadir tarea a esta lista..."
               aria-label="Añadir tarea a esta lista"
-              (keydown.enter)="$event.preventDefault(); addTask(list)"
+              (keydown.enter)="$event.preventDefault(); addTask(list, taskInput)"
             ></ion-input>
             <button
               class="add-confirm"
