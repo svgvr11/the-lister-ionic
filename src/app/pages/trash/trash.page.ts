@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostBinding, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { IonContent, IonHeader, IonIcon, IonToolbar } from '@ionic/angular/standalone';
+import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown, chevronForward,
@@ -27,7 +27,7 @@ const COUNTDOWN_REFRESH_MS = 60_000;
 @Component({
   selector: 'app-trash',
   standalone: true,
-  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonToolbar],
+  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar],
   templateUrl: './trash.page.html',
   styleUrls: ['./trash.page.scss']
 })

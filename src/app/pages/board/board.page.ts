@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
+  IonContent, IonHeader, IonIcon, IonInput, IonRippleEffect, IonTitle, IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -20,7 +20,7 @@ import { BoardSessionService } from '../../core/services/board-session.service';
   selector: 'app-board',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonTitle, IonToolbar
+    CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRippleEffect, IonTitle, IonToolbar
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
