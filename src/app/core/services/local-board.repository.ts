@@ -3,7 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { ChecklistBoard } from '../../models/board.models';
 import { BoardRepository } from './board.repository';
 
-const STORAGE_KEY = 'checklist-trello-ionic-v1';
+const STORAGE_KEY = 'the-lister-ionic-v1';
 
 @Injectable({ providedIn: 'root' })
 export class LocalBoardRepository extends BoardRepository {

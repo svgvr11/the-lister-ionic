@@ -50,7 +50,7 @@ Para habilitar el acceso con Google:
 4. En Supabase, habilita Google en Authentication > Sign In / Providers y configura las credenciales OAuth de Google.
 5. En Google Cloud, agrega como URI de redirección autorizada la URL de callback que muestra Supabase para el proveedor Google.
 6. En Supabase > Authentication > URL Configuration, agrega la URL local y la URL de producción a las URLs de redirección permitidas.
-7. Publica `dist/checklist-trello-ionic/browser/`. Una cuenta existente carga su tablero desde Supabase; en el primer acceso, si hay datos locales guardados para esa cuenta en el dispositivo, se copian al nuevo tablero cloud.
+7. Publica `dist/the-lister-ionic/browser/`. Una cuenta existente carga su tablero desde Supabase; en el primer acceso, si hay datos locales guardados para esa cuenta en el dispositivo, se copian al nuevo tablero cloud.
 
 Si las credenciales no están configuradas, la app omite el login y abre el tablero local, sin sincronización multidispositivo. La clave publicable/anon está pensada para el cliente; nunca pongas una `service_role` en el frontend. El tablero sincronizado usa `boards.board_data`; las tablas antiguas de listas/tareas se conservan pero se dejan sin acceso para los clientes.
 

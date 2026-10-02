@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "checklist-trello-ionic": {
+    "the-lister-ionic": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/checklist-trello-ionic",
+            "outputPath": "dist/the-lister-ionic",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -46,8 +46,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "checklist-trello-ionic:build:production" },
-            "development": { "buildTarget": "checklist-trello-ionic:build:development" }
+            "production": { "buildTarget": "the-lister-ionic:build:production" },
+            "development": { "buildTarget": "the-lister-ionic:build:development" }
           },
           "defaultConfiguration": "development"
         }
