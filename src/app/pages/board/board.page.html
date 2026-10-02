@@ -107,6 +107,7 @@
 
       <div *ngIf="editingTitle" class="title-edit">
         <ion-input
+          autocapitalize="sentences"
           [(ngModel)]="titleDraft"
           class="title-input"
           (keyup.enter)="confirmEditTitle()"
@@ -153,6 +154,7 @@
 
           <div *ngIf="editingListId === list.id" class="list-title-edit">
             <ion-input
+              autocapitalize="sentences"
               [(ngModel)]="listTitleDraft"
               [name]="'list-title-' + list.id"
               class="list-title-input"
@@ -228,6 +230,7 @@
             (drop)="dropTask(list, task.id, $event)"
             (dragend)="clearDragState()"
           >
+            <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
             <button
               class="check-button"
               (click)="toggleTask(list, task)"
@@ -247,6 +250,7 @@
             <ng-template #pendingTaskEditor>
               <div class="task-edit">
                 <ion-input
+                  autocapitalize="sentences"
                   [(ngModel)]="taskTextDraft"
                   [name]="'edit-task-' + task.id"
                   class="task-edit-input"
@@ -281,6 +285,7 @@
             (drop)="dropTask(list, task.id, $event)"
             (dragend)="clearDragState()"
           >
+            <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
             <button
               class="check-button checked"
               (click)="toggleTask(list, task)"
@@ -299,6 +304,7 @@
             <ng-template #completedTaskEditor>
               <div class="task-edit">
                 <ion-input
+                  autocapitalize="sentences"
                   [(ngModel)]="taskTextDraft"
                   [name]="'edit-task-' + task.id"
                   class="task-edit-input"
@@ -334,6 +340,7 @@
           <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list)">
             <ion-icon name="add" aria-hidden="true"></ion-icon>
             <ion-input
+              autocapitalize="sentences"
               [(ngModel)]="taskDrafts[list.id]"
               [name]="'task-' + list.id"
               placeholder="Añadir tarea a esta lista..."
@@ -387,6 +394,7 @@
       <label class="fab-field-label" for="new-list-title">Nombre de la lista</label>
       <ion-input
         id="new-list-title"
+        autocapitalize="sentences"
         [(ngModel)]="newListTitle"
         name="newListTitle"
         placeholder="Escribe el nombre de la lista..."

@@ -7,7 +7,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, checkmark, chevronDown, chevronForward, close, logOut,
-  trash, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack } from 'ionicons/icons';
+  trash, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -115,7 +115,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly GAP = 22;
 
   constructor() {
-    addIcons({pencil,checkmark,close,search,personCircle,logOut,trash,add,returnDownBack,checkmarkCircle,chevronDown,chevronForward,layersOutline});
+    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward});
   }
 
   ngOnInit(): void {
@@ -487,13 +487,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (!this.draggedTask || this.draggedTask.taskId === targetTaskId) return;
     const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
     if (!sourceList) return;
+    sourceList.tasks = [...this.pendingTasks(sourceList), ...this.completedTasks(sourceList)];
+    if (sourceList !== targetList) {
+      targetList.tasks = [...this.pendingTasks(targetList), ...this.completedTasks(targetList)];
+    }
     const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
     if (sourceIndex < 0) return;
     const [moved] = sourceList.tasks.splice(sourceIndex, 1);
     const targetIndex = targetList.tasks.findIndex((task) => task.id === targetTaskId);
     targetList.tasks.splice(Math.max(0, targetIndex), 0, moved);
-    this.reorderTasks(sourceList);
-    this.reorderTasks(targetList);
+    this.setTaskPositions(sourceList);
+    if (sourceList !== targetList) this.setTaskPositions(targetList);
     this.draggedTask = null;
     await this.persist();
   }
@@ -503,12 +507,16 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (!this.draggedTask) return;
     const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
     if (!sourceList) return;
+    sourceList.tasks = [...this.pendingTasks(sourceList), ...this.completedTasks(sourceList)];
+    if (sourceList !== targetList) {
+      targetList.tasks = [...this.pendingTasks(targetList), ...this.completedTasks(targetList)];
+    }
     const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
     if (sourceIndex < 0) return;
     const [moved] = sourceList.tasks.splice(sourceIndex, 1);
     targetList.tasks.push(moved);
-    this.reorderTasks(sourceList);
-    this.reorderTasks(targetList);
+    this.setTaskPositions(sourceList);
+    if (sourceList !== targetList) this.setTaskPositions(targetList);
     this.draggedTask = null;
     await this.persist();
   }
@@ -574,6 +582,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     const pending = list.tasks.filter((task) => !task.completed).sort((a, b) => a.position - b.position);
     const completed = list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
     [...pending, ...completed].forEach((task, index) => task.position = index);
+  }
+
+  private setTaskPositions(list: ChecklistList): void {
+    list.tasks.forEach((task, index) => task.position = index);
   }
 
   private async persist(): Promise<void> {
