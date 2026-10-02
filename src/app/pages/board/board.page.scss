@@ -262,6 +262,18 @@ ion-header {
   white-space: nowrap;
 }
 
+/* Capa transparente que cierra el menú o panel abierto al hacer clic fuera.
+   Replica el patrón de .delete-list-overlay, pero sin oscurecer el tablero. */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+.account-menu-backdrop {
+  z-index: 399;
+}
+
 .account-menu {
   position: absolute;
   z-index: 400;
@@ -1011,6 +1023,11 @@ ion-header {
 
 .fab-add-list.open ion-icon {
   transform: rotate(45deg);
+}
+
+/* Capa transparente del panel FAB: queda justo por debajo del panel (z-index 200). */
+.fab-panel-backdrop {
+  z-index: 199;
 }
 
 /* ✨ Panel que se despliega desde el FAB */

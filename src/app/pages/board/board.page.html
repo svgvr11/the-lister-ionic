@@ -55,6 +55,9 @@
   </ion-toolbar>
 </ion-header>
 
+<!-- Capa transparente: captura los clics fuera del menú de perfil para cerrarlo. -->
+<div *ngIf="accountMenuOpen" class="menu-backdrop account-menu-backdrop" aria-hidden="true" (click)="closeAccountMenu()"></div>
+
 <section *ngIf="accountMenuOpen" class="account-menu" role="menu" aria-label="Opciones de usuario">
   <div class="account-profile">
     <img *ngIf="currentUserAvatarUrl" class="profile-image" [src]="currentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
@@ -396,6 +399,9 @@
   >
     <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
   </button>
+
+  <!-- Capa transparente: captura los clics fuera del panel para cerrarlo. -->
+  <div *ngIf="addingList" class="menu-backdrop fab-panel-backdrop" aria-hidden="true" (click)="cancelAddList()"></div>
 
   <!-- Panel para crear una lista -->
   <div *ngIf="addingList" class="fab-panel">

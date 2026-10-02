@@ -161,6 +161,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.accountMenuOpen = !this.accountMenuOpen;
   }
 
+  closeAccountMenu(): void {
+    this.accountMenuOpen = false;
+  }
+
   selectTheme(theme: typeof this.themes[number]): void {
     this.activeTheme = theme;
     this.applyTheme(theme);
@@ -175,9 +179,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
+  /** Escape cierra el menú de perfil, el panel de nueva lista y el diálogo de borrado. */
   @HostListener('document:keydown.escape')
-  closeAccountMenuOnEscape(): void {
+  closeOverlaysOnEscape(): void {
     this.accountMenuOpen = false;
+    this.cancelAddList();
     this.cancelDeleteList();
   }
 
