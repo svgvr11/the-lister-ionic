@@ -156,7 +156,7 @@ ion-button {
 .login-footer {
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   left: 0;
   height: 48px;
   display: grid;

@@ -16,8 +16,10 @@
   --fab-hover: #8870ad;
   /* Superficie fija de header y footer: no cambia con el tema del tablero. */
   --topbar-surface: #fff;
-  --app-footer-height: 30px;
-  --board-header-height: 70px;
+  --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  --app-footer-height: calc(30px + var(--app-safe-area-bottom));
+  --board-header-height: calc(70px + var(--app-safe-area-top));
 }
 
 ion-content.board-content {
@@ -40,6 +42,8 @@ ion-header {
   overflow: visible;
   flex: 0 0 auto;
   height: auto;
+  padding-top: var(--app-safe-area-top);
+  background: var(--topbar-surface);
 }
 
 .toolbar-inner {
@@ -380,6 +384,7 @@ ion-header {
   color: #526075;
   background: var(--topbar-surface);
   border-top: 1px solid rgba(37, 51, 74, 0.12);
+  padding-bottom: var(--app-safe-area-bottom);
   font-size: 11px;
   font-weight: 600;
 }
@@ -532,8 +537,8 @@ ion-header {
   transform: translateX(-50%);
 }
 
-.board-error { top: 86px; }
-.board-save-error { bottom: 24px; }
+.board-error { top: calc(86px + var(--app-safe-area-top)); }
+.board-save-error { bottom: calc(24px + var(--app-safe-area-bottom)); }
 
 .board {
   position: relative;
@@ -948,7 +953,7 @@ ion-header {
 .saving-indicator {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  bottom: calc(18px + var(--app-safe-area-bottom));
   background: #111827;
   color: white;
   border-radius: 999px;
