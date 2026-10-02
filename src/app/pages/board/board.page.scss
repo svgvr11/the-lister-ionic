@@ -1172,6 +1172,170 @@ ion-header {
   cursor: pointer;
 }
 
+.delete-list-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(26, 33, 48, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.delete-list-dialog {
+  width: min(100%, 420px);
+  padding: 18px 16px 14px;
+  color: #172236;
+  background: #fff;
+  border: 1px solid #e9ecf2;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  text-align: center;
+  animation: deleteDialogEnter 0.16s ease-out;
+}
+
+.delete-list-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+  color: #e11d48;
+  background: #fff1f3;
+  border-radius: 50%;
+}
+
+.delete-list-icon ion-icon {
+  font-size: 19px;
+}
+
+.delete-list-dialog h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.delete-list-dialog > p {
+  max-width: 330px;
+  margin: 5px auto 12px;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.delete-list-preview {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  background: #f5f7fc;
+  border: 1px solid #e4e8f1;
+  border-radius: 9px;
+}
+
+.delete-list-preview-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--list-visual-color) 70%, #172236);
+  background: color-mix(in srgb, var(--list-visual-color) 18%, white);
+  border-radius: 6px;
+}
+
+.delete-list-preview-icon ion-icon {
+  font-size: 14px;
+}
+
+.delete-list-preview-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delete-list-preview-copy strong,
+.delete-list-preview-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-list-preview-copy strong {
+  color: #25334a;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.delete-list-preview-copy > span {
+  color: #737d8e;
+  font-size: 9px;
+}
+
+.delete-list-preview .task-counter {
+  height: 18px;
+  flex: 0 0 auto;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.delete-list-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.delete-list-actions button {
+  min-width: 0;
+  min-height: 34px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.delete-list-cancel {
+  color: #303b4e;
+  background: #fff;
+}
+
+.delete-list-cancel:hover {
+  background: #f6f7fa;
+}
+
+.delete-list-confirm {
+  color: #fff;
+  background: #e11d48;
+  border-color: #e11d48 !important;
+}
+
+.delete-list-confirm:hover {
+  background: #be123c;
+}
+
+.delete-list-confirm ion-icon {
+  font-size: 13px;
+}
+
+@keyframes deleteDialogEnter {
+  from { opacity: 0; transform: translateY(5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Responsivo */
 @media (max-width: 700px) {
   :host { height: 100dvh; }

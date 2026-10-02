@@ -199,7 +199,7 @@
           </button>
           <button
             class="delete-list-button"
-            (click)="deleteList(list.id)"
+            (click)="requestDeleteList(list)"
             aria-label="Eliminar lista"
           >
             <ion-icon name="trash"></ion-icon>
@@ -440,4 +440,61 @@
   </div>
   </ng-container>
 </ion-content>
+
+<div
+  *ngIf="listToDelete as list"
+  class="delete-list-overlay"
+  (click)="cancelDeleteList()"
+  (keydown.escape)="cancelDeleteList()"
+>
+  <section
+    class="delete-list-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-list-title"
+    aria-describedby="delete-list-description"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="delete-list-icon" aria-hidden="true">
+      <ion-icon name="trash"></ion-icon>
+    </div>
+    <h2 id="delete-list-title">¿Deseas eliminar esta lista?</h2>
+    <p id="delete-list-description">
+      Esta acción no se puede deshacer. Se eliminarán permanentemente la lista y todas sus tareas asociadas.
+    </p>
+
+    <div class="delete-list-preview">
+      <span
+        class="delete-list-preview-icon"
+        [style.--list-visual-color]="list.visualColor || themeAccent"
+        aria-hidden="true"
+      >
+        <ion-icon name="layers-outline"></ion-icon>
+      </span>
+      <span class="delete-list-preview-copy">
+        <strong>{{ list.title }}</strong>
+        <span>Lista de tareas del tablero</span>
+      </span>
+      <span
+        class="task-counter"
+        [class.complete-counter]="isListComplete(list)"
+        [style.--list-visual-color]="list.visualColor || themeAccent"
+      >
+        <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
+        {{ taskCounterLabel(list) }}
+      </span>
+    </div>
+
+    <div class="delete-list-actions">
+      <button type="button" class="delete-list-cancel" autofocus (click)="cancelDeleteList()">
+        Cancelar
+      </button>
+      <button type="button" class="delete-list-confirm" (click)="confirmDeleteList()">
+        <ion-icon name="trash" aria-hidden="true"></ion-icon>
+        Eliminar lista
+      </button>
+    </div>
+  </section>
+</div>
+
 <footer class="app-footer">2026 SugarLabz / The Lister</footer>

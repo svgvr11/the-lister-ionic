@@ -103,6 +103,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   listTitleDraft = '';
   editingTaskId: string | null = null;
   taskTextDraft = '';
+  listToDelete: ChecklistList | null = null;
 
   private draggedListId: string | null = null;
   private draggedTask: { listId: string; taskId: string } | null = null;
@@ -175,6 +176,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   @HostListener('document:keydown.escape')
   closeAccountMenuOnEscape(): void {
     this.accountMenuOpen = false;
+    this.cancelDeleteList();
   }
 
   private restoreTheme(userId: string | null): void {
@@ -407,6 +409,21 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.collapsed.delete(listId);
     this.reorderLists();
     await this.persist();
+  }
+
+  requestDeleteList(list: ChecklistList): void {
+    this.listToDelete = list;
+  }
+
+  cancelDeleteList(): void {
+    this.listToDelete = null;
+  }
+
+  async confirmDeleteList(): Promise<void> {
+    const list = this.listToDelete;
+    if (!list) return;
+    this.listToDelete = null;
+    await this.deleteList(list.id);
   }
 
   toggleCollapsed(listId: string): void {
