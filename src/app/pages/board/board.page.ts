@@ -85,7 +85,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     { name: 'Lavanda', value: '#cfd8ff' }
   ];
   selectedVisualColor = this.visualColors[0].value;
-  placeNewListAtStart = true;
+  placeNewListAtStart = false;
   taskDrafts: Record<string, string> = {};
   busy = false;
 
@@ -306,7 +306,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.addingList) {
       this.newListTitle = '';
       this.selectedVisualColor = this.visualColors[0].value;
-      this.placeNewListAtStart = true;
+      this.placeNewListAtStart = false;
     }
   }
 
