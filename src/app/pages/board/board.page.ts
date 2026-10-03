@@ -16,7 +16,7 @@ import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
-import { BoardTheme, BOARD_THEMES, DEFAULT_BOARD_THEME, readStoredTheme, storeTheme } from '../../core/board-themes';
+import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
 import { purgeExpiredLists } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardOrderService } from '../../core/services/board-order.service';
@@ -69,7 +69,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   currentUserAvatarUrl = '';
   readonly authEnabled = this.auth.enabled;
   readonly themes = BOARD_THEMES;
-  activeTheme: BoardTheme = DEFAULT_BOARD_THEME;
+  /**
+   * El color es de este dispositivo: se lee del almacenamiento local al construir la
+   * pantalla, antes del primer pintado, así no sale el color equivocado un instante.
+   * Solo local: ninguna otra pestaña, dispositivo ni recarga vuelve a cambiarlo.
+   */
+  activeTheme: BoardTheme = migrateLegacyTheme(this.auth.session?.user.id ?? null);
   accountMenuOpen = false;
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
@@ -149,7 +154,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      this.restoreTheme(session?.user.id ?? null);
+      // El color ya está aplicado desde el primer pintado (tema local del dispositivo).
+      // No se vuelve a leer aquí ni en ningún otro flujo: recargar o volver a primer plano
+      // dejan el color tal cual.
       const boardStream = await this.session.open();
       this.subscription = new Subscription();
       this.subscription.add(boardStream.subscribe((board) => this.receiveBoard(board)));
@@ -363,11 +370,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.accountMenuOpen = false;
   }
 
-  /** Aplica y persiste el tema. El menú de perfil sigue abierto para poder seguir probando colores. */
+  /**
+   * Aplica y persiste el color de este dispositivo. No se manda a ninguna nube: el color
+   * es local, así que cerrar sesión no lo borra y otra cuenta del mismo dispositivo lo
+   * hereda. El menú de perfil sigue abierto para poder seguir probando colores.
+   */
   selectTheme(theme: BoardTheme): void {
     this.activeTheme = theme;
     this.applyTheme(theme);
-    storeTheme(this.auth.session?.user.id ?? null, theme);
+    storeTheme(theme);
   }
 
   /** Cierra el menú de perfil y abre la pantalla de basurero. */
@@ -394,12 +405,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.cancelDeleteList();
   }
 
-  private restoreTheme(userId: string | null): void {
-    const savedTheme = readStoredTheme(userId);
-    this.activeTheme = savedTheme;
-    this.applyTheme(savedTheme);
-  }
-
+  /** Aplica el tema a las variables CSS del tablero. */
   private applyTheme(theme: BoardTheme): void {
     this.boardBackground = theme.background;
     this.toolbarBackground = theme.toolbar;

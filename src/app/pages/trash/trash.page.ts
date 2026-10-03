@@ -9,7 +9,7 @@ import {
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.models';
-import { DEFAULT_BOARD_THEME, readStoredTheme } from '../../core/board-themes';
+import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
@@ -54,7 +54,12 @@ export class TrashPage implements OnInit, OnDestroy {
   /** Mismo límite de vista previa que usa el tablero. */
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
-  @HostBinding('style.--board-bg') boardBackground = DEFAULT_BOARD_THEME.background;
+  /**
+   * Reutiliza el color elegido en el menú de perfil de este dispositivo. Se lee al
+   * construir la pantalla y solo de la caché local, para que el primer pintado no salga
+   * con otro color.
+   */
+  @HostBinding('style.--board-bg') boardBackground = readStoredTheme().background;
 
   /** Cinta informativa: el número sale de la misma constante que usa la cuenta atrás. */
   readonly retentionNotice = `Las listas descartadas al basurero son eliminadas después de ${TRASH_RETENTION_DAYS} días`;
@@ -110,8 +115,6 @@ export class TrashPage implements OnInit, OnDestroy {
   }
 
   private async loadTrash(): Promise<void> {
-    // Reutiliza el color de tablero elegido en el menú de perfil.
-    this.boardBackground = readStoredTheme(this.auth.session?.user.id ?? null).background;
     try {
       if (this.auth.enabled && !this.auth.session) {
         await this.router.navigateByUrl('/login', { replaceUrl: true });
