@@ -19,6 +19,7 @@ import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-m
 import { BoardTheme, BOARD_THEMES, DEFAULT_BOARD_THEME, readStoredTheme, storeTheme } from '../../core/board-themes';
 import { purgeExpiredLists } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
+import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 
 @Component({
@@ -34,6 +35,7 @@ import { BoardSessionService } from '../../core/services/board-session.service';
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
+  private readonly boardOrder = inject(BoardOrderService);
   private readonly router = inject(Router);
   private subscription?: Subscription;
   private lastAppliedBoard: ChecklistBoard | null = null;
@@ -166,6 +168,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.board = board;
     // Un tablero sin pin (guardado antes de esta función) recibe la primera lista.
     const pinnedChanged = this.syncPinnedList();
+    // El orden aleatorio solo se baraja al llegar el primer tablero con listas; a partir
+    // de ahí únicamente se retiran las listas que ya no están y se añaden las nuevas al final.
+    this.syncSessionOrder();
     // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
     // hay que observar y maquetar en cuanto se pinta la rejilla.
     this.observeBoardGrid();
@@ -173,6 +178,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
     if (persistNormalization && (purged || pinnedChanged)) void this.persist();
+  }
+
+  /**
+   * Pasa las listas del tablero al servicio de orden. Se llama en cada punto donde se
+   * publica un tablero nuevo para que las altas y las bajas se reflejen sin esperar al
+   * próximo guardado (el orden no se guarda: ni se toca `position` ni se escribe nada).
+   */
+  private syncSessionOrder(): void {
+    if (this.boardOrder.sync(this.board.lists, this.board.pinnedListId)) this.scheduleMasonryLayout();
   }
 
   private receiveBoard(board: ChecklistBoard): void {
@@ -323,6 +337,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       } else {
         this.board = structuredClone(conflict.localBoard);
         this.lastAppliedBoard = structuredClone(this.board);
+        this.syncSessionOrder();
         this.pendingRemoteBoard = null;
         this.activeConflict = null;
         this.conflictFromRepository = false;
@@ -546,11 +561,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return segments;
   }
 
+  /**
+   * Listas en el orden en que se dibujan: la pinneada primero y el resto en el orden
+   * aleatorio de esta sesión (`position` solo es el orden estable guardado, no se usa
+   * para mostrar). La búsqueda filtra sobre ese mismo orden, así que no lo altera.
+   */
   get visibleLists(): ChecklistList[] {
-    const lists = [...this.board.lists].sort((a, b) => a.position - b.position);
-    // La lista pinneada va siempre en la primera posición de la rejilla (arriba a la izquierda).
-    const pinned = lists.find((list) => list.id === this.board.pinnedListId);
-    const ordered = pinned ? [pinned, ...lists.filter((list) => list.id !== pinned.id)] : lists;
+    const listsById = new Map(this.board.lists.map((list) => [list.id, list]));
+    const ordered = this.boardOrder
+      .displayOrder(this.board.lists, this.board.pinnedListId)
+      .map((id) => listsById.get(id))
+      .filter((list): list is ChecklistList => Boolean(list));
     if (this.searching && this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
       return ordered.filter((l) => l.title.toLowerCase().includes(q));
@@ -566,14 +587,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async pinList(list: ChecklistList): Promise<void> {
     if (this.isPinned(list)) return;
     this.board.pinnedListId = list.id;
+    // La nueva sube al primer lugar y la anterior conserva su hueco en el orden de sesión.
+    this.syncSessionOrder();
     await this.persist();
   }
 
   /**
    * Deja una sola lista pinneada. Si el pin apunta a una lista que ya no está en el
    * tablero (la acaba de descartar el usuario) o si el tablero aún no tenía ninguna,
-   * la primera lista por posición asume el pin. Devuelve si hubo que corregirlo,
-   * para avisar que el tablero debe guardarse.
+   * la primera lista por `position` asume el pin. `position` es el orden estable
+   * guardado, así que la elección es la misma en todos los dispositivos y no depende
+   * del barajado visual de cada sesión. Devuelve si hubo que corregirlo, para avisar
+   * que el tablero debe guardarse.
    */
   private syncPinnedList(): boolean {
     const current = this.board.pinnedListId ?? null;
@@ -686,6 +711,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.reorderLists();
     // Si se descartó la lista pinneada, el pin pasa a la siguiente del tablero.
     this.syncPinnedList();
+    // La lista desaparece del orden de sesión; si vuelve desde el basurero, entra al final.
+    this.syncSessionOrder();
     await this.persist();
   }
 
@@ -710,6 +737,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.scheduleMasonryLayout();
   }
 
+  /**
+   * Crea una lista al final del tablero (o al inicio si se pidió "ubicar al inicio").
+   * `position` se sigue usando como orden estable guardado; el orden de la rejilla lo
+   * decide el orden de sesión, así que una lista nueva aparece siempre al final salvo
+   * que quede pinneada.
+   */
   async addList(): Promise<void> {
     const title = this.newListTitle.trim();
     if (!title || this.isAtListLimit) return;
@@ -731,6 +764,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.placeNewListAtStart) this.board.pinnedListId = newList.id;
     this.newListTitle = '';
     this.addingList = false;
+    this.syncSessionOrder();
     await this.persist();
   }
 
@@ -873,6 +907,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     board.style.height = `${Math.max(...heights, 0)}px`;
   }
 
+  /** Normaliza el orden estable guardado tras quitar una lista del tablero. */
   private reorderLists(): void {
     [...this.board.lists]
       .sort((a, b) => a.position - b.position)
