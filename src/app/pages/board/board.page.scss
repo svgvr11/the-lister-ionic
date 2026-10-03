@@ -725,11 +725,6 @@ ion-header {
   transition: box-shadow 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
 }
 
-.checklist-column:has(.column-header[draggable="true"]:active) {
-  opacity: 0.82;
-  box-shadow: 0 8px 22px rgba(34, 47, 76, 0.14);
-}
-
 .checklist-column.collapsed {
   padding-bottom: 12px;
 }
@@ -740,11 +735,63 @@ ion-header {
   gap: 7px;
   min-height: 28px;
   color: #172236;
-  cursor: grab;
 }
 
-.column-header:active {
-  cursor: grabbing;
+/**
+ * Pin de la lista: solo se ve en la que está fijada (arriba a la izquierda) y
+ * en el resto aparece al pasar el mouse o al navegar con el teclado. El color
+ * sale de la variable --accent, que cambia con el tema del tablero.
+ */
+.pin-list-button {
+  position: relative;
+  overflow: hidden;
+  width: 20px;
+  height: 22px;
+  flex: 0 0 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent, #8870ad);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+/**
+ * Chincheta (assets/pin-svgrepo-com.svg) teñida con el color del tema: el SVG se usa
+ * como máscara, así que el relleno negro del archivo no llega a verse y el tono sale de
+ * `background-color`, que hereda el --accent del tablero.
+ */
+.pin-icon {
+  width: 17px;
+  height: 17px;
+  background-color: currentColor;
+  -webkit-mask: url('../../../assets/pin-svgrepo-com.svg') center / contain no-repeat;
+  mask: url('../../../assets/pin-svgrepo-com.svg') center / contain no-repeat;
+}
+
+.checklist-column:hover .pin-list-button,
+.checklist-column:focus-within .pin-list-button,
+.pin-list-button.pinned,
+.pin-list-button:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pin-list-button:hover {
+  background: #f1f4fa;
+}
+
+/* En pantallas táctiles no hay hover: el pin se muestra siempre para poder fijarlo. */
+@media (hover: none) {
+  .pin-list-button {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .column-header strong {
@@ -803,11 +850,13 @@ ion-header {
   font-size: 14px;
 }
 
-.drag-handle {
+/* Handle de reordenamiento de tareas: sigue siendo lo único arrastrable del tablero. */
+.task-reorder-handle {
   width: 8px;
   height: 14px;
   flex: 0 0 8px;
-  opacity: 0.42;
+  display: none;
+  opacity: 0;
   background-image: radial-gradient(circle, #8290a4 1px, transparent 1.4px);
   background-position: 0 0;
   background-size: 4px 4px;
@@ -1005,10 +1054,6 @@ ion-header {
 .delete-button:hover {
   color: #ef7070;
   background: rgba(239, 112, 112, 0.12);
-}
-
-.task-reorder-handle {
-  display: none;
 }
 
 @media (hover: hover) and (min-width: 701px) {

@@ -5,6 +5,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 ## Funciones
 
 - Crear listas de checklist.
+- Las listas ya no se reordenan arrastrándolas: cada una tiene un **pin** con el color del tema elegido. La lista fijada se dibuja siempre en la primera posición del tablero (arriba a la izquierda) y su pin queda siempre visible; en las demás el pin aparece al pasar el mouse (o al navegar con el teclado) y al pulsarlo reemplaza a la lista fijada. Una lista creada con **Ubicar al inicio del tablero** también arranca fijada.
 - Crear tareas dentro de cada lista.
 - Marcar/desmarcar tareas.
 - Las tareas completadas se tachan y pasan al final.

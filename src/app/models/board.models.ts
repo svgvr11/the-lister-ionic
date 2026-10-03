@@ -28,6 +28,11 @@ export interface ChecklistBoard {
   title: string;
   createdAt: string;
   lists: ChecklistList[];
+  /**
+   * Lista fijada al tablero: siempre se dibuja en la primera posición de la rejilla.
+   * Opcional para que los tableros ya guardados (sin pin) sigan cargando sin migración.
+   */
+  pinnedListId?: string | null;
   /** Opcional para que los tableros ya guardados (sin basurero) sigan cargando sin migración. */
   trashedLists?: ChecklistTrashedList[];
 }

@@ -7,7 +7,8 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, checkmark, chevronDown, chevronForward, close, logOut,
-  trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree } from 'ionicons/icons';
+  trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree
+} from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -99,7 +100,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   taskTextDraft = '';
   listToDelete: ChecklistList | null = null;
 
-  private draggedListId: string | null = null;
   private draggedTask: { listId: string; taskId: string } | null = null;
 
   @ViewChildren('boardItem', { read: ElementRef })
@@ -146,12 +146,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private applyBoard(board: ChecklistBoard): void {
     const purged = purgeExpiredLists(board);
     this.board = board;
+    // Un tablero sin pin (guardado antes de esta función) recibe la primera lista.
+    const pinnedChanged = this.syncPinnedList();
     // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
     // hay que observar y maquetar en cuanto se pinta la rejilla.
     this.observeBoardGrid();
     this.scheduleMasonryLayout();
-    // Sin este guardado, una lista vencida volvería a aparecer en el próximo inicio.
-    if (purged) void this.persist();
+    // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
+    if (purged || pinnedChanged) void this.persist();
   }
 
   toggleAccountMenu(): void {
@@ -354,12 +356,42 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   get visibleLists(): ChecklistList[] {
-    let lists = [...this.board.lists].sort((a, b) => a.position - b.position);
+    const lists = [...this.board.lists].sort((a, b) => a.position - b.position);
+    // La lista pinneada va siempre en la primera posición de la rejilla (arriba a la izquierda).
+    const pinned = lists.find((list) => list.id === this.board.pinnedListId);
+    const ordered = pinned ? [pinned, ...lists.filter((list) => list.id !== pinned.id)] : lists;
     if (this.searching && this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
-      lists = lists.filter((l) => l.title.toLowerCase().includes(q));
+      return ordered.filter((l) => l.title.toLowerCase().includes(q));
     }
-    return lists;
+    return ordered;
+  }
+
+  isPinned(list: ChecklistList): boolean {
+    return this.board.pinnedListId === list.id;
+  }
+
+  /** Fija una lista al inicio del tablero, reemplazando a la que estaba pinneada. */
+  async pinList(list: ChecklistList): Promise<void> {
+    if (this.isPinned(list)) return;
+    this.board.pinnedListId = list.id;
+    await this.persist();
+  }
+
+  /**
+   * Deja una sola lista pinneada. Si el pin apunta a una lista que ya no está en el
+   * tablero (la acaba de descartar el usuario) o si el tablero aún no tenía ninguna,
+   * la primera lista por posición asume el pin. Devuelve si hubo que corregirlo,
+   * para avisar que el tablero debe guardarse.
+   */
+  private syncPinnedList(): boolean {
+    const current = this.board.pinnedListId ?? null;
+    const stillInBoard = current !== null && this.board.lists.some((list) => list.id === current);
+    const first = [...this.board.lists].sort((a, b) => a.position - b.position)[0]?.id ?? null;
+    const pinnedListId = stillInBoard ? current : first;
+    if (pinnedListId === current) return false;
+    this.board.pinnedListId = pinnedListId;
+    return true;
   }
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
@@ -461,6 +493,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.collapsed.delete(list.id);
     this.expandedCompleted.delete(list.id);
     this.reorderLists();
+    // Si se descartó la lista pinneada, el pin pasa a la siguiente del tablero.
+    this.syncPinnedList();
     await this.persist();
   }
 
@@ -502,6 +536,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     else orderedLists.push(newList);
     orderedLists.forEach((list, index) => list.position = index);
     this.board.lists = orderedLists;
+    // Una lista creada "al inicio del tablero" también arranca pinneada.
+    if (this.placeNewListAtStart) this.board.pinnedListId = newList.id;
     this.newListTitle = '';
     this.addingList = false;
     await this.persist();
@@ -510,32 +546,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelAddList(): void {
     this.addingList = false;
     this.newListTitle = '';
-  }
-
-  startListDrag(listId: string, event: DragEvent): void {
-    this.draggedListId = listId;
-    event.dataTransfer?.setData('text/plain', `list:${listId}`);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-  }
-
-  dragOverList(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-  }
-
-  async dropList(targetListId: string, event: DragEvent): Promise<void> {
-    event.preventDefault();
-    if (!this.draggedListId || this.draggedListId === targetListId) return;
-    const ordered = this.visibleLists;
-    const from = ordered.findIndex((list) => list.id === this.draggedListId);
-    const to = ordered.findIndex((list) => list.id === targetListId);
-    if (from < 0 || to < 0) return;
-    const [moved] = ordered.splice(from, 1);
-    ordered.splice(to, 0, moved);
-    ordered.forEach((list, index) => list.position = index);
-    this.board.lists = ordered;
-    this.draggedListId = null;
-    await this.persist();
   }
 
   startTaskDrag(listId: string, taskId: string, event: DragEvent): void {
@@ -591,8 +601,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.persist();
   }
 
-  clearDragState(): void {
-    this.draggedListId = null;
+  /** Las listas ya no se arrastran; solo queda el reordenamiento de tareas dentro de la lista. */
+  clearTaskDragState(): void {
     this.draggedTask = null;
   }
 

@@ -189,14 +189,20 @@
         class="checklist-column"
         [class.collapsed]="isCollapsed(list.id)"
         [class.list-complete]="isListComplete(list)"
-        [draggable]="editingListId !== list.id"
-        (dragstart)="startListDrag(list.id, $event)"
-        (dragover)="dragOverList($event)"
-        (drop)="dropList(list.id, $event)"
-        (dragend)="clearDragState()"
       >
         <div class="column-header">
-          <span class="drag-handle" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="pin-list-button ion-activatable"
+            [class.pinned]="isPinned(list)"
+            (click)="pinList(list)"
+            [attr.aria-pressed]="isPinned(list)"
+            [attr.aria-label]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar esta lista al inicio del tablero'"
+            [title]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar lista al inicio del tablero'"
+          >
+            <span class="pin-icon" aria-hidden="true"></span>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
           <button
             class="collapse-button ion-activatable"
             (click)="toggleCollapsed(list.id)"
@@ -288,9 +294,9 @@
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
             (dragover)="dragOverTask($event)"
             (drop)="dropTask(list, task.id, $event)"
-            (dragend)="clearDragState()"
+            (dragend)="clearTaskDragState()"
           >
-            <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
+            <span class="task-reorder-handle" aria-hidden="true"></span>
             <button
               class="check-button ion-activatable"
               (click)="toggleTask(list, task)"
@@ -347,9 +353,9 @@
             (dragstart)="startTaskDrag(list.id, task.id, $event)"
             (dragover)="dragOverTask($event)"
             (drop)="dropTask(list, task.id, $event)"
-            (dragend)="clearDragState()"
+            (dragend)="clearTaskDragState()"
           >
-            <span class="drag-handle task-reorder-handle" aria-hidden="true"></span>
+            <span class="task-reorder-handle" aria-hidden="true"></span>
             <button
               class="check-button checked ion-activatable"
               (click)="toggleTask(list, task)"
@@ -515,7 +521,7 @@
       <label class="place-first-option">
         <span class="place-first-copy">
           <ion-icon name="layers-outline" aria-hidden="true"></ion-icon>
-          <span>Ubicar al inicio del tablero</span>
+          <span>Anclar al inicio del tablero</span>
         </span>
         <input type="checkbox" name="placeAtStart" [(ngModel)]="placeNewListAtStart" />
       </label>
