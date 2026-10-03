@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  IonContent, IonHeader, IonIcon, IonInput, IonRippleEffect, IonTitle, IonToolbar
+  IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
+  IonRippleEffect, IonTitle, IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -12,6 +13,8 @@ import {
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
+import { BoardConflict } from '../../core/services/board.repository';
+import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, DEFAULT_BOARD_THEME, readStoredTheme, storeTheme } from '../../core/board-themes';
 import { purgeExpiredLists } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
@@ -21,7 +24,8 @@ import { BoardSessionService } from '../../core/services/board-session.service';
   selector: 'app-board',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRippleEffect, IonTitle, IonToolbar
+    CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
+    IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -31,6 +35,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private subscription?: Subscription;
+  private lastAppliedBoard: ChecklistBoard | null = null;
+  private pendingRemoteBoard: ChecklistBoard | null = null;
+  activeConflict: BoardConflict | null = null;
+  conflictDialogOpen = false;
+  confirmingLocalConflict = false;
+  private conflictFromRepository = false;
+  private resolvingConflict = false;
 
   board: ChecklistBoard = {
     id: '', title: 'Cargando tablero...', createdAt: new Date().toISOString(), lists: []
@@ -133,7 +144,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       }
 
       this.restoreTheme(session?.user.id ?? null);
-      this.subscription = (await this.session.open()).subscribe((board) => this.applyBoard(board));
+      const boardStream = await this.session.open();
+      this.subscription = new Subscription();
+      this.subscription.add(boardStream.subscribe((board) => this.receiveBoard(board)));
+      this.subscription.add(this.session.conflict$.subscribe((conflict) => this.receiveConflict(conflict)));
     } catch (error) {
       console.error('No se pudo cargar el tablero sincronizado', error);
       this.boardError = 'No se pudo cargar el tablero desde la nube. Comprueba la conexión y la configuración de Supabase.';
@@ -143,7 +157,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /** Publica el tablero recibido y descarta del basurero lo que ya cumplió los 7 días. */
-  private applyBoard(board: ChecklistBoard): void {
+  private applyBoard(board: ChecklistBoard, persistNormalization = true): void {
     const purged = purgeExpiredLists(board);
     this.board = board;
     // Un tablero sin pin (guardado antes de esta función) recibe la primera lista.
@@ -152,8 +166,174 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     // hay que observar y maquetar en cuanto se pinta la rejilla.
     this.observeBoardGrid();
     this.scheduleMasonryLayout();
+    this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
-    if (purged || pinnedChanged) void this.persist();
+    if (persistNormalization && (purged || pinnedChanged)) void this.persist();
+  }
+
+  private receiveBoard(board: ChecklistBoard): void {
+    if (this.hasActiveInteraction() || this.activeConflict) {
+      this.pendingRemoteBoard = structuredClone(board);
+      return;
+    }
+    this.applyBoard(structuredClone(board));
+  }
+
+  private receiveConflict(conflict: BoardConflict | null): void {
+    if (conflict) {
+      this.activeConflict = conflict;
+      this.pendingRemoteBoard = structuredClone(conflict.remoteBoard);
+      this.conflictDialogOpen = true;
+      this.confirmingLocalConflict = false;
+      this.conflictFromRepository = true;
+      this.saveError = '';
+      return;
+    }
+
+    if (!this.resolvingConflict && this.conflictFromRepository) {
+      this.activeConflict = null;
+      this.conflictFromRepository = false;
+      this.conflictDialogOpen = false;
+      this.confirmingLocalConflict = false;
+      this.releasePendingRemoteBoard();
+    }
+  }
+
+  private hasActiveInteraction(): boolean {
+    return this.busy
+      || this.editingTitle
+      || this.editingListId !== null
+      || this.editingTaskId !== null
+      || this.addingList
+      || Object.values(this.taskDrafts).some((draft) => Boolean(draft?.trim()))
+      || this.draggedTask !== null;
+  }
+
+  private releasePendingRemoteBoard(saveSucceeded = false): boolean {
+    if (!this.pendingRemoteBoard || this.hasActiveInteraction() || this.activeConflict) return false;
+
+    const remoteBoard = this.pendingRemoteBoard;
+    this.pendingRemoteBoard = null;
+    if (!saveSucceeded && this.lastAppliedBoard && !this.boardsEqual(this.board, this.lastAppliedBoard)) {
+      this.activeConflict = {
+        localBoard: structuredClone(this.board),
+        remoteBoard: structuredClone(remoteBoard),
+        remoteUpdatedAt: '',
+        reason: 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
+      };
+      this.conflictFromRepository = false;
+      this.conflictDialogOpen = true;
+      this.confirmingLocalConflict = false;
+      this.saveError = '';
+      return false;
+    }
+
+    this.applyBoard(structuredClone(remoteBoard));
+    return true;
+  }
+
+  private boardsEqual(left: ChecklistBoard, right: ChecklistBoard): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  private preparePendingRemoteBeforeSave(): boolean {
+    if (!this.pendingRemoteBoard || this.hasActiveInteraction() || this.activeConflict) return false;
+
+    const remoteBoard = this.pendingRemoteBoard;
+    this.pendingRemoteBoard = null;
+    if (this.lastAppliedBoard && this.boardsEqual(this.board, this.lastAppliedBoard)) {
+      this.applyBoard(structuredClone(remoteBoard));
+      return true;
+    }
+
+    try {
+      const mergedBoard = mergeBoardAdditions(this.lastAppliedBoard ?? this.board, this.board, remoteBoard);
+      this.applyBoard(mergedBoard, false);
+      return false;
+    } catch (error) {
+      this.activeConflict = {
+        localBoard: structuredClone(this.board),
+        remoteBoard: structuredClone(remoteBoard),
+        remoteUpdatedAt: '',
+        reason: error instanceof Error
+          ? `No se pueden combinar estos cambios: ${error.message}`
+          : 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
+      };
+      this.conflictFromRepository = false;
+      this.conflictDialogOpen = true;
+      this.confirmingLocalConflict = false;
+      this.saveError = '';
+      return true;
+    }
+  }
+
+  async refreshBoard(event: CustomEvent): Promise<void> {
+    const refresher = event.target as { complete?: () => Promise<void> } | null;
+    this.saveError = '';
+    try {
+      await this.session.refresh();
+    } catch (error) {
+      console.error('No se pudo actualizar el tablero', error);
+      this.saveError = 'No se pudo actualizar el tablero. Comprueba la conexión e inténtalo de nuevo.';
+    } finally {
+      await refresher?.complete?.();
+    }
+  }
+
+  closeConflictDialog(): void {
+    this.conflictDialogOpen = false;
+    this.confirmingLocalConflict = false;
+  }
+
+  openConflictDialog(): void {
+    if (!this.activeConflict) return;
+    this.conflictDialogOpen = true;
+    this.confirmingLocalConflict = false;
+  }
+
+  async resolveActiveConflict(resolution: 'remote' | 'local'): Promise<void> {
+    const conflict = this.activeConflict;
+    if (!conflict) return;
+    if (resolution === 'local' && !this.confirmingLocalConflict) {
+      this.confirmingLocalConflict = true;
+      return;
+    }
+
+    this.resolvingConflict = true;
+    this.saveError = '';
+    try {
+      if (this.conflictFromRepository) {
+        await this.session.resolveConflict(resolution);
+      } else if (resolution === 'local') {
+        await this.session.save(conflict.localBoard);
+      }
+
+      if (resolution === 'remote') {
+        const remoteBoard = this.pendingRemoteBoard ?? conflict.remoteBoard;
+        this.pendingRemoteBoard = null;
+        this.activeConflict = null;
+        this.conflictFromRepository = false;
+        this.conflictDialogOpen = false;
+        this.confirmingLocalConflict = false;
+        this.applyBoard(structuredClone(remoteBoard));
+      } else {
+        this.board = structuredClone(conflict.localBoard);
+        this.lastAppliedBoard = structuredClone(this.board);
+        this.pendingRemoteBoard = null;
+        this.activeConflict = null;
+        this.conflictFromRepository = false;
+        this.conflictDialogOpen = false;
+        this.confirmingLocalConflict = false;
+        this.scheduleMasonryLayout();
+      }
+    } catch (error) {
+      console.error('No se pudo resolver el conflicto del tablero', error);
+      if (!(error instanceof BoardMergeConflictError)) {
+        this.saveError = 'No se pudo resolver el conflicto. Comprueba la conexión e inténtalo de nuevo.';
+      }
+    } finally {
+      this.resolvingConflict = false;
+    }
   }
 
   toggleAccountMenu(): void {
@@ -183,9 +363,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
-  /** Escape cierra el menú de perfil, el panel de nueva lista y el diálogo de borrado. */
+  /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
   @HostListener('document:keydown.escape')
   closeOverlaysOnEscape(): void {
+    if (this.conflictDialogOpen) {
+      this.closeConflictDialog();
+      return;
+    }
     this.accountMenuOpen = false;
     this.cancelAddList();
     this.cancelDeleteList();
@@ -249,6 +433,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelEditTitle(): void {
     this.editingTitle = false;
     this.titleDraft = '';
+    this.releasePendingRemoteBoard();
   }
 
   startEditList(list: ChecklistList, event: Event): void {
@@ -271,6 +456,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelEditList(): void {
     this.editingListId = null;
     this.listTitleDraft = '';
+    this.releasePendingRemoteBoard();
   }
 
   startEditTask(task: ChecklistTask, event: Event): void {
@@ -293,6 +479,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelEditTask(): void {
     this.editingTaskId = null;
     this.taskTextDraft = '';
+    this.releasePendingRemoteBoard();
   }
 
   isEditingTask(taskId: string): boolean {
@@ -546,6 +733,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelAddList(): void {
     this.addingList = false;
     this.newListTitle = '';
+    this.releasePendingRemoteBoard();
+  }
+
+  onTaskDraftBlur(): void {
+    this.releasePendingRemoteBoard();
   }
 
   startTaskDrag(listId: string, taskId: string, event: DragEvent): void {
@@ -604,6 +796,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Las listas ya no se arrastran; solo queda el reordenamiento de tareas dentro de la lista. */
   clearTaskDragState(): void {
     this.draggedTask = null;
+    this.releasePendingRemoteBoard();
   }
 
   private scheduleMasonryLayout(): void {
@@ -678,16 +871,22 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private async persist(): Promise<void> {
+    if (this.activeConflict || this.preparePendingRemoteBeforeSave()) return;
     this.busy = true;
     this.saveError = '';
+    let saved = false;
     try {
       await this.session.save(this.board);
+      saved = true;
       this.scheduleMasonryLayout();
     } catch (error) {
       console.error('No se pudo guardar el tablero sincronizado', error);
-      this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
+      if (!this.activeConflict) {
+        this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
+      }
     } finally {
       this.busy = false;
+      this.releasePendingRemoteBoard(saved);
     }
   }
 }
