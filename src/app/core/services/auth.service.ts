@@ -41,6 +41,10 @@ export class AuthService {
     return this.activeSession;
   }
 
+  get supabaseClient(): SupabaseClient | null {
+    return this.client;
+  }
+
   async getSession(): Promise<Session | null> {
     if (!this.client) return null;
     const { data, error } = await this.client.auth.getSession();

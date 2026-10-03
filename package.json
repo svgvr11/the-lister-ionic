@@ -6,6 +6,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "test:board-merge": "node --experimental-strip-types scripts/test-board-merge.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "apk": "npm run build && cap sync android && cd android && ./gradlew assembleDebug"
