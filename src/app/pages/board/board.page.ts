@@ -10,6 +10,7 @@ import {
   add, checkmark, chevronDown, chevronForward, close, logOut,
   trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree
 } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -68,6 +69,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   readonly themes = BOARD_THEMES;
   activeTheme: BoardTheme = DEFAULT_BOARD_THEME;
   accountMenuOpen = false;
+  /** Google Play no admite enlaces externos de donación dentro del APK, así que el
+   *  botón de Ko-fi solo se renderiza en la web. */
+  readonly isNative = Capacitor.isNativePlatform();
   readonly donationMessage = '!Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
 

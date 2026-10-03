@@ -88,8 +88,10 @@
     </button>
   </div>
   <!-- Botón de donación local: mismo enlace y estilo que el widget oficial de Ko-fi,
-     sin depender de su script ni de fuentes externas. -->
+     sin depender de su script ni de fuentes externas. No se renderiza en la app
+     nativa: Google Play no admite enlaces externos de donación dentro del APK. -->
   <a
+    *ngIf="!isNative"
     class="donation-button ion-activatable"
     role="menuitem"
     [style.--donation-color]="activeTheme.donation"

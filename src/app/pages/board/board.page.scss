@@ -369,7 +369,6 @@ ion-header {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  padding-bottom: 14px;
 }
 
 .theme-option {
@@ -397,7 +396,9 @@ ion-header {
 
 /* Botón de donación de Ko-fi, implementado localmente para no depender del
    script ni de las fuentes que carga el widget oficial. El color lo fija el
-   tema activo mediante la variable --donation-color. */
+   tema activo mediante la variable --donation-color. Solo existe en la web, así
+   que su separación respectiva (margin-top) vive aquí y no en el contenedor:
+   al no renderizarse en nativo no deja ningún hueco en el menú. */
 .donation-button {
   position: relative;
   overflow: hidden;
@@ -406,6 +407,7 @@ ion-header {
   justify-content: center;
   gap: 7px;
   min-height: 44px;
+  margin-top: 14px;
   margin-bottom: 16px;
   padding: 0 16px;
   color: #fff;
@@ -484,7 +486,8 @@ ion-header {
 }
 
 /* Fila de acciones de la cuenta: basurero a la izquierda y cierre de sesión a la derecha.
-   Sin borde superior: la separación la aporta el margen contra el botón de donación. */
+   Sin borde superior: el margen superior aporta la separación contra lo que haya
+   encima, sea el botón de donación (web) o los swatches de tema (nativo). */
 .account-menu-actions {
   display: flex;
   align-items: stretch;

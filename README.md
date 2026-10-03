@@ -14,7 +14,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - Sincronización del tablero por usuario en Supabase para acceder desde varios dispositivos.
 - Persistencia local como fallback cuando Supabase Auth no está configurado.
 - Acceso con cuenta de Google mediante Supabase Auth.
-- Botón de donación de Ko-fi en el menú de perfil, implementado localmente (sin scripts ni fuentes externas) y con el color del tema de tablero seleccionado.
+- Botón de donación de Ko-fi en el menú de perfil, implementado localmente (sin scripts ni fuentes externas) y con el color del tema de tablero seleccionado. **Solo aparece en la web**: Google Play no admite enlaces externos de donación dentro del APK, así que en la app nativa no se renderiza.
 - Botón **Basurero** en el menú de perfil, al lado izquierdo de *Cerrar sesión*, que abre la pantalla de papelera.
 - Las listas eliminadas del tablero no se borran al instante: pasan al **basurero** y se eliminan de forma permanente después de **7 días**.
 - El basurero muestra la cuenta atrás de cada lista; el color del badge escala a medida que se acerca el borrado (gris → ámbar → rojo) y en el último día la lista se tiñe de rojo.
