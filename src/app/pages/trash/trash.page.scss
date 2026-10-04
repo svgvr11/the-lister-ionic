@@ -749,20 +749,6 @@ ion-content.trash-content {
   z-index: 100;
 }
 
-/* El footer ya no está fijo al viewport: vive dentro de <ion-content>, al final del
-   contenido, así que solo aparece al llegar al final del scroll. */
-.app-footer {
-  display: grid;
-  place-items: center;
-  padding: 14px 16px calc(16px + var(--app-safe-area-bottom));
-  color: #526075;
-  background: var(--topbar-surface);
-  border-top: 1px solid rgba(37, 51, 74, 0.12);
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-}
-
 /* Responsivo */
 @media (max-width: 700px) {
   ion-header { flex-basis: auto; height: auto; }

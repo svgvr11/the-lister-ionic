@@ -299,12 +299,15 @@
             <ion-icon name="pencil"></ion-icon>
             <ion-ripple-effect></ion-ripple-effect>
           </button>
+          <!-- Las listas ya completas muestran el ícono de archivo, el mismo del botón Archivo
+               de la cabecera. La acción no cambia: sigue llevando la lista al basurero. -->
           <button
             class="delete-list-button ion-activatable"
             (click)="requestDeleteList(list)"
-            aria-label="Eliminar lista"
+            aria-label="Mover al basurero"
+            title="Mover al basurero"
           >
-            <ion-icon name="trash"></ion-icon>
+            <ion-icon [name]="isListComplete(list) ? 'archive-outline' : 'trash'"></ion-icon>
             <ion-ripple-effect></ion-ripple-effect>
           </button>
         </div>
@@ -498,9 +501,9 @@
   </div>
   </ng-container>
 
-  <!-- El footer ya no está fijo al viewport: vive dentro de <ion-content>, al final del
-       contenido, así que solo aparece al llegar al final del scroll. -->
-  <footer class="app-footer">2026 SugarLabz / The Lister</footer>
+  <!-- Pie común (estado de sincronización, copyright, enlaces legales y versión). Sigue al
+       final del contenido, no es fijo, así que solo aparece al llegar al final del scroll. -->
+  <app-footer></app-footer>
 </ion-content>
 
 <!-- Overlays fixed a nivel de página. NO deben vivir dentro de <ion-content>: su scroller

@@ -22,5 +22,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./pages/archive/archive.page').then((m) => m.ArchivePage)
   },
+  /* Páginas legales provisionales: públicas, se abren con y sin sesión. */
+  {
+    path: 'privacy',
+    loadComponent: () => import('./pages/privacy/privacy.page').then((m) => m.PrivacyPage)
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./pages/terms/terms.page').then((m) => m.TermsPage)
+  },
   { path: '**', redirectTo: 'board' }
 ];

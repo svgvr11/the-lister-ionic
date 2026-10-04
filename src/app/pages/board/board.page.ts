@@ -14,6 +14,7 @@ import { Capacitor } from '@capacitor/core';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
+import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
@@ -28,7 +29,7 @@ import { BoardSessionService } from '../../core/services/board-session.service';
   standalone: true,
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
-    IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar
+    IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']

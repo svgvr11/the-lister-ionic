@@ -4,7 +4,7 @@ import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavControl
 import { addIcons } from 'ionicons';
 import { archiveOutline, arrowBack, chevronBack } from 'ionicons/icons';
 import { readStoredTheme } from '../../core/board-themes';
-import { APP_VERSION_LABEL } from '../../core/app-version';
+import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 
 /**
  * Archivo de listas: pantalla preparada para las listas archivadas. Por ahora solo
@@ -16,15 +16,12 @@ import { APP_VERSION_LABEL } from '../../core/app-version';
 @Component({
   selector: 'app-archive',
   standalone: true,
-  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar],
+  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, AppFooterComponent],
   templateUrl: './archive.page.html',
   styleUrls: ['./archive.page.scss']
 })
 export class ArchivePage {
   private readonly navController = inject(NavController);
-
-  /** Versión de la app, leída del único archivo donde está definida. */
-  readonly appVersionLabel = APP_VERSION_LABEL;
 
   @HostBinding('style.--board-bg') boardBackground = readStoredTheme().background;
 

@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+/* Superficie y safe areas las define la página que usa el pie; los valores de aquí son
+   solo la reserva por si el componente se reutilizara fuera de ellas. */
+.app-footer {
+  --footer-surface: var(--topbar-surface, #fff);
+  --footer-ink: #526075;
+  --footer-line: rgba(37, 51, 74, 0.12);
+  display: grid;
+  /* Tres zonas: estado a la izquierda, copyright al centro, enlaces a la derecha. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding-block: 12px calc(14px + var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  /* Las páginas con botón flotante (el tablero) reservan aquí la esquina del FAB, para que
+     no tape la versión al llegar al final del scroll. */
+  padding-inline-end: max(var(--app-footer-end-inset, 0px), env(safe-area-inset-right, 0px));
+  color: var(--footer-ink);
+  background: var(--footer-surface);
+  border-top: 1px solid var(--footer-line);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Estado de sincronización ─────────────────────────────────────────────── */
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  /* Verde con conexión. El color solo acompaña al texto: nunca es la única señal. */
+  background: #12895a;
+  transition: background-color 0.25s ease;
+}
+
+.sync-status.is-offline .sync-dot {
+  background: #d23b34;
+}
+
+.sync-status-text {
+  min-width: 0;
+}
+
+/* ── Copyright ────────────────────────────────────────────────────────────── */
+
+.app-footer-copyright {
+  justify-self: center;
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Enlaces legales y versión ────────────────────────────────────────────── */
+
+.app-footer-meta {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.app-footer-link {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+  /* Área de pulsación cómoda sin separar los enlaces entre sí. */
+  padding: 4px 2px;
+  transition: color 0.15s ease;
+}
+
+.app-footer-link:hover {
+  color: #2f3d55;
+}
+
+.app-footer-link:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.app-footer-version {
+  color: #8b93a3;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Móvil (≤700px) ───────────────────────────────────────────────────────────
+   Tres filas apiladas, sin desbordes: el estado arriba, los enlaces y la versión en
+   una sola fila al centro y el copyright debajo. El orden visual se cambia con `order`
+   para no alterar el orden del documento (estado → copyright → enlaces). */
+@media (max-width: 700px) {
+  .app-footer {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 8px;
+    padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
+    text-align: center;
+  }
+
+  .sync-status {
+    justify-content: center;
+    order: 1;
+  }
+
+  .app-footer-meta {
+    order: 2;
+    justify-self: center;
+    gap: 12px;
+  }
+
+  .app-footer-copyright {
+    order: 3;
+  }
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones: sin transición de color. */
+@media (prefers-reduced-motion: reduce) {
+  .sync-dot,
+  .app-footer-link {
+    transition: none;
+  }
+}

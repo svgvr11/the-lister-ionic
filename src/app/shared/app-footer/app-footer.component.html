@@ -1,0 +1,19 @@
+<!-- Pie al final del contenido de <ion-content>: no es fijo ni cubre el FAB, se lee al
+     llegar al final del scroll. -->
+<footer class="app-footer">
+  <!-- Izquierda: estado de la sincronización con la nube. -->
+  <p class="sync-status" [class.is-offline]="!online()">
+    <span class="sync-dot" aria-hidden="true"></span>
+    <span class="sync-status-text" role="status" aria-live="polite">{{ syncLabel }}</span>
+  </p>
+
+  <!-- Centro: copyright. -->
+  <p class="app-footer-copyright">&copy; {{ year }} SugarLabs / The Lister</p>
+
+  <!-- Derecha: enlaces legales y versión (texto decorativo, no interactivo). -->
+  <div class="app-footer-meta">
+    <a class="app-footer-link" routerLink="/privacy">Privacidad</a>
+    <a class="app-footer-link" routerLink="/terms">T&eacute;rminos</a>
+    <span class="app-footer-version">{{ appVersionLabel }}</span>
+  </div>
+</footer>

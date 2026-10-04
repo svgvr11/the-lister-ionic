@@ -1,0 +1,120 @@
+/* Misma estructura que archive.page.scss: header propio, tema del dispositivo y safe areas. */
+:host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  --board-bg: #eee8f8;
+  /* Superficie fija de header: no cambia con el tema del tablero. */
+  --topbar-surface: #fff;
+  --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  --legal-ink: #172236;
+  --legal-muted: #6b7383;
+}
+
+ion-header {
+  position: relative;
+  z-index: 300;
+  flex: 0 0 auto;
+  height: auto;
+  padding-top: var(--app-safe-area-top);
+  background: var(--topbar-surface);
+}
+
+ion-toolbar.topbar {
+  --background: var(--topbar-surface);
+  --color: #25334a;
+  --min-height: 0;
+  height: auto;
+  padding: 15px 0;
+}
+
+.toolbar-inner {
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Las safe areas laterales evitan que el notch tape los botones en horizontal. */
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+
+.back-btn {
+  position: relative;
+  overflow: hidden;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #25334a;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.back-btn:hover {
+  background: rgba(23, 34, 54, 0.08);
+}
+
+.back-btn:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.back-btn ion-icon {
+  font-size: 20px;
+}
+
+.legal-title {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  color: var(--legal-ink);
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+ion-content.legal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  --background: var(--board-bg);
+}
+
+/* ── Texto provisional ───────────────────────────────────────────────────── */
+
+.legal-body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px 20px calc(30px + var(--app-safe-area-bottom));
+  text-align: center;
+}
+
+.legal-text {
+  margin: 0;
+  color: var(--legal-ink);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+/* En móvil el texto se reduce un poco, igual que el título del archivo. */
+@media (max-width: 700px) {
+  .legal-title { font-size: 20px; }
+  .legal-body { padding: 20px 16px calc(20px + var(--app-safe-area-bottom)); }
+  .legal-text { font-size: 15px; }
+}
