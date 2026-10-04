@@ -9,6 +9,7 @@ import { checkmarkCircleOutline } from 'ionicons/icons';
 import { Session } from '@supabase/supabase-js';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { APP_VERSION_LABEL } from '../../core/app-version';
 
 @Component({
   selector: 'app-login',
@@ -18,6 +19,9 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrls: ['./login.page.scss']
 })
 export class LoginPage implements OnInit, OnDestroy {
+  /** Versión de la app, leída del único archivo donde está definida. */
+  readonly appVersionLabel = APP_VERSION_LABEL;
+
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly zone = inject(NgZone);

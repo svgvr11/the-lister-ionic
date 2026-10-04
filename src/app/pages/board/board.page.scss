@@ -18,7 +18,6 @@
   --topbar-surface: #fff;
   --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  --app-footer-height: calc(30px + var(--app-safe-area-bottom));
   --board-header-height: calc(70px + var(--app-safe-area-top));
 }
 
@@ -63,10 +62,14 @@ ion-header {
   height: auto;
   min-height: 40px;
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(240px, min(44vw, 483px)) minmax(190px, 1fr);
+  /* Columnas laterales iguales: el buscador queda centrado respecto a la pantalla y la
+     marca se pega a la izquierda, las acciones a la derecha. Por debajo de 1160px no
+     caben a los dos lados y el buscador baja a su propia fila (ver más abajo). */
+  grid-template-columns: minmax(0, 1fr) minmax(280px, min(42vw, 470px)) minmax(0, 1fr);
   align-items: center;
   gap: clamp(10px, 2vw, 24px);
-  padding: 0 16px;
+  /* Las safe areas laterales evitan que el notch tape los botones en horizontal. */
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
   overflow: visible;
 }
 
@@ -93,15 +96,44 @@ ion-header {
 .brand {
   display: flex;
   align-items: center;
+  gap: 9px;
   min-width: 0;
 }
 
 .brand-logo {
   width: 40px;
   height: 40px;
+  flex: 0 0 40px;
   display: block;
   border-radius: 10px;
   object-fit: contain;
+}
+
+/* Nombre de la app junto al logo, con tipografía fuerte. */
+.brand-name {
+  color: #172236;
+  font-size: 17px;
+  font-weight: 780;
+  letter-spacing: -0.3px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badge de versión: se alimenta de APP_VERSION_LABEL, nunca escrito a mano. */
+.version-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  color: #55637d;
+  background: #eef1f8;
+  border: 1px solid #e2e7f1;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .title-display {
@@ -209,36 +241,107 @@ ion-header {
 }
 
 .list-counter {
-  height: 23px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   flex: 0 0 auto;
-  padding: 0 9px;
+  padding: 0 10px;
   color: #27334a;
   background: #f5f6fc;
   border: 1px solid #e7eaf3;
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 650;
   white-space: nowrap;
 }
 
+/* Texto del contador: el número arriba y "LISTAS" debajo, en mayúsculas. */
+.counter-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.counter-value {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.counter-caption {
+  color: #7b8398;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
 .counter-ring {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   display: grid;
-  flex: 0 0 13px;
+  flex: 0 0 15px;
   place-items: center;
   background: conic-gradient(#72c8b8 var(--list-progress), #dfe7ee 0);
   border-radius: 50%;
 }
 
 .counter-ring-center {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   background: #f5f6fc;
   border-radius: 50%;
+}
+
+/* Límite de 50 listas alcanzado: el anillo pasa a color de aviso. */
+.list-counter.at-limit .counter-ring {
+  background: conic-gradient(#e2564f var(--list-progress), #f3dedd 0);
+}
+
+.list-counter.at-limit .counter-value {
+  color: #c23b36;
+}
+
+/* Botón "Archivo": va a la izquierda del badge de listas. */
+.archive-button {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 11px;
+  color: #3a4761;
+  background: transparent;
+  border: 1px solid #dfe3ec;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.archive-button ion-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.archive-button:hover {
+  color: #1d2941;
+  background: #f3f5fa;
+  border-color: #cbd3e2;
+}
+
+.archive-button:active {
+  background: #e9edf6;
+  border-color: #bfc8da;
+}
+
+.archive-button:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
 }
 
 .avatar-icon {
@@ -547,19 +650,18 @@ ion-header {
   outline-offset: 2px;
 }
 
+/* El footer ya no está fijo al viewport: vive dentro de <ion-content>, al final del
+   contenido, así que solo aparece al llegar al final del scroll. */
 .app-footer {
-  z-index: 1;
-  flex: 0 0 var(--app-footer-height);
-  height: var(--app-footer-height);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  padding: 14px 16px calc(16px + var(--app-safe-area-bottom));
   color: #526075;
   background: var(--topbar-surface);
   border-top: 1px solid rgba(37, 51, 74, 0.12);
-  padding-bottom: var(--app-safe-area-bottom);
   font-size: 11px;
   font-weight: 600;
+  text-align: center;
 }
 
 .search-box {
@@ -591,6 +693,23 @@ ion-header {
   min-height: 26px;
   flex: 1;
   font-size: 11px;
+}
+
+/* Keycap del atajo ⌘K: solo macOS web y solo con el buscador vacío. */
+.search-keycap {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  color: #6f7789;
+  background: #f4f6fb;
+  border: 1px solid #e2e6ef;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  user-select: none;
 }
 
 .close-search-btn {
@@ -659,7 +778,8 @@ ion-header {
 .board-scroller {
   min-height: 100%;
   overflow: visible;
-  padding: 14px 6px 30px;
+  /* El padding inferior deja hueco al FAB flotante para que no tape la última lista. */
+  padding: 14px 6px 96px;
 }
 
 .current-date {
@@ -1233,7 +1353,7 @@ ion-header {
   /* El ripple es bounded: sin esto se sale del círculo de 60px. */
   overflow: hidden;
   right: 24px;
-  bottom: calc(var(--app-footer-height) + 10px);
+  bottom: calc(20px + var(--app-safe-area-bottom));
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -1288,7 +1408,7 @@ ion-header {
 .fab-panel {
   position: fixed;
   right: 24px;
-  bottom: calc(var(--app-footer-height) + 96px);
+  bottom: calc(96px + var(--app-safe-area-bottom));
   width: min(398px, calc(100vw - 32px));
   padding: 24px;
   color: #172236;
@@ -1709,15 +1829,60 @@ ion-header {
   .sync-conflict-actions button { flex-basis: 100%; }
 }
 
+/* Móviles estrechos: la marca se queda con el logo y el nombre, y el badge de versión
+   se oculta antes que el nombre para no provocar desbordamiento horizontal. */
+@media (max-width: 480px) {
+  .brand { gap: 7px; }
+  .brand-name { font-size: 14px; }
+  .version-badge { display: none; }
+  .archive-button { width: 28px; height: 28px; }
+  .list-counter { height: 28px; padding: 0 7px; }
+  .counter-value { font-size: 9px; }
+  .counter-caption { font-size: 7px; }
+  .search-keycap { display: none; }
+}
+
+/* La marca se mantiene con logo + nombre en cualquier ancho. Antes, por debajo de 380px
+   el nombre se ocultaba por completo (display:none), y como muchos Android miden 360px de
+   viewport CSS, la app y la web móvil Android se quedaban solo con el logo mientras iPhone
+   (390/393px) sí lo mostraba. Si el espacio llega a faltar, el propio .brand-name recorta
+   con puntos suspensivos en lugar de desaparecer. */
+
 @keyframes deleteDialogEnter {
   from { opacity: 0; transform: translateY(5px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Responsivo */
+/* Respeta safe areas y cabeceras de dos filas en pantallas de escritorio estrechas. */
+
+/* Escritorio estrecho (701–1159px): a este ancho no caben marca y acciones a los dos
+   lados del buscador centrado, así que el buscador baja a su propia fila a ancho
+   completo, igual que en móvil. Va antes del bloque de móvil para que ese siga mandando. */
+@media (min-width: 701px) and (max-width: 1159px) {
+  :host { --board-header-height: 106px; }
+  .toolbar-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    /* La segunda fila se dimensiona sola (auto) y el hueco real entre la marca y el
+       buscador lo aporta el gap de 6px, en vez de un margen que solo desplazaba el campo. */
+    grid-template-rows: minmax(40px, auto) auto;
+    gap: 6px 12px;
+  }
+  .brand { grid-column: 1; grid-row: 1; }
+  .toolbar-actions { grid-column: 2; grid-row: 1; }
+  .search-box {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    margin: 0;
+  }
+  .account-menu { top: var(--board-header-height); }
+}
+
+/* Respativo */
 @media (max-width: 700px) {
   :host { height: 100dvh; }
-  :host { --board-header-height: 106px; }
+  /* 15 + 40 (fila marca/acciones) + 5 (gap) + 29 (buscador) + 15 = 104px. */
+  :host { --board-header-height: 104px; }
   ion-header { flex-basis: auto; height: auto; }
   ion-toolbar.topbar {
     --min-height: 0;
@@ -1727,19 +1892,23 @@ ion-header {
   .toolbar-inner {
     height: auto;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: minmax(40px, auto) 36px;
-    gap: 0 8px;
-    padding: 0 12px;
+    /* Separación real de 5px entre la fila marca/acciones y el buscador. Antes el hueco
+       venía de un margen inferior, así que el buscador quedaba pegado a la marca. */
+    grid-template-rows: minmax(40px, auto) auto;
+    gap: 5px 8px;
+    /* Las safe areas laterales también en móvil: el notch no puede tapar los botones. */
+    padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
   }
   .brand { grid-column: 1; grid-row: 1; }
-  .brand-logo { width: 34px; height: 34px; }
+  .brand-logo { width: 34px; height: 34px; flex-basis: 34px; }
+  .brand-name { font-size: 15px; }
   .toolbar-actions { grid-column: 2; grid-row: 1; }
   .search-box {
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
     height: 29px;
-    margin: 0 0 3px;
+    margin: 0;
   }
   .account-menu {
     top: var(--board-header-height);
@@ -1755,24 +1924,33 @@ ion-header {
   .toolbar-actions {
     gap: 6px;
   }
+  /* "Archivo" pasa a solo ícono para no empujar el badge de listas. */
+  .archive-label { display: none; }
+  .archive-button {
+    width: 30px;
+    height: 30px;
+    justify-content: center;
+    padding: 0;
+  }
   .list-counter {
-    height: 21px;
-    gap: 4px;
-    padding: 0 6px;
-    font-size: 9px;
+    height: 30px;
+    gap: 5px;
+    padding: 0 8px;
   }
+  .counter-value { font-size: 10px; }
+  .counter-caption { font-size: 7px; letter-spacing: 0.7px; }
   .counter-ring {
-    width: 11px;
-    height: 11px;
-    flex-basis: 11px;
+    width: 13px;
+    height: 13px;
+    flex-basis: 13px;
   }
-  .counter-ring-center { width: 7px; height: 7px; }
+  .counter-ring-center { width: 8px; height: 8px; }
   .account-button { width: 26px; justify-content: center; padding: 1px; }
   .toolbar-user-name { display: none; }
   .avatar-image { width: 22px; height: 22px; }
   .avatar-icon { font-size: 24px; }
   .board-scroller {
-    padding: 10px 8px 24px;
+    padding: 10px 8px 88px;
   }
   .search-box ion-input {
     min-width: 0;
@@ -1781,14 +1959,14 @@ ion-header {
   .search-box { gap: 5px; padding-inline: 7px; }
   .fab-add-list {
     right: 16px;
-    bottom: calc(var(--app-footer-height) + 2px);
+    bottom: calc(18px + var(--app-safe-area-bottom));
     width: 54px;
     height: 54px;
   }
   .fab-panel {
     right: 16px;
     left: 16px;
-    bottom: calc(var(--app-footer-height) + 68px);
+    bottom: calc(84px + var(--app-safe-area-bottom));
     width: auto;
     padding: 22px;
   }

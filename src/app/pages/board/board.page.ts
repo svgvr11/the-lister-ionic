@@ -7,7 +7,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  add, checkmark, chevronDown, chevronForward, close, logOut,
+  add, archiveOutline, checkmark, chevronDown, chevronForward, close, logOut,
   trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
@@ -17,6 +17,7 @@ import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
+import { APP_VERSION_LABEL } from '../../core/app-version';
 import { purgeExpiredLists } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardOrderService } from '../../core/services/board-order.service';
@@ -69,6 +70,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   currentUserAvatarUrl = '';
   readonly authEnabled = this.auth.enabled;
   readonly themes = BOARD_THEMES;
+  /** Versión de la app, leída del único archivo donde está definida. */
+  readonly appVersionLabel = APP_VERSION_LABEL;
+  /**
+   * El keycap ⌘K y su atajo solo tienen sentido en el navegador de un Mac. En la app nativa
+   * (APK) no se registra ningún atajo, y en Windows/Linux tampoco aparece.
+   */
+  readonly showSearchShortcut = detectMacOsBrowser();
   /**
    * El color es de este dispositivo: se lee del almacenamiento local al construir la
    * pantalla, antes del primer pintado, así no sale el color equivocado un instante.
@@ -126,6 +134,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChildren('boardItem', { read: ElementRef })
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('searchInput', { read: IonInput })
+  private searchInput?: IonInput;
   @ViewChild('boardGrid', { read: ElementRef, static: false })
   private boardGrid?: ElementRef<HTMLElement>;
   private resizeObserver?: ResizeObserver;
@@ -135,7 +145,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
   constructor() {
-    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward});
+    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline});
   }
 
   ngOnInit(): void {
@@ -387,6 +397,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.router.navigateByUrl('/trash');
   }
 
+  /** Abre la pantalla de archivo de listas desde el botón del header. */
+  async openArchive(): Promise<void> {
+    this.accountMenuOpen = false;
+    await this.router.navigateByUrl('/archive');
+  }
+
   async logout(): Promise<void> {
     this.accountMenuOpen = false;
     await this.auth.signOut();
@@ -526,6 +542,27 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   toggleSearch(): void {
     this.searching = !this.searching;
     if (!this.searching) this.clearSearch();
+  }
+
+  /**
+   * Atajo ⌘K (solo macOS web): lleva el foco al buscador y selecciona lo que haya para
+   * poder escribir encima. Escape no se toca: sigue cerrando overlays y la búsqueda.
+   */
+  @HostListener('document:keydown', ['$event'])
+  onSearchShortcut(event: KeyboardEvent): void {
+    if (!this.showSearchShortcut) return;
+    if (!event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key.toLowerCase() !== 'k') return;
+    event.preventDefault();
+    this.focusSearch();
+  }
+
+  private focusSearch(): void {
+    this.searching = true;
+    const input = this.searchInput;
+    if (!input) return;
+    void input.setFocus();
+    void input.getInputElement().then((nativeInput) => nativeInput?.select());
   }
 
   closeSearch(): void {
@@ -950,3 +987,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 }
+
+/**
+ * Detecta el navegador de macOS. `userAgentData` es la API moderna y da la plataforma
+ * real ("macOS"); `navigator.platform` es la respaldo para navegadores antiguos. En la
+ * app nativa no se registra ningún atajo de teclado, así que devuelve false.
+ */
+function detectMacOsBrowser(): boolean {
+  if (typeof navigator === 'undefined' || Capacitor.isNativePlatform()) return false;
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform;
+  return /mac/i.test(platform ?? navigator.platform ?? '');
+}
+

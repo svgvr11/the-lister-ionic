@@ -9,17 +9,22 @@
           width="40"
           height="40"
         />
+        <span class="brand-name">The Lister</span>
+        <span class="version-badge" [attr.aria-label]="'Versión ' + appVersionLabel">{{ appVersionLabel }}</span>
       </div>
 
-      <label class="search-box" aria-label="Buscar en tus listas">
+      <label class="search-box" aria-label="Buscar listas o tareas">
         <ion-icon class="search-icon" name="search"></ion-icon>
         <ion-input
+          #searchInput
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()"
-          placeholder="Buscar en tus listas..."
+          placeholder="Buscar listas o tareas..."
           class="search-input"
           (keyup.escape)="closeSearch()"
         ></ion-input>
+        <!-- Atajo de teclado: solo en macOS web, y solo mientras el campo está vacío. -->
+        <kbd *ngIf="showSearchShortcut && !searchQuery.trim()" class="search-keycap" aria-hidden="true">⌘K</kbd>
         <button class="close-search-btn ion-activatable" type="button" (click)="closeSearch()" aria-label="Limpiar búsqueda">
           <ion-icon name="close"></ion-icon>
           <ion-ripple-effect></ion-ripple-effect>
@@ -27,11 +32,31 @@
       </label>
 
       <div class="toolbar-actions">
-        <div class="list-counter" role="status" [attr.aria-label]="board.lists.length + ' de 50 listas usadas'">
+        <button
+          class="archive-button ion-activatable"
+          type="button"
+          (click)="openArchive()"
+          aria-label="Abrir el archivo de listas"
+          title="Archivo"
+        >
+          <ion-icon name="archive-outline"></ion-icon>
+          <span class="archive-label">Archivo</span>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+
+        <div
+          class="list-counter"
+          role="status"
+          [class.at-limit]="isAtListLimit"
+          [attr.aria-label]="board.lists.length + ' de 50 listas usadas'"
+        >
           <span class="counter-ring" [style.--list-progress]="listProgress">
             <span class="counter-ring-center"></span>
           </span>
-          <span class="counter-label">{{ board.lists.length }} / 50 listas</span>
+          <span class="counter-text">
+            <span class="counter-value">{{ board.lists.length }} / 50</span>
+            <span class="counter-caption">Listas</span>
+          </span>
         </div>
 
         <div *ngIf="authEnabled" class="account-menu-wrap">
@@ -149,8 +174,6 @@
   </ion-refresher>
 
   <div *ngIf="loadingBoard" class="board-empty-state" role="status">Cargando tablero...</div>
-  <div *ngIf="boardError" class="board-error" role="alert">{{ boardError }}</div>
-  <div *ngIf="saveError" class="board-save-error" role="alert">{{ saveError }}</div>
   <div *ngIf="activeConflict && !conflictDialogOpen" class="sync-conflict-banner" role="status">
     <span>Hay cambios del tablero pendientes de resolver.</span>
     <button type="button" (click)="openConflictDialog()">Revisar conflicto</button>
@@ -473,9 +496,22 @@
       <p>No se encontraron listas que coincidan con &ldquo;<strong>{{ searchQuery }}</strong>&rdquo;</p>
     </div>
   </div>
+  </ng-container>
 
-  <div *ngIf="busy" class="saving-indicator">Guardando…</div>
+  <!-- El footer ya no está fijo al viewport: vive dentro de <ion-content>, al final del
+       contenido, así que solo aparece al llegar al final del scroll. -->
+  <footer class="app-footer">2026 SugarLabz / The Lister</footer>
+</ion-content>
 
+<!-- Overlays fixed a nivel de página. NO deben vivir dentro de <ion-content>: su scroller
+     interno (.inner-scroll, con will-change: scroll-position) actúa como containing block
+     en WebKit, así que un position:fixed dentro se mueve pegado al lienzo y desaparece
+     al hacer scroll en lugar de quedarse flotando sobre el viewport. -->
+<div *ngIf="boardError" class="board-error" role="alert">{{ boardError }}</div>
+<div *ngIf="saveError" class="board-save-error" role="alert">{{ saveError }}</div>
+<div *ngIf="busy" class="saving-indicator">Guardando…</div>
+
+<ng-container *ngIf="!loadingBoard && !boardError">
   <!-- ✨ Botón flotante (FAB) para añadir lista -->
   <button
     class="fab-add-list ion-activatable"
@@ -551,8 +587,7 @@
       </div>
     </form>
   </div>
-  </ng-container>
-</ion-content>
+</ng-container>
 
 <div
   *ngIf="activeConflict && conflictDialogOpen"
@@ -663,5 +698,3 @@
     </div>
   </section>
 </div>
-
-<footer class="app-footer">2026 SugarLabz / The Lister</footer>

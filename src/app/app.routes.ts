@@ -17,5 +17,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./pages/trash/trash.page').then((m) => m.TrashPage)
   },
+  {
+    path: 'archive',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/archive/archive.page').then((m) => m.ArchivePage)
+  },
   { path: '**', redirectTo: 'board' }
 ];

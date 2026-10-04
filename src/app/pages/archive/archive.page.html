@@ -1,0 +1,31 @@
+<ion-header>
+  <ion-toolbar class="topbar">
+    <div class="toolbar-inner">
+      <button class="back-btn ion-activatable" type="button" (click)="goBack()" aria-label="Volver al tablero">
+        <ion-icon name="chevron-back"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+      <h1 class="archive-title">Archivo</h1>
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="archive-content">
+  <!-- Estado vacío: el archivo todavía no guarda listas. -->
+  <section class="archive-empty" aria-live="polite">
+    <span class="archive-empty-icon" aria-hidden="true">
+      <ion-icon name="archive-outline"></ion-icon>
+    </span>
+    <h2 class="archive-empty-title">Aquí irán tus listas archivadas</h2>
+    <p class="archive-empty-subtitle">Próximamente.</p>
+    <button type="button" class="back-board-btn ion-activatable" (click)="goBack()">
+      <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
+      <span>Volver a Mi tablero</span>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+  </section>
+
+  <!-- El footer ya no está fijo al viewport: se lee al llegar al final del scroll. -->
+  <footer class="app-footer">2026 SugarLabz / The Lister</footer>
+</ion-content>
+
