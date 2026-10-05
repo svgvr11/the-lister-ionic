@@ -11,21 +11,182 @@
 </ion-header>
 
 <ion-content class="archive-content">
-  <!-- Estado vacío: el archivo todavía no guarda listas. -->
-  <section class="archive-empty" aria-live="polite">
-    <span class="archive-empty-icon" aria-hidden="true">
-      <ion-icon name="archive-outline"></ion-icon>
-    </span>
-    <h2 class="archive-empty-title">Aquí irán tus listas archivadas</h2>
-    <p class="archive-empty-subtitle">Próximamente.</p>
-    <button type="button" class="back-board-btn ion-activatable" (click)="goBack()">
-      <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
-      <span>Volver a Mi tablero</span>
-      <ion-ripple-effect></ion-ripple-effect>
-    </button>
+  <!-- Aviso de retención: siempre visible, incluso con el archivo vacío. -->
+  <section class="archive-notice" role="note">
+    <div class="archive-notice-copy">
+      <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+      <p>{{ retentionNotice }}</p>
+    </div>
   </section>
+
+  <div *ngIf="loading" class="archive-status" role="status">Cargando archivo...</div>
+  <div *ngIf="loadError" class="archive-error" role="alert">{{ loadError }}</div>
+  <div *ngIf="saveError" class="archive-error archive-save-error" role="alert">{{ saveError }}</div>
+  <!-- Aviso del límite de 50 listas: sale al pulsar "Restaurar lista" y la lista no se mueve. -->
+  <div *ngIf="restoreError" class="archive-error archive-save-error" role="alert">{{ restoreError }}</div>
+  <div *ngIf="busy" class="saving-indicator">Guardando…</div>
+
+  <ng-container *ngIf="!loading && !loadError">
+    <!-- Estado vacío + tarjeta de ayuda: solo cuando no hay ninguna lista archivada.
+         Van en un mismo bloque centrado para que la ayuda quede justo debajo del botón. -->
+    <section *ngIf="isEmpty" class="archive-empty-state" aria-live="polite">
+      <div class="archive-empty">
+        <span class="archive-empty-icon" aria-hidden="true">
+          <ion-icon name="archive-outline"></ion-icon>
+        </span>
+        <h2 class="archive-empty-title">No hay listas archivadas</h2>
+        <p class="archive-empty-subtitle">No has archivado listas recientemente.</p>
+        <button type="button" class="back-board-btn ion-activatable" (click)="goBack()">
+          <ion-icon name="arrow-back" aria-hidden="true"></ion-icon>
+          <span>Volver a Mi tablero</span>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+
+      <div class="archive-help" aria-label="Cómo funciona el Archivo">
+        <span class="archive-help-icon" aria-hidden="true">
+          <ion-icon name="help-circle-outline"></ion-icon>
+        </span>
+        <div class="archive-help-copy">
+          <h3>¿Cómo funciona el Archivo?</h3>
+          <p>{{ helpText }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Listas archivadas: cuenta atrás, tareas en solo lectura y acciones al pie. -->
+    <div *ngIf="!isEmpty" class="archive-grid">
+      <article
+        *ngFor="let entry of archivedLists"
+        class="archive-card"
+        [class.urgent-card]="isUrgent(entry)"
+        [style.--list-visual-color]="entry.list.visualColor"
+      >
+        <header class="archive-card-header">
+          <button
+            type="button"
+            class="collapse-button ion-activatable"
+            (click)="toggleCollapsed(entry.list.id)"
+            [attr.aria-label]="isCollapsed(entry.list.id) ? 'Expandir tareas' : 'Colapsar tareas'"
+            [attr.aria-expanded]="!isCollapsed(entry.list.id)"
+          >
+            <ion-icon [name]="isCollapsed(entry.list.id) ? 'chevron-forward' : 'chevron-down'"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
+
+          <!-- Título solo lectura: en el archivo no se edita nada. -->
+          <strong class="archive-card-title" [title]="entry.list.title">{{ entry.list.title }}</strong>
+
+          <span class="task-counter" [class.complete-counter]="isListComplete(entry.list)">
+            <span class="counter-status-dot" *ngIf="isListComplete(entry.list)" aria-hidden="true"></span>
+            {{ taskCounterLabel(entry.list) }}
+          </span>
+
+          <span
+            class="countdown-badge"
+            [ngClass]="urgencyClass(entry)"
+            role="status"
+            [attr.aria-label]="'Se elimina en ' + countdownLabel(entry)"
+          >
+            <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+            {{ countdownLabel(entry) }}
+          </span>
+        </header>
+
+        <div
+          *ngIf="!isCollapsed(entry.list.id)"
+          class="list-progress-track"
+          role="progressbar"
+          [attr.aria-valuenow]="completedTaskCount(entry.list)"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="entry.list.tasks.length"
+          [attr.aria-label]="'Progreso de ' + entry.list.title"
+        >
+          <span class="list-progress-fill" [style.width.%]="listProgressPercent(entry.list)"></span>
+        </div>
+
+        <!-- Todas las tareas, sin editar, sin marcar y sin arrastrar. -->
+        <div *ngIf="!isCollapsed(entry.list.id)" class="archive-tasks">
+          <div *ngFor="let task of pendingTasks(entry.list)" class="archive-task">
+            <span class="check-indicator" aria-hidden="true"></span>
+            <span class="task-text">{{ task.text }}</span>
+          </div>
+
+          <div *ngFor="let task of completedTasks(entry.list)" class="archive-task completed">
+            <span class="check-indicator checked" aria-hidden="true">
+              <ion-icon name="checkmark"></ion-icon>
+            </span>
+            <span class="task-text">{{ task.text }}</span>
+          </div>
+
+          <p *ngIf="entry.list.tasks.length === 0" class="archive-tasks-empty">Esta lista no tenía tareas.</p>
+        </div>
+
+        <footer class="archive-card-actions">
+          <button
+            type="button"
+            class="restore-btn ion-activatable"
+            (click)="restore(entry)"
+            [attr.title]="restoreBlockedHint"
+          >
+            <ion-icon name="arrow-undo-outline" aria-hidden="true"></ion-icon>
+            <span>Restaurar lista</span>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
+          <button type="button" class="delete-btn ion-activatable" (click)="requestDelete(entry)">
+            <ion-icon name="trash" aria-hidden="true"></ion-icon>
+            <span>Eliminar</span>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
+        </footer>
+      </article>
+    </div>
+  </ng-container>
 
   <!-- Pie común (estado de sincronización, copyright, enlaces legales y versión). -->
   <app-footer></app-footer>
 </ion-content>
+
+<!-- Confirmación del borrado definitivo; replica el diálogo del tablero y el basurero. -->
+<div
+  *ngIf="pendingAction"
+  class="archive-dialog-overlay"
+  (click)="cancelPendingAction()"
+  (keydown.escape)="cancelPendingAction()"
+>
+  <section
+    class="archive-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="archive-dialog-title"
+    aria-describedby="archive-dialog-description"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="archive-dialog-icon" aria-hidden="true">
+      <ion-icon name="trash"></ion-icon>
+    </div>
+    <h2 id="archive-dialog-title">{{ confirmTitle }}</h2>
+    <p id="archive-dialog-description">{{ confirmMessage }}</p>
+
+    <div *ngIf="confirmListTitle" class="archive-dialog-preview">
+      <span class="archive-dialog-preview-copy">
+        <strong>{{ confirmListTitle }}</strong>
+        <span>Lista archivada</span>
+      </span>
+    </div>
+
+    <div class="archive-dialog-actions">
+      <button type="button" class="archive-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
+        Cancelar
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+      <button type="button" class="archive-dialog-confirm ion-activatable" (click)="confirmPendingAction()">
+        <ion-icon name="trash" aria-hidden="true"></ion-icon>
+        Eliminar
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </div>
+  </section>
+</div>
+    <div *ngIf="!isEmpty" class="archive-grid">
 

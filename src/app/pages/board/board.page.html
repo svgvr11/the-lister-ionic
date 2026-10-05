@@ -48,7 +48,7 @@
           class="list-counter"
           role="status"
           [class.at-limit]="isAtListLimit"
-          [attr.aria-label]="board.lists.length + ' de 50 listas usadas'"
+          [attr.aria-label]="board.lists.length + ' de ' + maxBoardLists + ' listas usadas'"
         >
           <span class="counter-ring" [style.--list-progress]="listProgress">
             <span class="counter-ring-center"></span>
@@ -180,7 +180,7 @@
   </div>
 
   <ng-container *ngIf="!loadingBoard && !boardError">
-  <div class="board-scroller">
+  <div class="board-scroller" [class.board-scroller--fills]="board.lists.length === 0">
     <div class="current-date" aria-label="Fecha actual">
       <span class="date-indicator" aria-hidden="true"></span>
       <time [attr.datetime]="currentDateIso">{{ currentDateLabel }}</time>
@@ -299,13 +299,15 @@
             <ion-icon name="pencil"></ion-icon>
             <ion-ripple-effect></ion-ripple-effect>
           </button>
-          <!-- Las listas ya completas muestran el ícono de archivo, el mismo del botón Archivo
-               de la cabecera. La acción no cambia: sigue llevando la lista al basurero. -->
+          <!-- Las listas ya completas (100%) muestran el ícono de archivo y se ARCHIVAN;
+               las incompletas muestran el basurero y van allí. La clase `archiving`
+               tiñe el hover de verde para el archivo y el diálogo usa los mismos textos. -->
           <button
             class="delete-list-button ion-activatable"
-            (click)="requestDeleteList(list)"
-            aria-label="Mover al basurero"
-            title="Mover al basurero"
+            [class.archiving]="isListComplete(list)"
+            (click)="requestRemoveList(list)"
+            [attr.aria-label]="isListComplete(list) ? 'Archivar lista' : 'Mover al basurero'"
+            [title]="isListComplete(list) ? 'Archivar lista' : 'Mover al basurero'"
           >
             <ion-icon [name]="isListComplete(list) ? 'archive-outline' : 'trash'"></ion-icon>
             <ion-ripple-effect></ion-ripple-effect>
@@ -521,8 +523,8 @@
     [class.open]="addingList"
     [disabled]="isAtListLimit"
     (click)="toggleAddList()"
-    [attr.aria-label]="isAtListLimit ? 'Límite de 50 listas alcanzado' : 'Añadir lista'"
-    [title]="isAtListLimit ? 'Límite de 50 listas alcanzado' : 'Añadir lista'"
+    [attr.aria-label]="listLimitLabel"
+    [title]="listLimitLabel"
   >
     <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
     <ion-ripple-effect></ion-ripple-effect>
@@ -644,13 +646,14 @@
 </div>
 
 <div
-  *ngIf="listToDelete as list"
+  *ngIf="listToRemove as list"
   class="delete-list-overlay"
   (click)="cancelDeleteList()"
   (keydown.escape)="cancelDeleteList()"
 >
   <section
     class="delete-list-dialog"
+    [class.archiving]="isArchiving"
     role="dialog"
     aria-modal="true"
     aria-labelledby="delete-list-title"
@@ -658,13 +661,10 @@
     (click)="$event.stopPropagation()"
   >
     <div class="delete-list-icon" aria-hidden="true">
-      <ion-icon name="trash"></ion-icon>
+      <ion-icon [name]="removeDialogIcon"></ion-icon>
     </div>
-    <h2 id="delete-list-title">¿Deseas eliminar esta lista?</h2>
-    <p id="delete-list-description">
-      La lista se moverá al basurero y se eliminará permanentemente después de 7 días.
-      Mientras tanto podrás restaurarla desde el Basurero.
-    </p>
+    <h2 id="delete-list-title">{{ removeDialogTitle }}</h2>
+    <p id="delete-list-description">{{ removeDialogMessage }}</p>
 
     <div class="delete-list-preview">
       <span
@@ -694,8 +694,8 @@
         <ion-ripple-effect></ion-ripple-effect>
       </button>
       <button type="button" class="delete-list-confirm ion-activatable" (click)="confirmDeleteList()">
-        <ion-icon name="trash" aria-hidden="true"></ion-icon>
-        Eliminar lista
+        <ion-icon [name]="removeDialogIcon" aria-hidden="true"></ion-icon>
+        {{ removeDialogActionLabel }}
         <ion-ripple-effect></ion-ripple-effect>
       </button>
     </div>

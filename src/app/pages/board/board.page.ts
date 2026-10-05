@@ -19,7 +19,9 @@ import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
 import { APP_VERSION_LABEL } from '../../core/app-version';
-import { purgeExpiredLists } from '../../core/trash';
+import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
+import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
+import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
@@ -92,11 +94,19 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
 
   get listProgress(): string {
-    return `${Math.min(this.board.lists.length, 50) / 50 * 100}%`;
+    return `${Math.min(this.board.lists.length, MAX_BOARD_LISTS) / MAX_BOARD_LISTS * 100}%`;
   }
 
   get isAtListLimit(): boolean {
-    return this.board.lists.length >= 50;
+    return this.board.lists.length >= MAX_BOARD_LISTS;
+  }
+
+  /** Límite de listas del tablero, leído de la constante compartida. */
+  readonly maxBoardLists = MAX_BOARD_LISTS;
+
+  /** Texto del botón de añadir lista: avisa cuando el tablero ya está lleno. */
+  get listLimitLabel(): string {
+    return this.isAtListLimit ? `Límite de ${MAX_BOARD_LISTS} listas alcanzado` : 'Añadir lista';
   }
 
   @HostBinding('style.--board-bg') boardBackground = this.activeTheme.background;
@@ -129,7 +139,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   listTitleDraft = '';
   editingTaskId: string | null = null;
   taskTextDraft = '';
-  listToDelete: ChecklistList | null = null;
+  /** Lista a la que se le va a abrir el diálogo: se archiva si está completa, si no, al basurero. */
+  listToRemove: ChecklistList | null = null;
 
   private draggedTask: { listId: string; taskId: string } | null = null;
 
@@ -180,9 +191,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /** Publica el tablero recibido y descarta del basurero lo que ya cumplió los 7 días. */
+  /**
+   * Publica el tablero recibido y descarta lo que ya cumplió su plazo: del basurero a los
+   * 7 días y del archivo a los 60.
+   */
   private applyBoard(board: ChecklistBoard, persistNormalization = true): void {
     const purged = purgeExpiredLists(board);
+    const purgedArchive = purgeExpiredArchivedLists(board);
     this.board = board;
     // Un tablero sin pin (guardado antes de esta función) recibe la primera lista.
     const pinnedChanged = this.syncPinnedList();
@@ -195,7 +210,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.scheduleMasonryLayout();
     this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
-    if (persistNormalization && (purged || pinnedChanged)) void this.persist();
+    if (persistNormalization && (purged || purgedArchive || pinnedChanged)) void this.persist();
   }
 
   /**
@@ -697,8 +712,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return Math.round((this.completedTaskCount(list) / list.tasks.length) * 100);
   }
 
+  /** Una lista está terminada cuando tiene tareas y todas están marcadas. */
   isListComplete(list: ChecklistList): boolean {
-    return list.tasks.length > 0 && this.completedTaskCount(list) === list.tasks.length;
+    return isListComplete(list);
   }
 
   taskCounterLabel(list: ChecklistList): string {
@@ -760,19 +776,70 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.persist();
   }
 
-  requestDeleteList(list: ChecklistList): void {
-    this.listToDelete = list;
+  /**
+   * Archiva una lista 100% completa: sale del tablero y queda guardada 60 días en la
+   * pantalla de Archivo, desde donde se puede restaurar o eliminar para siempre.
+   * Mismo recorrido que el basurero (pin y orden de sesión se reajustan igual).
+   */
+  async moveListToArchive(list: ChecklistList): Promise<void> {
+    if (!archiveList(this.board, list)) return;
+    this.collapsed.delete(list.id);
+    this.expandedCompleted.delete(list.id);
+    this.reorderLists();
+    // Si se archivó la lista pinneada, el pin pasa a la siguiente del tablero.
+    this.syncPinnedList();
+    // La lista sale del orden de sesión; si se restaura, entra al final.
+    this.syncSessionOrder();
+    await this.persist();
+  }
+
+  /**
+   * El botón de la cabecera hace una cosa u otra según la lista: las completas se
+   * archivan (el ícono de bandeja lo indica) y las incompletas van al basurero.
+   */
+  requestRemoveList(list: ChecklistList): void {
+    this.listToRemove = list;
   }
 
   cancelDeleteList(): void {
-    this.listToDelete = null;
+    this.listToRemove = null;
   }
 
   async confirmDeleteList(): Promise<void> {
-    const list = this.listToDelete;
+    const list = this.listToRemove;
     if (!list) return;
-    this.listToDelete = null;
-    await this.moveListToTrash(list);
+    this.listToRemove = null;
+    if (this.isListComplete(list)) await this.moveListToArchive(list);
+    else await this.moveListToTrash(list);
+  }
+
+  /**
+   * Textos del diálogo de la cabecera. Se resuelven aquí para que la plantilla no repita
+   * la condición: una lista completa se archiva y una incompleta va al basurero.
+   */
+  get isArchiving(): boolean {
+    return this.listToRemove !== null && this.isListComplete(this.listToRemove);
+  }
+
+  get removeDialogTitle(): string {
+    return this.isArchiving ? '¿Archivar esta lista?' : '¿Deseas eliminar esta lista?';
+  }
+
+  get removeDialogMessage(): string {
+    if (this.isArchiving) {
+      return `La lista se moverá al archivo y se eliminará permanentemente después de ${ARCHIVE_RETENTION_DAYS} días. `
+        + 'Mientras tanto podrás restaurarla desde el Archivo.';
+    }
+    return `La lista se moverá al basurero y se eliminará permanentemente después de ${TRASH_RETENTION_DAYS} días. `
+      + 'Mientras tanto podrás restaurarla desde el Basurero.';
+  }
+
+  get removeDialogIcon(): string {
+    return this.isArchiving ? 'archive-outline' : 'trash';
+  }
+
+  get removeDialogActionLabel(): string {
+    return this.isArchiving ? 'Archivar lista' : 'Eliminar lista';
   }
 
   toggleCollapsed(listId: string): void {
@@ -948,7 +1015,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     });
 
     board.style.minHeight = '';
-    board.style.height = `${Math.max(...heights, 0)}px`;
+    // heights[column] ya incluye un GAP de separación detrás de la última tarjeta de cada
+    // columna, así que la altura real del tablero es esa suma menos ese hueco final. Sin
+    // restarlo, el pie queda ese GAP más abajo que el resto del diseño.
+    const occupied = Math.max(...heights, 0);
+    board.style.height = `${items.length > 0 ? Math.max(occupied - this.GAP, 0) : 0}px`;
   }
 
   /** Normaliza el orden estable guardado tras quitar una lista del tablero. */

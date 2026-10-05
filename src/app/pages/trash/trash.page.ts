@@ -12,6 +12,7 @@ import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } fr
 import { readStoredTheme } from '../../core/board-themes';
 import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
+import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 
@@ -46,6 +47,8 @@ export class TrashPage implements OnInit, OnDestroy {
   loading = true;
   loadError = '';
   saveError = '';
+  /** Aviso del límite de 50 listas al pulsar "Restaurar lista"; la lista no se mueve. */
+  restoreError = '';
   busy = false;
   collapsed = new Set<string>();
   /** Estado solo visual del toggle de completadas; en el basurero no se persiste. */
@@ -231,15 +234,31 @@ export class TrashPage implements OnInit, OnDestroy {
 
   // ── Acciones ─────────────────────────────────────────────────────────────
 
+  /**
+   * Restaura la lista al final del tablero conservando sus tareas y su estado.
+   *
+   * Con el tablero ya en el límite de listas no se mueve nada y se avisa: es preferible
+   * explicar el motivo a dejar el botón en gris sin explicación. La lista se queda en el
+   * basurero, así que no se pierde nada y se puede reintentar al liberar una lista.
+   */
   async restore(entry: ChecklistTrashedList): Promise<void> {
-    const restored: ChecklistList = { ...entry.list, position: this.board.lists.length };
-    this.board.lists = [...this.board.lists, restored];
+    this.restoreError = '';
+    if (!restoreListToBoard(this.board, entry.list)) {
+      this.restoreError = listLimitRestoreMessage();
+      return;
+    }
     this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
     await this.persist();
   }
 
+  /** El botón sigue siendo pulsable para poder explicar el bloqueo, pero avisa del límite. */
+  get restoreBlockedHint(): string {
+    return listLimitRestoreMessage();
+  }
+
   requestPurge(entry: ChecklistTrashedList): void {
+    this.restoreError = '';
     this.pendingAction = { kind: 'purge', entry };
   }
 

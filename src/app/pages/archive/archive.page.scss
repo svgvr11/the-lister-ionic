@@ -15,6 +15,10 @@
   --archive-ink: #172236;
   --archive-muted: #6b7383;
   --archive-placeholder: #9fa4a7;
+  --archive-restore-ink: #4a45cf;
+  --archive-restore-bg: #eef0ff;
+  --archive-danger-ink: #e11d48;
+  --archive-danger-bg: #ffeff2;
 }
 
 ion-header {
@@ -94,15 +98,115 @@ ion-content.archive-content {
   --background: var(--board-bg);
 }
 
+/* ── Tarjeta de ayuda (solo con el archivo vacío) ───────────────────────── */
+
+/* No ocupa todo el ancho: se limita a un poco más que el texto del estado vacío de
+   arriba y se centra, como en el diseño de referencia. Va pegada al bloque de arriba. */
+.archive-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: calc(100% - 32px);
+  max-width: 640px;
+  margin: 30px auto 0;
+  padding: 20px 22px;
+  text-align: left;
+  background: #eef1fb;
+  border: 1px solid #e2e6f6;
+  border-radius: 24px;
+  box-shadow: 0 2px 10px rgba(34, 47, 76, 0.05);
+}
+
+/* Mismo gris que el ícono grande de Archivo, para que ambos iconos sean de la misma familia. */
+.archive-help-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  color: #7f8aa0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(34, 47, 76, 0.08);
+}
+
+.archive-help-icon ion-icon {
+  font-size: 22px;
+}
+
+.archive-help-copy {
+  min-width: 0;
+}
+
+.archive-help-copy h3 {
+  margin: 0 0 8px;
+  color: var(--archive-ink);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+.archive-help-copy p {
+  margin: 0;
+  color: var(--archive-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ── Aviso de retención ────────────────────────────────────────────────── */
+
+.archive-notice {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid rgba(37, 51, 74, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.archive-notice-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--archive-muted);
+}
+
+.archive-notice-copy ion-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: #8a93a5;
+}
+
+.archive-notice-copy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* ── Estado vacío ──────────────────────────────────────────────────────── */
 
-.archive-empty {
+/* Estado vacío y tarjeta de ayuda se centran juntos como un solo bloque, para que la
+   ayuda quede pegada justo debajo del botón "Volver a Mi tablero" y no al pie de la pantalla. */
+.archive-empty-state {
   min-height: calc(100% - 54px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px 20px 60px;
+  padding: 30px 20px 40px;
+  text-align: center;
+}
+
+.archive-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -170,10 +274,516 @@ ion-content.archive-content {
   outline-offset: 2px;
 }
 
-/* En móvil el texto del estado vacío se reduce para no empujar el botón de vuelta. */
+/* ── Rejilla de listas archivadas ───────────────────────────────────────── */
+
+/* Misma maquetación que el basurero: 3 columnas en escritorio y 1 en móvil. */
+.archive-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+  padding: 18px 16px 30px;
+}
+
+.archive-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 14px 12px;
+  color: var(--archive-ink);
+  background: #fff;
+  border: 1px solid #edf0f6;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(34, 47, 76, 0.05);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Últimos 3 días: la lista completa se tiñe de rojo. */
+.archive-card.urgent-card {
+  background: #fff7f7;
+  border-color: #f5c6cc;
+  box-shadow: 0 4px 14px rgba(193, 30, 58, 0.12);
+}
+
+.archive-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 28px;
+}
+
+.collapse-button {
+  position: relative;
+  overflow: hidden;
+  width: 18px;
+  height: 22px;
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #526075;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.collapse-button:hover {
+  color: #283951;
+  background: #f1f4fa;
+}
+
+/* Título solo lectura: sin input ni lapicero, como pide el archivo. */
+.archive-card-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--archive-ink);
+  font-size: 15px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.urgent-card .archive-card-title {
+  color: #b4232f;
+}
+
+/* ── Badges: contador de tareas y cuenta atrás ─────────────────────────── */
+
+.task-counter {
+  min-width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  color: #26364d;
+  background: color-mix(in srgb, var(--list-visual-color, #5145e8) 18%, white);
+  border: 1px solid color-mix(in srgb, var(--list-visual-color, #5145e8) 28%, white);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.task-counter.complete-counter {
+  color: #087750;
+  background: #e0f0e9;
+  font-weight: 700;
+}
+
+.counter-status-dot {
+  width: 6px;
+  height: 6px;
+  background: #087750;
+  border-radius: 50%;
+}
+
+.countdown-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.countdown-badge ion-icon {
+  font-size: 11px;
+}
+
+/* Escalada de urgencia: gris → ámbar → rojo al acercarse el borrado. */
+.countdown-normal {
+  color: #526075;
+  background: #f1f4fa;
+  border-color: #e1e6f0;
+}
+
+.countdown-warning {
+  color: #8a5a08;
+  background: #fdf3dc;
+  border-color: #f4e0ae;
+}
+
+.countdown-danger {
+  color: var(--archive-danger-ink);
+  background: var(--archive-danger-bg);
+  border-color: #f6ccd5;
+  font-weight: 700;
+}
+
+.list-progress-track {
+  height: 5px;
+  overflow: hidden;
+  margin: 10px 0 12px;
+  background: #e7edfb;
+  border-radius: 999px;
+}
+
+.list-progress-fill {
+  display: block;
+  height: 100%;
+  background: #087750;
+  border-radius: inherit;
+  transition: width 0.24s ease;
+}
+
+/* ── Tareas en solo lectura ─────────────────────────────────────────────── */
+
+.archive-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+}
+
+.archive-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 22px;
+  padding: 2px 3px;
+  /* Las tareas nunca son editables en el archivo, así que van en tono placeholder. */
+  color: var(--archive-placeholder);
+}
+
+.check-indicator {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7dce8;
+  border-radius: 5px;
+  background: #fafbfd;
+  color: #fff;
+}
+
+.check-indicator.checked {
+  background: #c3c9d6;
+  border-color: #c3c9d6;
+}
+
+.check-indicator ion-icon {
+  font-size: 13px;
+}
+
+.archive-task .task-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Las completadas conservan el tachado, también en tono placeholder. */
+.archive-task.completed .task-text {
+  color: #b6bac3;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.6px;
+}
+
+.archive-tasks-empty {
+  margin: 0;
+  padding: 10px 0 4px;
+  color: var(--archive-placeholder);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Acciones al pie de la tarjeta ──────────────────────────────────────── */
+
+/* Sin borde superior: las acciones se separan del contenido solo con espacio. */
+.archive-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.archive-card-actions button {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.archive-card-actions button ion-icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.restore-btn {
+  color: var(--archive-restore-ink);
+  background: var(--archive-restore-bg);
+  border-color: #dcdcfb !important;
+}
+
+.restore-btn:hover {
+  background: #e2e4ff;
+  border-color: #c7c9f6 !important;
+}
+
+.delete-btn {
+  color: var(--archive-danger-ink);
+  background: var(--archive-danger-bg);
+  border-color: #f6ccd5 !important;
+}
+
+.delete-btn:hover {
+  background: #ffe1e6;
+  border-color: #f0aebb !important;
+}
+
+/* ── Diálogo de confirmación ────────────────────────────────────────────── */
+
+.archive-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(26, 33, 48, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.archive-dialog {
+  width: min(100%, 420px);
+  padding: 18px 16px 14px;
+  color: var(--archive-ink);
+  background: #fff;
+  border: 1px solid #e9ecf2;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  text-align: center;
+  animation: archiveDialogEnter 0.16s ease-out;
+}
+
+@keyframes archiveDialogEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.archive-dialog-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+  color: var(--archive-danger-ink);
+  background: #fff1f3;
+  border-radius: 50%;
+}
+
+.archive-dialog-icon ion-icon {
+  font-size: 19px;
+}
+
+.archive-dialog h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.archive-dialog > p {
+  max-width: 330px;
+  margin: 5px auto 12px;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.archive-dialog-preview {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  text-align: left;
+  background: #f5f7fc;
+  border: 1px solid #e4e8f1;
+  border-radius: 9px;
+}
+
+.archive-dialog-preview-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.archive-dialog-preview-copy strong,
+.archive-dialog-preview-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-dialog-preview-copy strong {
+  color: #25334a;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.archive-dialog-preview-copy > span {
+  color: #737d8e;
+  font-size: 9px;
+}
+
+.archive-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.archive-dialog-actions button {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 34px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.archive-dialog-cancel {
+  color: #303b4e;
+  background: #fff;
+}
+
+.archive-dialog-cancel:hover {
+  background: #f6f7fa;
+}
+
+.archive-dialog-confirm {
+  color: #fff;
+  background: var(--archive-danger-ink);
+  border-color: var(--archive-danger-ink) !important;
+}
+
+.archive-dialog-confirm:hover {
+  background: #be123c;
+}
+
+.archive-dialog-confirm ion-icon {
+  font-size: 13px;
+}
+
+/* ── Estados de carga y error ───────────────────────────────────────────── */
+
+.archive-status {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: #25334a;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.archive-error {
+  position: fixed;
+  z-index: 250;
+  left: 50%;
+  width: min(560px, calc(100% - 32px));
+  padding: 14px 16px;
+  color: #762d32;
+  background: #fff0f0;
+  border: 1px solid #e7bfc2;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(24, 38, 64, 0.16);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.archive-error { top: calc(96px + var(--app-safe-area-top)); }
+.archive-save-error { top: auto; bottom: calc(24px + var(--app-safe-area-bottom)); }
+
+.saving-indicator {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + var(--app-safe-area-bottom));
+  padding: 8px 12px;
+  color: #fff;
+  background: #111827;
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+/* En tablets la rejilla pasa a dos columnas antes de colapsar a una en móvil. */
+@media (max-width: 1100px) {
+  .archive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 700px) {
+  ion-header { flex-basis: auto; height: auto; }
+  .toolbar-inner { padding: 0 12px; }
   .archive-title { font-size: 20px; }
-  .archive-empty { padding: 20px 16px 40px; }
+
+  /* En móvil el texto del estado vacío se reduce para no empujar el botón de vuelta. */
+  .archive-empty { padding: 20px 16px 16px; }
   .archive-empty-title { font-size: 17px; }
   .archive-empty-subtitle { font-size: 12px; }
+
+  /* En móvil el aviso ocupa todo el ancho para que el texto no quede apretado. */
+  .archive-notice { padding: 11px 12px; }
+
+  .archive-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px 12px 26px;
+  }
+
+  /* En móvil la tarjeta se separa algo menos del bloque de arriba. */
+  .archive-empty-state { padding: 20px 16px 34px; }
+  .archive-help { width: calc(100% - 24px); margin: 24px auto 0; }
+  .archive-error { top: calc(92px + var(--app-safe-area-top)); }
+}
+
+/* En pantallas muy estrechas los dos botones se apilan para que ninguno recorte su texto. */
+@media (max-width: 380px) {
+  .archive-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

@@ -21,6 +21,9 @@
   --board-header-height: calc(70px + var(--app-safe-area-top));
   /* El FAB es fijo abajo a la derecha: el pie deja libre su esquina para no taparse. */
   --app-footer-end-inset: 96px;
+  /* Separación vertical entre bloques del tablero. La comparten el título con las listas y
+     las listas con el pie, para que el tablero respire siempre igual. */
+  --board-section-gap: 18px;
 }
 
 /* Sin ion-button, el ion-ripple-effect solo hereda el color del botón. Esta
@@ -92,7 +95,7 @@ ion-header {
   display: flex;
   align-items: center;
   min-width: 0;
-  margin: 0 15px 18px;
+  margin: 0 15px var(--board-section-gap);
 }
 
 .brand {
@@ -764,10 +767,17 @@ ion-header {
 }
 
 .board-scroller {
-  min-height: 100%;
   overflow: visible;
-  /* El padding inferior deja hueco al FAB flotante para que no tape la última lista. */
-  padding: 14px 6px 96px;
+  /* Abajo solo va la separación del diseño: el hueco del FAB ya lo reserva el propio
+     pie con --app-footer-end-inset, que es lo que queda al final del scroll. */
+  padding: 14px 6px var(--board-section-gap);
+}
+
+/* Sin listas, el bloque sí ocupa la pantalla entera para que el mensaje de "añade una
+   lista" quede centrado. Con listas NO se estira: si se estirara, el pie quedaría a la
+   altura de la pantalla en vez de a --board-section-gap de la última lista. */
+.board-scroller--fills {
+  min-height: 100%;
 }
 
 .current-date {
@@ -1059,9 +1069,16 @@ ion-header {
   border-radius: 50%;
 }
 
+/* El rojo es la acción destructiva (basurero). */
 .delete-list-button:hover {
   color: #bf4e58;
   background: #fff0f0;
+}
+
+/* Archivar no destruye trabajo: es una acción positiva, así que su hover es verde. */
+.delete-list-button.archiving:hover {
+  color: #0a7a4a;
+  background: #e6f5ec;
 }
 
 .list-progress-track {
@@ -1760,6 +1777,27 @@ ion-header {
   font-size: 13px;
 }
 
+/* Al archivar, el ícono y el botón de confirmación pasan a verde: no se pierde trabajo,
+   la lista solo se guarda 60 días y siempre se puede restaurar. */
+.delete-list-dialog.archiving .delete-list-icon {
+  color: #0a7a4a;
+  background: #e6f5ec;
+}
+
+.delete-list-dialog.archiving .delete-list-confirm {
+  background: #0a7a4a;
+  border-color: #0a7a4a !important;
+}
+
+.delete-list-dialog.archiving .delete-list-confirm:hover {
+  background: #076238;
+}
+
+.delete-list-dialog.archiving .delete-list-preview {
+  background: #f2f9f5;
+  border-color: #d8ece0;
+}
+
 .sync-conflict-dialog {
   width: min(100%, 460px);
 }
@@ -1870,7 +1908,7 @@ ion-header {
 @media (max-width: 700px) {
   :host { height: 100dvh; }
   /* 15 + 40 (fila marca/acciones) + 5 (gap) + 29 (buscador) + 15 = 104px. */
-  :host { --board-header-height: 104px; }
+  :host { --board-header-height: 104px; --board-section-gap: 14px; }
   ion-header { flex-basis: auto; height: auto; }
   ion-toolbar.topbar {
     --min-height: 0;
@@ -1907,7 +1945,7 @@ ion-header {
     font-size: 24px;
   }
   .board-title-block {
-    margin: 0 8px 14px;
+    margin: 0 8px var(--board-section-gap);
   }
   .toolbar-actions {
     gap: 6px;
@@ -1938,7 +1976,7 @@ ion-header {
   .avatar-image { width: 22px; height: 22px; }
   .avatar-icon { font-size: 24px; }
   .board-scroller {
-    padding: 10px 8px 88px;
+    padding: 10px 8px var(--board-section-gap);
   }
   .search-box ion-input {
     min-width: 0;

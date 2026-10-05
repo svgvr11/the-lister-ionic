@@ -9,6 +9,7 @@
     "test:board-merge": "node --experimental-strip-types scripts/test-board-merge.mjs",
     "test:session-order": "node --experimental-strip-types scripts/test-session-order.mjs",
     "test:board-theme": "node --experimental-strip-types scripts/test-board-theme.mjs",
+    "test:archive": "node --experimental-strip-types scripts/test-archive.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

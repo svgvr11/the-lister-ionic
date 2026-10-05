@@ -23,6 +23,16 @@ export interface ChecklistTrashedList {
   deletedAt: string;
 }
 
+/**
+ * Lista archivada: sale del tablero ya terminada (100% completa) y se conserva en el
+ * archivo junto a la fecha en que se archivó. Es la misma forma que la del basurero,
+ * con su propio plazo de conservación.
+ */
+export interface ChecklistArchivedList {
+  list: ChecklistList;
+  archivedAt: string;
+}
+
 export interface ChecklistBoard {
   id: string;
   title: string;
@@ -35,4 +45,6 @@ export interface ChecklistBoard {
   pinnedListId?: string | null;
   /** Opcional para que los tableros ya guardados (sin basurero) sigan cargando sin migración. */
   trashedLists?: ChecklistTrashedList[];
+  /** Opcional para que los tableros ya guardados (sin archivo) sigan cargando sin migración. */
+  archivedLists?: ChecklistArchivedList[];
 }

@@ -119,7 +119,12 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     const localBoard = structuredClone(board);
     const savedVersion = await this.updateBoard(localBoard, userId, baseVersion);
     if (savedVersion) {
-      this.recordSavedBoard(localBoard, savedVersion);
+      // Se publica también en la ruta directa (y no solo al fusionar). Sin esto el tablero
+      // guardado se queda solo en `lastKnownBoard`: la página que ya estaba montada (el
+      // tablero, al archivar) lo tiene de memoria, pero cualquier OTRA página que se monte
+      // después —el Archivo, el Basurero o el propio tablero al volver— se suscribe a este
+      // BehaviorSubject y recibiría la versión anterior, con la lista todavía en su sitio.
+      this.recordSavedBoard(localBoard, savedVersion, true);
       this.conflictSubject.next(null);
       return;
     }
