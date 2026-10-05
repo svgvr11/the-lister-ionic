@@ -141,6 +141,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   taskTextDraft = '';
   /** Lista a la que se le va a abrir el diálogo: se archiva si está completa, si no, al basurero. */
   listToRemove: ChecklistList | null = null;
+  /** Se enciende mientras el diálogo de archivar ejecuta una de sus acciones: deja los tres
+   *  botones deshabilitados para que un doble clic no dispare dos acciones sobre la misma
+   *  lista. El diálogo del basurero no lo usa y sigue con su comportamiento de siempre. */
+  removeDialogBusy = false;
+  /** Botón del tablero que abrió el diálogo de archivar, para devolverle el foco al cerrar. */
+  private removeDialogOpener: HTMLElement | null = null;
 
   private draggedTask: { listId: string; taskId: string } | null = null;
 
@@ -148,6 +154,19 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
   @ViewChild('searchInput', { read: IonInput })
   private searchInput?: IonInput;
+  /**
+   * Botón principal del diálogo de archivar. Se resuelve como setter porque el diálogo vive
+   * dentro de un `*ngIf`: así el foco entra en cuanto el nodo existe, sin `autofocus` (que
+   * depende del orden de pintado y no es fiable) ni de temporizadores que puedan quedar vivos.
+   */
+  @ViewChild('removeDialogPrimary', { read: ElementRef })
+  private set removeDialogPrimary(ref: ElementRef<HTMLButtonElement> | undefined) {
+    // Al cerrarse el diálogo el setter vuelve a recibir undefined: se suelta la referencia
+    // para que ningún clic posterior pueda devolver el foco a un nodo ya desmontado.
+    this.removeDialogPrimaryElement = ref?.nativeElement ?? null;
+    if (ref) this.focusRemoveDialogPrimary();
+  }
+  private removeDialogPrimaryElement: HTMLButtonElement | null = null;
   @ViewChild('boardGrid', { read: ElementRef, static: false })
   private boardGrid?: ElementRef<HTMLElement>;
   private resizeObserver?: ResizeObserver;
@@ -796,21 +815,103 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /**
    * El botón de la cabecera hace una cosa u otra según la lista: las completas se
    * archivan (el ícono de bandeja lo indica) y las incompletas van al basurero.
+   * Se guarda el botón que lo abrió (`event.currentTarget`, no `event.target`, que puede
+   * ser el <ion-icon> que hay dentro) para devolverle el foco al cerrar el diálogo.
    */
-  requestRemoveList(list: ChecklistList): void {
+  requestRemoveList(list: ChecklistList, event?: Event | null): void {
+    // Con el diálogo de sincronización abierto no se apila un segundo overlay encima.
+    if (this.conflictDialogOpen) return;
     this.listToRemove = list;
+    const opener = event?.currentTarget;
+    this.removeDialogOpener = opener instanceof HTMLElement ? opener : null;
   }
 
   cancelDeleteList(): void {
-    this.listToRemove = null;
+    if (this.removeDialogBusy) return;
+    this.closeRemoveDialog();
   }
 
   async confirmDeleteList(): Promise<void> {
     const list = this.listToRemove;
-    if (!list) return;
-    this.listToRemove = null;
+    if (!list || this.removeDialogBusy) return;
+    this.closeRemoveDialog();
     if (this.isListComplete(list)) await this.moveListToArchive(list);
     else await this.moveListToTrash(list);
+  }
+
+  /**
+   * "Archivar lista" del diálogo de una lista completa: el recorrido es exactamente el de
+   * `confirmDeleteList`, pero explícito para que el botón no dependa de que la lista siga
+   * siendo completa en el momento de pulsar.
+   */
+  async archiveListFromDialog(): Promise<void> {
+    await this.runRemoveDialogAction((list) => this.moveListToArchive(list));
+  }
+
+  /**
+   * "Eliminar" del diálogo de una lista completa: mueve la lista al BASURERO con la misma
+   * `moveListToTrash` que usa el botón de la cabecera, no la duplica. No es un borrado
+   * definitivo: la lista se puede restaurar durante `TRASH_RETENTION_DAYS` días.
+   */
+  async trashListFromDialog(): Promise<void> {
+    await this.runRemoveDialogAction((list) => this.moveListToTrash(list));
+  }
+
+  /**
+   * Ejecuta una acción del diálogo de archivar. `removeDialogBusy` deja los tres botones
+   * deshabilitados mientras dura, así que por apertura del diálogo solo sale una acción:
+   * un doble clic en "Archivar lista" o en "Eliminar" no mueve la lista dos veces.
+   */
+  private async runRemoveDialogAction(run: (list: ChecklistList) => Promise<void>): Promise<void> {
+    const list = this.listToRemove;
+    if (!list || this.removeDialogBusy) return;
+    this.removeDialogBusy = true;
+    this.closeRemoveDialog();
+    try {
+      await run(list);
+    } finally {
+      this.removeDialogBusy = false;
+    }
+  }
+
+  /** Cierra el diálogo de archivar y devuelve el foco al botón de la lista que lo abrió. */
+  private closeRemoveDialog(): void {
+    this.listToRemove = null;
+    const opener = this.removeDialogOpener;
+    this.removeDialogOpener = null;
+    // Tras archivar o mover al basurero la tarjeta ya no existe en el tablero: el botón
+    // quedó desconectado y no hay a quién devolverle el foco.
+    if (opener?.isConnected) opener.focus();
+  }
+
+  /**
+   * El foco entra en el diálogo por la acción principal y segura ("Archivar lista"), no por
+   * "Eliminar". Solo se aplica al diálogo de archivar: el del basurero conserva su `autofocus`
+   * en "Cancelar" de siempre.
+   */
+  private focusRemoveDialogPrimary(): void {
+    this.removeDialogPrimaryElement?.focus();
+  }
+
+  /**
+   * Mantiene el foco dentro del diálogo: Tab recorre sus botones en orden y al llegar al
+   * último vuelve al primero (y al revés con Shift+Tab), sin salirse a la página de detrás.
+   */
+  keepFocusInsideRemoveDialog(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement | null;
+    const buttons = dialog?.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+    if (!buttons || buttons.length < 2) return;
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !dialog?.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !dialog?.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   /**
@@ -840,6 +941,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   get removeDialogActionLabel(): string {
     return this.isArchiving ? 'Archivar lista' : 'Eliminar lista';
+  }
+
+  /**
+   * title y aria-label de "Eliminar": aclaran que la lista va al BASURERO y no se borra,
+   * con el plazo de restauración tomado de la constante del basurero.
+   */
+  get removeDialogTrashHint(): string {
+    return `Mover al basurero (se puede restaurar durante ${TRASH_RETENTION_DAYS} días)`;
   }
 
   toggleCollapsed(listId: string): void {

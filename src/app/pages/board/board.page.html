@@ -305,7 +305,7 @@
           <button
             class="delete-list-button ion-activatable"
             [class.archiving]="isListComplete(list)"
-            (click)="requestRemoveList(list)"
+            (click)="requestRemoveList(list, $event)"
             [attr.aria-label]="isListComplete(list) ? 'Archivar lista' : 'Mover al basurero'"
             [title]="isListComplete(list) ? 'Archivar lista' : 'Mover al basurero'"
           >
@@ -659,6 +659,7 @@
     aria-labelledby="delete-list-title"
     aria-describedby="delete-list-description"
     (click)="$event.stopPropagation()"
+    (keydown)="keepFocusInsideRemoveDialog($event)"
   >
     <div class="delete-list-icon" aria-hidden="true">
       <ion-icon [name]="removeDialogIcon"></ion-icon>
@@ -688,7 +689,48 @@
       </span>
     </div>
 
-    <div class="delete-list-actions">
+    <!-- Lista 100% completa: tres acciones. Cancelar y Eliminar comparten la fila de arriba
+         a igual ancho y "Archivar lista" ocupa el ancho completo debajo. El foco entra por
+         la principal, la única que no se puede repetir en un clic. Mismo orden en móvil. -->
+    <div *ngIf="isArchiving" class="delete-list-actions delete-list-actions-archiving">
+      <div class="delete-list-actions-row">
+        <button
+          type="button"
+          class="delete-list-cancel ion-activatable"
+          [disabled]="removeDialogBusy"
+          (click)="cancelDeleteList()"
+        >
+          Cancelar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button
+          type="button"
+          class="delete-list-trash ion-activatable"
+          [disabled]="removeDialogBusy"
+          [title]="removeDialogTrashHint"
+          [attr.aria-label]="removeDialogTrashHint"
+          (click)="trashListFromDialog()"
+        >
+          <ion-icon name="trash" aria-hidden="true"></ion-icon>
+          Eliminar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+      <button
+        #removeDialogPrimary
+        type="button"
+        class="delete-list-confirm delete-list-confirm-wide ion-activatable"
+        [disabled]="removeDialogBusy"
+        (click)="archiveListFromDialog()"
+      >
+        <ion-icon [name]="removeDialogIcon" aria-hidden="true"></ion-icon>
+        {{ removeDialogActionLabel }}
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </div>
+
+    <!-- Lista incompleta: el diálogo de siempre, con sus dos acciones. -->
+    <div *ngIf="!isArchiving" class="delete-list-actions">
       <button type="button" class="delete-list-cancel ion-activatable" autofocus (click)="cancelDeleteList()">
         Cancelar
         <ion-ripple-effect></ion-ripple-effect>

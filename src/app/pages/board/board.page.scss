@@ -1735,6 +1735,28 @@ ion-header {
   margin-top: 12px;
 }
 
+/* Al archivar hay tres acciones: Cancelar y Eliminar comparten la fila de arriba a igual
+   ancho y "Archivar lista" baja a una fila propia a ancho completo. El contenedor apila las
+   dos filas y el botón principal deja de repartirse el ancho con los otros dos. */
+.delete-list-actions-archiving {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.delete-list-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Los dos botones de la fila miden igual y reparten el ancho sin desbordar: `min-width: 0`
+   y el wrap del texto dejan que "Cancelar" baje de línea antes de salirse en 320px. */
+.delete-list-actions-row button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.3;
+}
+
 .delete-list-actions button {
   position: relative;
   overflow: hidden;
@@ -1752,6 +1774,16 @@ ion-header {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.delete-list-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-list-actions button:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
 }
 
 .delete-list-cancel {
@@ -1775,6 +1807,32 @@ ion-header {
 
 .delete-list-confirm ion-icon {
   font-size: 13px;
+}
+
+/* "Eliminar" lleva el rojo del basurero en tono suave: los mismos colores que ya usa el
+   diálogo (#fff1f3 de fondo, #be123c de texto y #e11d48 diluido para el borde), para que se
+   lea como alternativa y no compita con la acción principal de abajo. */
+.delete-list-trash {
+  color: #be123c;
+  background: #fff1f3;
+  border-color: color-mix(in srgb, #e11d48 26%, #fff) !important;
+}
+
+.delete-list-trash:hover {
+  background: color-mix(in srgb, #e11d48 14%, #fff);
+}
+
+.delete-list-trash ion-icon {
+  font-size: 13px;
+}
+
+/* En la columna de arriba, `flex: 1` de los botones genéricos repartiría la ALTURA entre las
+   dos filas. El principal se queda con su alto mínimo y ocupa el ancho completo. */
+.delete-list-confirm-wide {
+  flex: 0 0 auto;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 /* Al archivar, el ícono y el botón de confirmación pasan a verde: no se pierde trabajo,
@@ -1877,6 +1935,13 @@ ion-header {
 @keyframes deleteDialogEnter {
   from { opacity: 0; transform: translateY(5px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* El diálogo aparece sin animación si el sistema pide menos movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .delete-list-dialog {
+    animation: none;
+  }
 }
 
 /* Respeta safe areas y cabeceras de dos filas en pantallas de escritorio estrechas. */
