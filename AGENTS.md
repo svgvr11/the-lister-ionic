@@ -2,22 +2,10 @@
 
 ## Versión (obligatorio)
 
-Antes de empezar cualquier cambio, ejecuta `git status --porcelain`. Si el árbol está
-limpio (sin archivos modificados ni nuevos sin seguir; los ignorados por `.gitignore` no
-cuentan), ejecuta `npm run version:bump` como **PRIMERA acción**. Solo sube la versión
-una vez por cada paso de limpio a con cambios: si ya hay cambios sin commitear, no la
-subas otra vez.
+Versionado (formato `MAYOR.FEATURE.BUILD-a`, p. ej. `v1.9.5-a`). Al comienzo de cada petición del usuario que vaya a modificar código, ejecuta `npm run version:bump` UNA vez, antes de editar nada; el script decide solo según el estado del árbol (limpio: sube FEATURE y pone BUILD en 0; con cambios: sube BUILD). No lo ejecutes para preguntas, revisiones ni tareas que no cambien archivos, ni más de una vez por petición. MAYOR solo sube si el usuario lo pide explícitamente: `npm run version:bump -- --major`. La versión se lee siempre de `src/app/core/app-version.ts`; nunca se escribe a mano en plantillas ni en otros archivos, y nunca se edita a mano salvo para migraciones pedidas por el usuario.
 
-La versión se lee siempre de `src/app/core/app-version.ts`; nunca se escribe a mano en
-plantillas ni en otros archivos. La interfaz muestra `APP_VERSION_LABEL` (con la "v"
-delante), y las plantillas nunca llevan un "v1.x" escrito a mano.
+Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)", `--major` sube MAYOR (deja FEATURE y BUILD en 0). Pruebas: `npm run test:version`.
 
-`npm run version:bump` sube solo el número menor y conserva el sufijo
-(1.9-alpha → 1.10-alpha → 1.11-alpha). No toca `package.json` ni el proyecto de Android:
-`android/app/build.gradle` sigue siendo la fuente de la versión de Google Play.
+## Otras fuentes de versión (todas derivados en un paso posterior)
 
-## Other sources of version (English quick note)
-
-`package.json` has a `version` field and `android/app/build.gradle` has `versionName` /
-`versionCode`. Neither is the app version: the single source of truth is
-`src/app/core/app-version.ts`.
+`package.json` (`version`), `android/app/build.gradle` (`versionName` / `versionCode`) y `capacitor.config.ts` (que no tiene campo de versión) NO son la versión de la app: la única fuente de verdad es `src/app/core/app-version.ts`. No los edites a mano ni los uses para mostrar la versión; se derivarán de ella más adelante.
