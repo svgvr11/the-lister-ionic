@@ -17,6 +17,22 @@
       <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
       <p>{{ retentionNotice }}</p>
     </div>
+
+    <!-- Ayuda del archivo: solo con listas archivadas. Con el archivo vacío no se renderiza
+         (la tarjeta del estado vacío ya lo explica) y así la banda no salta de altura. -->
+    <button
+      #helpButton
+      *ngIf="!isEmpty"
+      type="button"
+      class="archive-notice-help ion-activatable"
+      aria-label="Cómo funciona el Archivo"
+      title="Cómo funciona el Archivo"
+      aria-haspopup="dialog"
+      (click)="openHelp()"
+    >
+      <ion-icon name="help-circle-outline" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
   </section>
 
   <div *ngIf="loading" class="archive-status" role="status">Cargando archivo...</div>
@@ -142,9 +158,6 @@
       </article>
     </div>
   </ng-container>
-
-  <!-- Pie común (estado de sincronización, copyright, enlaces legales y versión). -->
-  <app-footer></app-footer>
 </ion-content>
 
 <!-- Confirmación del borrado definitivo; replica el diálogo del tablero y el basurero. -->
@@ -188,5 +201,63 @@
     </div>
   </section>
 </div>
-    <div *ngIf="!isEmpty" class="archive-grid">
+
+<!-- Guía del archivo: replica el diálogo del tablero (fondo, tarjeta, radios, sombra y
+     animación) y toma los colores del tema activo a través de --accent. Solo se abre con
+     listas archivadas; nunca a la vez que el diálogo de eliminar. -->
+<div
+  *ngIf="helpOpen"
+  class="archive-dialog-overlay"
+  (click)="closeHelp()"
+  (keydown.escape)="closeHelp()"
+>
+  <section
+    #helpDialog
+    class="archive-dialog archive-help-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="archive-help-title"
+    aria-describedby="archive-help-description"
+    (click)="$event.stopPropagation()"
+    (keydown)="keepFocusInHelp($event)"
+  >
+    <div class="archive-help-header">
+      <span class="archive-help-header-icon" aria-hidden="true">
+        <ion-icon name="help-circle-outline"></ion-icon>
+      </span>
+      <div class="archive-help-header-copy">
+        <h2 id="archive-help-title">¿Cómo funciona el Archivo?</h2>
+        <p class="archive-help-subtitle">Guía y retención de listas</p>
+      </div>
+      <button
+        type="button"
+        class="archive-help-close ion-activatable"
+        aria-label="Cerrar"
+        (click)="closeHelp()"
+      >
+        <ion-icon name="close" aria-hidden="true"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </div>
+
+    <p id="archive-help-description" class="archive-help-body">{{ helpModalText }}</p>
+
+    <p class="archive-help-note">
+      <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+      <span>{{ helpCounterNote }}</span>
+    </p>
+
+    <div class="archive-help-actions">
+      <button
+        #helpPrimary
+        type="button"
+        class="archive-help-confirm ion-activatable"
+        (click)="closeHelp()"
+      >
+        Entendido
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </div>
+  </section>
+</div>
 

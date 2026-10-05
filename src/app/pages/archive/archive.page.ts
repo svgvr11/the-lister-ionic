@@ -1,16 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostBinding, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  Component, ElementRef, HostBinding, HostListener, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  archiveOutline, arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown, chevronForward,
-  helpCircleOutline, timeOutline, trash
+  archiveOutline, arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown,
+  chevronForward, close, helpCircleOutline, timeOutline, trash
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { readStoredTheme } from '../../core/board-themes';
-import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists
 } from '../../core/archive';
@@ -32,7 +33,7 @@ type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };
 @Component({
   selector: 'app-archive',
   standalone: true,
-  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, AppFooterComponent],
+  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar],
   templateUrl: './archive.page.html',
   styleUrls: ['./archive.page.scss']
 })
@@ -41,6 +42,7 @@ export class ArchivePage implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly navController = inject(NavController);
+  private readonly injector = inject(Injector);
   private subscription?: Subscription;
 
   board: ChecklistBoard = {
@@ -54,6 +56,16 @@ export class ArchivePage implements OnInit, OnDestroy {
   busy = false;
   collapsed = new Set<string>();
   pendingAction: PendingAction | null = null;
+  /** Abre la guía "¿Cómo funciona el Archivo?" desde el botón de la banda informativa. */
+  helpOpen = false;
+
+  /**
+   * Botón de ayuda de la banda informativa y cuadro del modal. Se guardan para mover el
+   * foco al abrir y devolverlo al botón al cerrar.
+   */
+  @ViewChild('helpButton', { read: ElementRef }) private helpButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('helpDialog', { read: ElementRef }) private helpDialog?: ElementRef<HTMLElement>;
+  @ViewChild('helpPrimary', { read: ElementRef }) private helpPrimary?: ElementRef<HTMLButtonElement>;
 
   /**
    * Momento de referencia de la cuenta atrás. Los días se calculan al renderizar a partir
@@ -66,8 +78,12 @@ export class ArchivePage implements OnInit, OnDestroy {
    * Reutiliza el color elegido en el menú de perfil de este dispositivo. Se lee al
    * construir la pantalla y solo de la caché local, para que el primer pintado no salga
    * con otro color.
+   *
+   * El acento se expone como `--accent`, igual que en el tablero, y lo usan el botón de
+   * ayuda y el modal, así que al cambiar de tema el archivo se entera sin recargar.
    */
   @HostBinding('style.--board-bg') boardBackground = readStoredTheme().background;
+  @HostBinding('style.--accent') themeAccent = readStoredTheme().accent;
 
   /** Cinta informativa: el número sale de la misma constante que usa la cuenta atrás. */
   readonly retentionNotice =
@@ -76,6 +92,17 @@ export class ArchivePage implements OnInit, OnDestroy {
   /** Texto de la tarjeta de ayuda, que solo se muestra cuando el archivo está vacío. */
   readonly helpText =
     'Al completar tus listas, puedes enviarlas al archivo para mantener limpio tu espacio de trabajo manteniendo acceso a trabajo terminado recientemente.';
+
+  /**
+   * Cuerpo del modal de ayuda: la misma explicación de la tarjeta del estado vacío más el
+   * plazo de retención. El número sale de la constante de la purga, nunca escrito a mano.
+   */
+  readonly helpModalText =
+    `${this.helpText} Las listas archivadas se conservarán durante ${ARCHIVE_RETENTION_DAYS} `
+    + 'días antes de su eliminación permanente, pudiendo restaurarlas o eliminarlas en cualquier momento.';
+
+  /** Aviso secundario del modal: qué significa el contador de cada tarjeta. */
+  readonly helpCounterNote = 'El contador de días indica el tiempo restante antes del borrado automático.';
 
   /**
    * De la lista archivada más reciente a la más antigua. El orden lo fija la fecha y no el
@@ -94,7 +121,7 @@ export class ArchivePage implements OnInit, OnDestroy {
   constructor() {
     addIcons({
       archiveOutline, arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown,
-      chevronForward, helpCircleOutline, timeOutline, trash
+      chevronForward, close, helpCircleOutline, timeOutline, trash
     });
   }
 
@@ -104,12 +131,77 @@ export class ArchivePage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscription?.unsubscribe();
+    this.helpOpen = false;
   }
 
-  /** Escape cierra el diálogo de confirmación, igual que en el tablero y el basurero. */
+  /**
+   * Escape cierra el diálogo que esté abierto. Los dos nunca se muestran a la vez, así que
+   * basta con cerrar la ayuda si es lo que hay abierto y si no, la confirmación de borrado,
+   * igual que en el tablero y el basurero.
+   */
   @HostListener('document:keydown.escape')
-  cancelPendingOnEscape(): void {
+  closeOpenDialogOnEscape(): void {
+    if (this.helpOpen) {
+      this.closeHelp();
+      return;
+    }
     this.pendingAction = null;
+  }
+
+  // ── Ayuda del archivo ─────────────────────────────────────────────────────
+
+  /**
+   * Abre la guía del archivo. Solo tiene sentido con listas archivadas: si no hay ninguna,
+   * el estado vacío ya muestra su propia tarjeta de ayuda y el botón ni siquiera existe.
+   *
+   * Al abrir se cierra la confirmación de borrado, para que nunca haya dos diálogos encima.
+   */
+  openHelp(): void {
+    if (this.isEmpty) return;
+    this.pendingAction = null;
+    this.helpOpen = true;
+    // El foco entra en el modal (no en la página de detrás) y se queda dentro.
+    afterNextRender(() => this.helpPrimary?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /**
+   * Cierra la guía y devuelve el foco al botón de la banda, que es quien la abrió.
+   * No hace nada si ya estaba cerrada, así que repetir la llamada es inofensivo.
+   */
+  closeHelp(): void {
+    if (!this.helpOpen) return;
+    this.helpOpen = false;
+    const boton = this.helpButton;
+    afterNextRender(() => boton?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /**
+   * Mantiene el foco dentro del modal: al tabular, si se sale por detrás, vuelve al primer
+   * control. Hay pocos controles (X y "Entendido"), así que basta con el borde del ciclo.
+   */
+  keepFocusInHelp(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = this.helpDialog?.nativeElement;
+    if (!dialog) return;
+    const controles = dialog.querySelectorAll<HTMLElement>('button:not([disabled])');
+    if (controles.length === 0) return;
+    const primero = controles[0];
+    const ultimo = controles[controles.length - 1];
+    const activo = document.activeElement;
+    if (event.shiftKey ? activo === primero : activo === ultimo) {
+      event.preventDefault();
+      (event.shiftKey ? ultimo : primero).focus();
+    }
+  }
+
+  /**
+   * Cierra la guía si ya no queda ninguna lista archivada. Se llama tras cualquier cambio
+   * que pueda vaciar el archivo (purga, restauración, borrado o sincronización), para que el
+   * modal no siga abierto explicando listas que ya no existen. No devuelve el foco al
+   * botón porque ese botón también ha desaparecido.
+   */
+  private syncHelpVisibility(): void {
+    if (this.helpOpen && this.isEmpty) this.helpOpen = false;
   }
 
   /**
@@ -122,7 +214,10 @@ export class ArchivePage implements OnInit, OnDestroy {
   refreshCountdown(): void {
     this.now = new Date();
     // Al cruzar el día de expiración, la lista se borra sola y los badges se recalculan.
-    if (purgeExpiredArchivedLists(this.board, this.now)) void this.persist();
+    if (purgeExpiredArchivedLists(this.board, this.now)) {
+      this.syncHelpVisibility();
+      void this.persist();
+    }
   }
 
   /**
@@ -155,6 +250,8 @@ export class ArchivePage implements OnInit, OnDestroy {
     this.now = new Date();
     const purged = purgeExpiredArchivedLists(board, this.now);
     this.board = board;
+    // Una sincronización puede dejar el archivo vacío; la guía no sobrevive a eso.
+    this.syncHelpVisibility();
     // Sin este guardado, una lista vencida reaparece al volver a entrar.
     if (purged) void this.persist();
   }
@@ -233,6 +330,7 @@ export class ArchivePage implements OnInit, OnDestroy {
     }
     this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
+    this.syncHelpVisibility();
     await this.persist();
   }
 
@@ -260,6 +358,7 @@ export class ArchivePage implements OnInit, OnDestroy {
     this.pendingAction = null;
     this.collapsed.delete(action.entry.list.id);
     this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== action.entry.list.id);
+    this.syncHelpVisibility();
     await this.persist();
   }
 

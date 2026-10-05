@@ -8,7 +8,7 @@
   height: 100%;
   min-height: 0;
   --board-bg: #eee8f8;
-  /* Superficie fija de header y footer: no cambia con el tema del tablero. */
+  /* Superficie fija del header: no cambia con el tema del tablero. */
   --topbar-surface: #fff;
   --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
@@ -101,7 +101,12 @@ ion-content.archive-content {
 /* ── Tarjeta de ayuda (solo con el archivo vacío) ───────────────────────── */
 
 /* No ocupa todo el ancho: se limita a un poco más que el texto del estado vacío de
-   arriba y se centra, como en el diseño de referencia. Va pegada al bloque de arriba. */
+   arriba y se centra, como en el diseño de referencia. Va pegada al bloque de arriba.
+
+   El fondo y el borde salen del acento del tema con la misma mezcla y los mismos
+   porcentajes que la nota del modal de ayuda (`.archive-help-note`), para que el mismo
+   texto se lea igual en las dos formas de encontrarlo: tarjeta aquí y modal con el botón
+   de ayuda cuando el archivo tiene listas. */
 .archive-help {
   display: flex;
   align-items: flex-start;
@@ -111,8 +116,8 @@ ion-content.archive-content {
   margin: 30px auto 0;
   padding: 20px 22px;
   text-align: left;
-  background: #eef1fb;
-  border: 1px solid #e2e6f6;
+  background: color-mix(in srgb, var(--accent, #8870ad) 9%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 22%, #fff);
   border-radius: 24px;
   box-shadow: 0 2px 10px rgba(34, 47, 76, 0.05);
 }
@@ -161,7 +166,11 @@ ion-content.archive-content {
   top: 0;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
+  /* Altura mínima igual a la del botón de ayuda (30px) más el relleno y el borde. Así la
+     banda mide lo mismo con listas (con botón) y sin ellas, y no salta al cambiar. */
+  min-height: 55px;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid rgba(37, 51, 74, 0.1);
@@ -172,6 +181,8 @@ ion-content.archive-content {
   display: flex;
   align-items: center;
   gap: 9px;
+  /* Crece para ocupar el hueco sobrante: el texto envuelve antes de empujar el botón. */
+  flex: 1 1 auto;
   min-width: 0;
   color: var(--archive-muted);
 }
@@ -186,6 +197,42 @@ ion-content.archive-content {
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* Botón de ayuda de la banda: mismo patrón que los demás botones de ícono (mismo ripple,
+   mismo foco visible). En reposo va en gris placeholder; al pasar por encima o al tomar el
+   foco coge el acento del tema, que es lo único que el tema cambia aquí. */
+.archive-notice-help {
+  position: relative;
+  overflow: hidden;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--archive-placeholder);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.archive-notice-help ion-icon {
+  font-size: 19px;
+}
+
+.archive-notice-help:hover,
+.archive-notice-help:focus-visible {
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, transparent);
+}
+
+.archive-notice-help:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
 }
 
 /* ── Estado vacío ──────────────────────────────────────────────────────── */
@@ -704,6 +751,182 @@ ion-content.archive-content {
   font-size: 13px;
 }
 
+/* ── Modal de ayuda "¿Cómo funciona el Archivo?" ───────────────────────── */
+
+/* Reutiliza .archive-dialog-overlay y .archive-dialog del diálogo de confirmación (fondo,
+   tarjeta, radio, sombra y animación son los mismos). Aquí solo cambia el contenido: la
+   ayuda es un texto más largo, alineado a la izquierda y en tono de tema. */
+.archive-help-dialog {
+  /* Contexto de posicionamiento de la X de cerrar, que va en la esquina de la tarjeta. */
+  position: relative;
+  width: min(100%, 440px);
+  padding: 18px 16px 16px;
+  text-align: left;
+}
+
+.archive-help-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 30px;
+}
+
+/* Mismo cuadrado del ícono de la tarjeta de ayuda, teñido con el acento del tema. */
+.archive-help-header-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, #fff);
+  border-radius: 12px;
+}
+
+.archive-help-header-icon ion-icon {
+  font-size: 21px;
+}
+
+.archive-help-header-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+/* `.archive-dialog h2` pone el título centrado; la ayuda lo alinea a la izquierda. */
+.archive-help-dialog h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+  text-align: left;
+}
+
+.archive-help-subtitle {
+  margin: 3px 0 0;
+  color: var(--archive-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.archive-help-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  overflow: hidden;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--archive-placeholder);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.archive-help-close ion-icon {
+  font-size: 17px;
+}
+
+.archive-help-close:hover,
+.archive-help-close:focus-visible {
+  color: var(--archive-ink);
+  background: #f2f4f9;
+}
+
+.archive-help-close:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* El cuerpo es un texto largo: `.archive-dialog > p` lo limita a 330px y lo centra, así que
+   aquí se sueltan el ancho y la alineación para que se lea como un párrafo. */
+.archive-help-body {
+  max-width: none;
+  margin: 12px 0 0;
+  color: #4a5468;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* Nota destacada: reloj de acento, con el fondo del tema muy suave. */
+.archive-help-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 9px 10px;
+  color: #3c4761;
+  background: color-mix(in srgb, var(--accent, #8870ad) 9%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 22%, #fff);
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.archive-help-note ion-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--accent, #8870ad);
+  font-size: 14px;
+}
+
+.archive-help-note span {
+  min-width: 0;
+}
+
+.archive-help-actions {
+  margin-top: 14px;
+}
+
+/* Botón principal a todo el ancho, con el color de acento del tema. */
+.archive-help-confirm {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  color: #fff;
+  background: var(--accent, #8870ad);
+  border: 1px solid var(--accent, #8870ad);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.archive-help-confirm:hover {
+  background: color-mix(in srgb, var(--accent, #8870ad) 86%, #000);
+  border-color: color-mix(in srgb, var(--accent, #8870ad) 86%, #000);
+}
+
+.archive-help-confirm:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones: el modal aparece sin transición. */
+@media (prefers-reduced-motion: reduce) {
+  .archive-help-dialog {
+    animation: none;
+  }
+
+  .archive-notice-help,
+  .archive-help-close,
+  .archive-help-confirm {
+    transition: none;
+  }
+}
+
 /* ── Estados de carga y error ───────────────────────────────────────────── */
 
 .archive-status {
@@ -765,8 +988,12 @@ ion-content.archive-content {
   .archive-empty-title { font-size: 17px; }
   .archive-empty-subtitle { font-size: 12px; }
 
-  /* En móvil el aviso ocupa todo el ancho para que el texto no quede apretado. */
+  /* En móvil el aviso ocupa todo el ancho para que el texto no quede apretado. El botón de
+     ayuda se queda a la derecha y el texto envuelve antes de salirse, sin desbordar. */
   .archive-notice { padding: 11px 12px; }
+  .archive-notice-copy p { font-size: 11px; }
+  .archive-help-dialog { width: 100%; padding: 16px 14px 14px; }
+  .archive-help-header { gap: 10px; padding-right: 28px; }
 
   .archive-grid {
     grid-template-columns: 1fr;

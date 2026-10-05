@@ -9,7 +9,7 @@
   height: 100%;
   min-height: 0;
   --board-bg: #eee8f8;
-  /* Superficie fija de header y footer: no cambia con el tema del tablero. */
+  /* Superficie fija del header: no cambia con el tema del tablero. */
   --topbar-surface: #fff;
   --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));

@@ -4,8 +4,9 @@ import { APP_VERSION_LABEL } from '../../core/app-version';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 
 /**
- * Pie común del tablero, el archivo y el basurero: estado de la sincronización, copyright y
- * enlaces legales con la versión de la app.
+ * Pie del tablero: estado de la sincronización, copyright y enlaces legales con la versión
+ * de la app. Solo se monta en el tablero; el archivo y el basurero, que se leen de un vistazo
+ * y se vuelven con el botón de atrás, lo muestran sin pie.
  *
  * Sigue living dentro de <ion-content>, al final del contenido: no es fijo ni tapa nada, se
  * lee al llegar al final del scroll. Solo se usa donde hay sesión abierta; el login no lo

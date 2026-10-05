@@ -10,7 +10,6 @@ import {
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.models';
 import { readStoredTheme } from '../../core/board-themes';
-import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
 import { AuthService } from '../../core/services/auth.service';
@@ -29,7 +28,7 @@ const COUNTDOWN_REFRESH_MS = 60_000;
 @Component({
   selector: 'app-trash',
   standalone: true,
-  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, AppFooterComponent],
+  imports: [CommonModule, IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar],
   templateUrl: './trash.page.html',
   styleUrls: ['./trash.page.scss']
 })
