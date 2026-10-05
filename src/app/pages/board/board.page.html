@@ -149,8 +149,19 @@
     <span class="donation-label">{{ donationMessage }}</span>
     <ion-ripple-effect></ion-ripple-effect>
   </a>
-  <!-- Acciones de la cuenta: el basurero va a la izquierda del cierre de sesión. -->
+  <!-- Acciones de la cuenta: el basurero y los comentarios van a la izquierda del cierre de
+       sesión, en la misma rejilla de tres columnas, para que no quede ni un hueco raro. -->
   <div class="account-menu-actions">
+    <button
+      *ngIf="feedbackEnabled"
+      class="menu-action menu-feedback ion-activatable"
+      role="menuitem"
+      (click)="openFeedback()"
+    >
+      <ion-icon name="megaphone-outline"></ion-icon>
+      <span>Enviar comentarios</span>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
     <button class="menu-action menu-trash ion-activatable" role="menuitem" (click)="openTrash()">
       <ion-icon name="trash-bin-outline"></ion-icon>
       <span>Basurero</span>
@@ -517,6 +528,23 @@
 <div *ngIf="busy" class="saving-indicator">Guardando…</div>
 
 <ng-container *ngIf="!loadingBoard && !boardError">
+  <!-- Botón flotante de comentarios, apilado JUSTO ENCIMA del FAB de nueva lista. Se oculta
+       solo (no ocupa sitio) mientras el panel de nueva lista, cualquier diálogo o el teclado
+       estén abiertos, y se controla con FEEDBACK_FAB_ENABLED en feedback-core.ts. -->
+  <button
+    *ngIf="feedbackEnabled && feedbackFabVisible"
+    #feedbackFab
+    class="feedback-fab ion-activatable"
+    type="button"
+    (click)="openFeedback(feedbackFab)"
+    aria-label="Enviar comentarios"
+    title="Enviar comentarios"
+    aria-haspopup="dialog"
+  >
+    <ion-icon name="megaphone-outline" aria-hidden="true"></ion-icon>
+    <ion-ripple-effect></ion-ripple-effect>
+  </button>
+
   <!-- ✨ Botón flotante (FAB) para añadir lista -->
   <button
     class="fab-add-list ion-activatable"
@@ -743,3 +771,10 @@
     </div>
   </section>
 </div>
+<!-- Modal de comentarios. Va a nivel de página, fuera de <ion-content> (ver el aviso de los
+     overlays del principio del archivo): dentro, su scroller interno lo convertiría en
+     containing block en WebKit y se movería pegado al lienzo en lugar de flotar. -->
+<app-feedback-modal
+  *ngIf="feedbackOpen"
+  (closed)="closeFeedback()"
+></app-feedback-modal>

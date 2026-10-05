@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
@@ -8,30 +8,35 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, archiveOutline, checkmark, chevronDown, chevronForward, close, logOut,
-  trash, trashBinOutline, personCircle, layersOutline, search, pencil, checkmarkCircle, returnDownBack, reorderThree
+  megaphoneOutline, trash, trashBinOutline, personCircle, layersOutline, search, pencil,
+  checkmarkCircle, returnDownBack, reorderThree
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
+import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
 import { APP_VERSION_LABEL } from '../../core/app-version';
+import { FEEDBACK_FAB_ENABLED } from '../../core/feedback-core';
 import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 
 @Component({
   selector: 'app-board',
   standalone: true,
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
-    IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent
+    IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
+    FeedbackModalComponent
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -41,6 +46,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly auth = inject(AuthService);
   private readonly boardOrder = inject(BoardOrderService);
   private readonly router = inject(Router);
+  private readonly feedback = inject(FeedbackService);
+  /** Repintado manual: el listener del viewport visual vive fuera del ciclo de Angular. */
+  private readonly cdr = inject(ChangeDetectorRef);
   private subscription?: Subscription;
   private lastAppliedBoard: ChecklistBoard | null = null;
   private pendingRemoteBoard: ChecklistBoard | null = null;
@@ -90,6 +98,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
+  /** El envío de comentarios necesita sesión: sin ella la función responde 401. */
+  get feedbackEnabled(): boolean {
+    return this.feedback.available;
+  }
   readonly donationMessage = '!Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
 
@@ -150,6 +162,41 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   private draggedTask: { listId: string; taskId: string } | null = null;
 
+  /** Modal de comentarios abierto. Ambos puntos de entrada (FAB y menú de perfil) lo abren. */
+  feedbackOpen = false;
+  /** Botón que abrió el modal, para devolverle el foco al cerrar. */
+  private feedbackOpener: HTMLElement | null = null;
+
+  /**
+   * El botón flotante de comentarios. La constante vive en feedback-core.ts (un solo sitio):
+   * ponerla a false quita el botón y nada más, sin tocar el resto de la página.
+   */
+  readonly feedbackFabEnabled = FEEDBACK_FAB_ENABLED;
+
+  /**
+   * El botón flotante de comentarios se esconde mientras haya otro overlay abierto o el
+   * teclado en pantalla, para no quedar debajo del panel de nueva lista ni tapar el footer.
+   * Es `false` solo cuando hay algo que lo taparía de verdad.
+   */
+  get feedbackFabVisible(): boolean {
+    if (!this.feedbackFabEnabled || this.feedbackOpen) return false;
+    if (this.addingList || this.listToRemove || this.conflictDialogOpen) return false;
+    if (this.activeConflict || this.accountMenuOpen) return false;
+    return !this.isKeyboardOpen;
+  }
+
+  /** El teclado está abierto si el viewport visual es bastante más bajo que la ventana. */
+  get isKeyboardOpen(): boolean {
+    const vv = window.visualViewport;
+    if (!vv) return false;
+    // Un margen generoso: en Android web el teclado roba más o menos la mitad inferior, y la
+    // medida puede no haber ocurrido aún justo en el primer focus.
+    return window.innerHeight - vv.height > 120;
+  }
+
+  /** Último estado del teclado conocido, para repintar solo cuando cambia de verdad. */
+  private keyboardWasOpen = false;
+
   @ViewChildren('boardItem', { read: ElementRef })
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
   @ViewChild('searchInput', { read: IonInput })
@@ -176,12 +223,25 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
   constructor() {
-    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline});
+    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline});
   }
 
   ngOnInit(): void {
     void this.initializeBoard();
+    // Un único listener de resize del viewport visual, registrado una vez y quitado al
+    // destruir la página. `keyboardVisible` no existe: el getter `isKeyboardOpen` lo calcula
+    // cada vez; este listener solo fuerza un repintado cuando el teclado se abre o se cierra,
+    // para que el botón flotante de comentarios se esconda y vuelva.
+    window.visualViewport?.addEventListener('resize', this.onViewportResize);
+    window.addEventListener('scroll', this.onViewportResize, { passive: true });
   }
+
+  private readonly onViewportResize = (): void => {
+    // Detección de cambio: solo se repinta si el estado del teclado ha cambiado de verdad.
+    if (this.keyboardWasOpen === this.isKeyboardOpen) return;
+    this.keyboardWasOpen = this.isKeyboardOpen;
+    this.cdr.markForCheck();
+  };
 
   private async initializeBoard(): Promise<void> {
     const session = this.auth.session;
@@ -444,9 +504,53 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
+  // ── Feedback ──────────────────────────────────────────────────────────────
+
+  /**
+   * Abre el modal de comentarios desde cualquiera de los dos puntos de entrada (botón
+   * flotante o menú de perfil). Solo con sesión iniciada: sin ella la función respondería 401
+   * y el usuario perdería el texto escrito.
+   *
+   * Al abrir se cierran TODAS las demás capas para que nunca haya dos overlays a la vez: el
+   * menú de perfil, el panel de nueva lista, los diálogos de eliminar y de conflicto y la
+   * búsqueda. Ninguno de ellos depende de estar abierto para funcionar.
+   */
+  openFeedback(opener?: HTMLElement): void {
+    if (!this.feedbackEnabled) return;
+    if (this.feedbackOpen) return;
+
+    this.accountMenuOpen = false;
+    this.cancelAddList();
+    this.cancelDeleteList();
+    this.closeConflictDialog();
+    this.closeSearch();
+
+    this.feedbackOpener = opener ?? null;
+    this.feedbackOpen = true;
+    // El diagnóstico solo lleva los tres números de conteo, nunca títulos ni contenido.
+    this.feedback.setCounts({
+      lists: this.board.lists.length,
+      archivedLists: this.board.archivedLists?.length ?? 0,
+      trashedLists: this.board.trashedLists?.length ?? 0
+    });
+  }
+
+  /** Cierra el modal y devuelve el foco al botón que lo abrió. */
+  closeFeedback(): void {
+    if (!this.feedbackOpen) return;
+    this.feedbackOpen = false;
+    const opener = this.feedbackOpener;
+    this.feedbackOpener = null;
+    // El nodo que tenía el foco se desmonta en este mismo cambio, así que se devuelve después.
+    setTimeout(() => opener?.focus?.(), 0);
+  }
+
   /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
   @HostListener('document:keydown.escape')
   closeOverlaysOnEscape(): void {
+    // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
+    // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
+    if (this.feedbackOpen) return;
     if (this.conflictDialogOpen) {
       this.closeConflictDialog();
       return;
@@ -487,6 +591,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.subscription?.unsubscribe();
     this.resizeObserver?.disconnect();
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    // Los listeners del viewport visual se quitan aquí: abrir y cerrar el modal, o navegar
+    // entre pantallas, nunca deja ninguno colgado.
+    window.visualViewport?.removeEventListener('resize', this.onViewportResize);
+    window.removeEventListener('scroll', this.onViewportResize);
+    this.feedbackOpen = false;
   }
 
   // ✏️ Edición de título

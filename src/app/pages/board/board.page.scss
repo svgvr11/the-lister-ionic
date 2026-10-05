@@ -599,6 +599,10 @@ ion-header {
 .account-menu-actions {
   display: flex;
   align-items: stretch;
+  /* Con tres acciones ("Enviar comentarios" es la etiqueta más larga) la fila se partiría en
+     pantallas estrechas; con wrap, el cierre de sesión baja a su propia línea en vez de
+     recortar su texto. */
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
@@ -634,7 +638,11 @@ ion-header {
   white-space: nowrap;
 }
 
-.menu-trash {
+/* Basurero y comentarios comparten el mismo tratamiento neutro: son acciones de la cuenta,
+   no una salida. El cierre de sesión sigue siendo el único que se estira (flex: 1) y el único
+   en rojo, porque ahí sí conviene que se lea como "irse". */
+.menu-trash,
+.menu-feedback {
   color: #4b5769;
   background: #f2f4f8;
 }
@@ -1402,6 +1410,67 @@ ion-header {
 
 .fab-add-list.open ion-icon {
   transform: rotate(45deg);
+}
+
+/* Botón flotante de comentarios. Va apilado justo encima del FAB de nueva lista, en la misma
+   esquina, y es más pequeño y discreto: es una entrada secundaria, no un CTA. Se posiciona
+   sobre el FAB (60px) con `bottom: 20 + 60 + 10 de hueco = 90px` y centrado en horizontal
+   con `right` desplazado la mitad de la diferencia de tamaños (60-44)/2 = 8px.
+
+   No reserva sitio en el flujo (es `position: fixed` como el FAB) ni toca el masonry: solo
+   se pinta encima, y se oculta con *ngIf mientras haya otro overlay o el teclado abierto. */
+.feedback-fab {
+  position: fixed;
+  /* El ripple es bounded: sin esto se sale del círculo. */
+  overflow: hidden;
+  right: 32px;
+  bottom: calc(90px + var(--app-safe-area-bottom));
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 28%, #fff);
+  /* Transparente con el borde del tema: se distingue del FAB sólido sin competir con él. */
+  background: color-mix(in srgb, var(--accent, #8870ad) 10%, #fff);
+  color: var(--accent, #8870ad);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 29, 48, 0.16);
+  transition: transform 0.2s ease, background 0.2s ease;
+  /* Por debajo del FAB de nueva lista y su panel (200), pero por encima de las listas. */
+  z-index: 190;
+}
+
+.feedback-fab:hover {
+  background: color-mix(in srgb, var(--accent, #8870ad) 20%, #fff);
+  transform: scale(1.06);
+}
+
+.feedback-fab:active { transform: scale(0.95); }
+
+.feedback-fab ion-icon { font-size: 21px; }
+
+.feedback-fab:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* En móvil el FAB de nueva lista mide 54px y está en right:16px / bottom:18px, así que el
+   botón de comentarios se apila a 18 + 54 + 8 = 80px y se centra sobre él con 16 + 5 = 21px. */
+@media (max-width: 700px) {
+  .feedback-fab {
+    right: 21px;
+    bottom: calc(80px + var(--app-safe-area-bottom));
+    width: 42px;
+    height: 42px;
+  }
+  .feedback-fab ion-icon { font-size: 20px; }
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .feedback-fab { transition: none; }
+  .feedback-fab:hover, .feedback-fab:active { transform: none; }
 }
 
 /* Capa transparente del panel FAB: queda justo por debajo del panel (z-index 200). */

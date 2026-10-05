@@ -5,9 +5,20 @@ import { Capacitor } from '@capacitor/core';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { installKeyboardProbe } from './app/core/keyboard-probe'; // TEMPORAL: borrar con el archivo
+import { installRecentErrors } from './app/core/recent-errors';
 
 /** INSTRUMENTACIÓN TEMPORAL — solo con `?debug=1`. Quitar junto a keyboard-probe.ts. */
 installKeyboardProbe();
+
+/**
+ * Errores recientes: buffer circular de los últimos RECENT_ERRORS_LIMIT `error` y
+ * `unhandledrejection`, que alimenta la información técnica del reporte de comentarios.
+ *
+ * Se registra AQUÍ, en el arranque, y no al abrir el modal, a propósito: así el buffer recoge
+ * fallos que pasaron antes de que el usuario decidiera escribirnos, que es justo cuando más
+ * sirven. `installRecentErrors()` es idempotente, así que llamarla de más no duplica listeners.
+ */
+installRecentErrors();
 
 /**
  * En Android web, el navegador NO encoge el layout al abrir el teclado: solo reduce el

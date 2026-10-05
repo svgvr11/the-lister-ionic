@@ -1,0 +1,535 @@
+/*
+  Modal de comentarios y errores.
+
+  Toma el fondo, la tarjeta, el radio, la sombra y la animación del diálogo de ayuda de
+  archive.page.scss (mismo patrón: overlay a media opacidad + tarjeta centrada), y los colores
+  del tema activo a través de --accent, que el tablero expone igual que en el archivo. No hay
+  ningún hex nuevo: todo sale de las variables del tema o de la escala de grises ya usada.
+*/
+:host {
+  display: contents;
+}
+
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  /* safe areas: en el APK el modal no puede quedar bajo el gesto ni bajo la barra. */
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  background: rgba(26, 33, 48, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.feedback-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* min(100%, 440px): nunca más ancha que el móvil de 320px. */
+  width: min(100%, 440px);
+  /* El alto tope deja sitio al teclado: con el teclado abierto el modal encoge y scrollea
+     en vez de tapar el campo enfocado. */
+  max-height: calc(100dvh - 32px);
+  padding: 18px 16px 16px;
+  color: #172236;
+  background: #fff;
+  border: 1px solid #e9ecf2;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  text-align: left;
+  animation: feedbackDialogEnter 0.16s ease-out;
+}
+
+/* El teclado de Android reduce el viewport visual; el modal se apoya en 100dvh para encogerse
+   con él, igual que la app. */
+@supports not (height: 100dvh) {
+  .feedback-dialog { max-height: calc(100vh - 32px); }
+}
+
+@keyframes feedbackDialogEnter {
+  from { opacity: 0; transform: translateY(5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.feedback-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Deja hueco a la X absoluta de la esquina. */
+  padding-right: 30px;
+  flex: 0 0 auto;
+}
+
+.feedback-header-icon,
+.feedback-success-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, #fff);
+  border-radius: 12px;
+}
+
+.feedback-header-icon ion-icon,
+.feedback-success-icon ion-icon { font-size: 21px; }
+
+.feedback-header-copy { flex: 1; min-width: 0; }
+
+.feedback-dialog h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+  text-align: left;
+}
+
+.feedback-subtitle {
+  margin: 3px 0 0;
+  color: #737d8e;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.feedback-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  overflow: hidden;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #8b93a3;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.feedback-close ion-icon { font-size: 17px; }
+
+.feedback-close:hover,
+.feedback-close:focus-visible { color: #25334a; background: #f2f4f9; }
+
+.feedback-close:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Cuerpo con scroll interno ────────────────────────────────────────────── */
+
+/* min-height:0 es imprescindible: sin él, un hijo flexible no baja de su altura de contenido
+   y el modal no scrollea, sino que se sale por abajo. */
+.feedback-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-block: 14px 4px;
+  margin-block-end: 4px;
+  /* Scroll propio: así el foco al campo no hace scroll la página de detrás. */
+  overscroll-behavior: contain;
+}
+
+.feedback-field { margin: 0 0 14px; padding: 0; border: 0; }
+.feedback-field:last-child { margin-bottom: 4px; }
+
+.feedback-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  color: #3d4a60;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.feedback-label ion-icon { font-size: 13px; color: #8b93a3; }
+
+.feedback-hint { margin: 5px 0 0; color: #8b93a3; font-size: 10px; }
+
+.feedback-counter-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.feedback-counter {
+  margin-left: auto;
+  color: #8b93a3;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feedback-counter.over { color: #b42318; }
+
+/* ── Fichas de tipo ───────────────────────────────────────────────────────── */
+
+.feedback-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.feedback-chip {
+  position: relative;
+  overflow: hidden;
+  min-height: 32px;
+  padding: 0 12px;
+  color: #3d4a60;
+  background: #fff;
+  border: 1px solid #e1e5ed;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.feedback-chip:hover { background: #f6f7fa; }
+
+.feedback-chip.selected {
+  color: #fff;
+  background: var(--accent, #8870ad);
+  border-color: var(--accent, #8870ad);
+}
+
+.feedback-chip:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+
+.feedback-textarea,
+.feedback-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  color: #172236;
+  background: #fff;
+  border: 1px solid #e1e5ed;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  /* 16px evitaría el zoom automático de iOS, pero en Android el salto de escala rompe el
+     layout; se deja 12px y se deja que el WebView haga lo que pueda. */
+  transition: border-color 0.15s ease;
+}
+
+.feedback-textarea { resize: vertical; min-height: 88px; }
+
+.feedback-textarea::placeholder,
+.feedback-input::placeholder { color: #a3aab8; }
+
+.feedback-textarea:focus,
+.feedback-input:focus {
+  outline: none;
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #8870ad) 16%, transparent);
+}
+
+/* ── Imágenes ─────────────────────────────────────────────────────────────── */
+
+.feedback-images-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* El input real está oculto pero NO con display:none: un input que no se pinta sí dispara
+   el change en todos los navegadores, pero mantenerlo en el flujo evita sorpresas en WebViews
+   antiguos; opacity/width lo sacan de la vista sin sacarlo del DOM. */
+.feedback-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.feedback-attach {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 7%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 26%, #fff);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.feedback-attach:hover:not(:disabled) { background: color-mix(in srgb, var(--accent, #8870ad) 13%, #fff); }
+
+.feedback-attach:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.feedback-attach:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.feedback-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedback-thumbnail { position: relative; margin: 0; }
+
+.feedback-thumbnail img {
+  display: block;
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  background: #f2f4f9;
+  border: 1px solid #e1e5ed;
+  border-radius: 9px;
+}
+
+.feedback-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #fff;
+  background: #25334a;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.feedback-remove ion-icon { font-size: 12px; }
+
+.feedback-remove:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Información técnica ──────────────────────────────────────────────────── */
+
+.feedback-diagnostics {
+  padding: 11px 12px;
+  background: #f7f9fc;
+  border: 1px solid #e9edf5;
+  border-radius: 10px;
+}
+
+.feedback-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3d4a60;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feedback-toggle input { margin: 0; accent-color: var(--accent, #8870ad); }
+
+.feedback-disclosure {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  padding: 4px 7px;
+  color: var(--accent, #8870ad);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 24%, #fff);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.feedback-disclosure ion-icon {
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.feedback-disclosure ion-icon.open { transform: rotate(180deg); }
+
+.feedback-disclosure:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.feedback-json {
+  max-height: 168px;
+  overflow: auto;
+  margin: 9px 0 0;
+  padding: 9px 10px;
+  color: #3d4a60;
+  background: #fff;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feedback-transparency {
+  margin: 9px 0 0;
+  color: #737d8e;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.feedback-transparency a { color: var(--accent, #8870ad); }
+
+.feedback-transparency a:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Errores ──────────────────────────────────────────────────────────────── */
+
+.feedback-error {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  color: #8a2b2b;
+  background: #fff3f2;
+  border: 1px solid #f0cfcc;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.feedback-error:focus { outline: 2px solid #d92d20; outline-offset: 1px; }
+
+.feedback-discard-text {
+  margin: 16px 0 0;
+  color: #5f6878;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Acciones ─────────────────────────────────────────────────────────────── */
+
+.feedback-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.feedback-actions button {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid #e1e5ed;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.feedback-secondary { color: #303b4e; background: #fff; }
+.feedback-secondary:hover:not(:disabled) { background: #f6f7fa; }
+
+.feedback-primary {
+  color: #fff;
+  background: var(--accent, #8870ad);
+  border-color: var(--accent, #8870ad) !important;
+}
+
+.feedback-primary.ion-activatable { 
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.feedback-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent, #8870ad) 86%, #000); }
+
+.feedback-danger { color: #fff; background: #b42318; border-color: #b42318 !important; }
+.feedback-danger:hover:not(:disabled) { background: #8f1d14; }
+
+.feedback-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.feedback-actions button:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Confirmación de envío ────────────────────────────────────────────────── */
+
+.feedback-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-block: 10px 2px;
+  text-align: center;
+}
+
+.feedback-success p { margin: 0; color: #5f6878; font-size: 12px; line-height: 1.5; }
+
+.feedback-success .feedback-primary {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* ── Responsive y movimiento ──────────────────────────────────────────────── */
+
+/* Móvil: la tarjeta llena el ancho y respira algo menos. */
+@media (max-width: 700px) {
+  .feedback-overlay { padding: 10px; }
+  .feedback-dialog { padding: 16px 13px 13px; border-radius: 14px; }
+  .feedback-header { gap: 10px; padding-right: 28px; }
+}
+
+/* Pantallas muy estrechas (320px): los dos botones se apilan para que ninguno recorte su
+   texto, y las miniaturas se achican un poco. */
+@media (max-width: 380px) {
+  .feedback-actions { flex-direction: column-reverse; }
+  .feedback-thumbnail img { width: 52px; height: 52px; }
+}
+
+/* Teclado abierto: el viewport visual encoge, así que el modal baja su alto tope para que
+   el campo enfocado quede por encima del teclado. */
+@media (max-height: 480px) {
+  .feedback-dialog { max-height: calc(100dvh - 16px); }
+  .feedback-header-icon, .feedback-success-icon { width: 34px; height: 34px; flex-basis: 34px; }
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .feedback-dialog { animation: none; }
+  .feedback-chip,
+  .feedback-close,
+  .feedback-disclosure ion-icon,
+  .feedback-actions button { transition: none; }
+}

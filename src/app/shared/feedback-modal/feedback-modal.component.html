@@ -1,0 +1,256 @@
+<!--
+  Modal de comentarios y errores. Es el ÚNICO overlay que el tablero puede abrir a la vez: al
+  abrirlo se cierran el panel de nueva lista, los diálogos de eliminar y de conflicto y el
+  menú de perfil (lo hace el tablero, en openFeedback).
+-->
+<div class="feedback-overlay" (click)="requestClose()" (keydown.escape)="requestClose()">
+  <section
+    #dialog
+    class="feedback-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="feedback-dialog-title"
+    [attr.aria-describedby]="confirmingDiscard ? 'feedback-discard-description' : null"
+    (click)="$event.stopPropagation()"
+    (keydown)="keepFocusInDialog($event)"
+    tabindex="-1"
+  >
+    <!-- ── Confirmación de descarte ─────────────────────────────────────── -->
+    <ng-container *ngIf="confirmingDiscard">
+      <div class="feedback-header">
+        <span class="feedback-header-icon" aria-hidden="true">
+          <ion-icon name="trash-outline"></ion-icon>
+        </span>
+        <div class="feedback-header-copy">
+          <h2 id="feedback-dialog-title">¿Descartar el reporte?</h2>
+          <p class="feedback-subtitle">Se perderá lo que has escrito</p>
+        </div>
+      </div>
+
+      <p id="feedback-discard-description" class="feedback-discard-text">
+        Si cierras ahora, el texto y las imágenes adjuntas se perderán. Si solo querías
+        cerrarlo sin mandarlo, usa "Seguir editando" y vuelve a abrir los comentarios después.
+      </p>
+
+      <div class="feedback-actions">
+        <button
+          #primary
+          type="button"
+          class="feedback-secondary ion-activatable"
+          (click)="cancelDiscard()"
+        >
+          Seguir editando
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button
+          type="button"
+          class="feedback-danger ion-activatable"
+          (click)="confirmDiscard()"
+        >
+          Descartar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ── Confirmación de envío ────────────────────────────────────────── -->
+    <ng-container *ngIf="sent">
+      <div class="feedback-success" role="status" aria-live="polite">
+        <span class="feedback-success-icon" aria-hidden="true">
+          <ion-icon name="checkmark"></ion-icon>
+        </span>
+        <h2 id="feedback-dialog-title">Gracias, recibimos tu reporte</h2>
+        <p>Lo revisaremos y te escribiremos si has dejado un correo de contacto.</p>
+        <button type="button" class="feedback-primary ion-activatable" #primary (click)="close()">
+          Cerrar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ── Formulario ───────────────────────────────────────────────────── -->
+    <ng-container *ngIf="!sent && !confirmingDiscard">
+      <div class="feedback-header">
+        <span class="feedback-header-icon" aria-hidden="true">
+          <ion-icon name="megaphone-outline"></ion-icon>
+        </span>
+        <div class="feedback-header-copy">
+          <h2 id="feedback-dialog-title">Enviar comentarios</h2>
+          <p class="feedback-subtitle">Reporta un error o cuéntanos qué mejorar</p>
+        </div>
+        <button
+          type="button"
+          class="feedback-close ion-activatable"
+          aria-label="Cerrar"
+          (click)="closeKeepingDraft()"
+        >
+          <ion-icon name="close" aria-hidden="true"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+
+      <!-- El cuerpo scrollea: el formulario es más alto que el móvil en horizontal. -->
+      <div class="feedback-body">
+        <!-- Tipo -->
+        <fieldset #typeGroup class="feedback-field">
+          <legend class="feedback-label">¿Qué tipo de comentario es?</legend>
+          <div class="feedback-chips">
+            <button
+              *ngFor="let chip of chips"
+              type="button"
+              class="feedback-chip ion-activatable"
+              [class.selected]="draft.type === chip.id"
+              [attr.aria-pressed]="draft.type === chip.id"
+              (click)="selectType(chip.id)"
+            >
+              {{ chip.label }}
+            </button>
+          </div>
+        </fieldset>
+
+        <!-- Mensaje -->
+        <div class="feedback-field">
+          <label class="feedback-label" for="feedback-message">¿Qué ha pasado?</label>
+          <textarea
+            id="feedback-message"
+            class="feedback-textarea"
+            rows="4"
+            [maxlength]="maxLength"
+            [(ngModel)]="draft.message"
+            (ngModelChange)="onInput()"
+            placeholder="Describe qué pasó y qué esperabas que pasara"
+          ></textarea>
+          <div class="feedback-counter-row">
+            <span *ngIf="messageTooShort" class="feedback-hint">
+              Escribe al menos {{ minLength }} caracteres.
+            </span>
+            <span class="feedback-counter" [class.over]="messageLength > maxLength">
+              {{ messageLength }} / {{ maxLength }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Contacto -->
+        <div class="feedback-field">
+          <label class="feedback-label" for="feedback-email">
+            <ion-icon name="mail-outline" aria-hidden="true"></ion-icon>
+            <span>Correo de contacto (opcional)</span>
+          </label>
+          <input
+            id="feedback-email"
+            class="feedback-input"
+            type="email"
+            autocomplete="email"
+            inputmode="email"
+            placeholder="tu@correo.com"
+            [(ngModel)]="draft.contactEmail"
+            (ngModelChange)="onInput()"
+          />
+          <p class="feedback-hint">Solo si quieres que te respondamos</p>
+        </div>
+
+        <!-- Imágenes -->
+        <div class="feedback-field">
+          <div class="feedback-images-header">
+            <span class="feedback-label">Imágenes (opcional)</span>
+            <span class="feedback-counter">{{ images.length }} / {{ maxImages }}</span>
+          </div>
+          <!-- Input oculto: se dispara con openFilePicker() para poder anunciarlo mejor. -->
+          <input
+            #fileInput
+            type="file"
+            class="feedback-file-input"
+            [attr.accept]="acceptedTypes"
+            multiple
+            (change)="onFilesSelected($event)"
+          />
+          <button
+            type="button"
+            class="feedback-attach ion-activatable"
+            [disabled]="images.length >= maxImages || busy"
+            (click)="openFilePicker()"
+          >
+            Adjuntar imágenes
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
+
+          <ul *ngIf="images.length" class="feedback-thumbnails">
+            <li *ngFor="let image of images; let i = index" class="feedback-thumbnail">
+              <img [src]="image.previewUrl" [alt]="imageAltText(i)" referrerpolicy="no-referrer" />
+              <button
+                type="button"
+                class="feedback-remove ion-activatable"
+                [attr.aria-label]="'Quitar ' + imageAltText(i)"
+                (click)="removeImage(i)"
+              >
+                <ion-icon name="close" aria-hidden="true"></ion-icon>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Datos técnicos -->
+        <div class="feedback-field feedback-diagnostics">
+          <label class="feedback-toggle">
+            <input
+              type="checkbox"
+              [(ngModel)]="draft.includeDiagnostics"
+              (ngModelChange)="onDiagnosticsToggle()"
+              name="includeDiagnostics"
+            />
+            <span>Incluir información técnica</span>
+          </label>
+
+          <button
+            type="button"
+            class="feedback-disclosure ion-activatable"
+            [attr.aria-expanded]="showDiagnostics"
+            aria-controls="feedback-diagnostics-preview"
+            (click)="toggleDiagnostics()"
+          >
+            <ion-icon name="chevron-down" aria-hidden="true" [class.open]="showDiagnostics"></ion-icon>
+            <span>Ver qué se enviará</span>
+          </button>
+
+          <pre *ngIf="showDiagnostics" id="feedback-diagnostics-preview" class="feedback-json">{{ diagnosticsPreview }}</pre>
+
+          <p class="feedback-transparency">
+            Se adjuntará información de tu dispositivo y de la versión de la app. No se envía el
+            contenido de tus listas.
+            <a href="/privacy" (click)="openPrivacy($event)">Política de privacidad</a>
+          </p>
+        </div>
+
+        <!-- Errores: región viva para que un lector de pantalla los anuncie. -->
+        <p *ngIf="errorMessage" class="feedback-error" role="alert" aria-live="assertive" tabindex="-1">
+          {{ errorMessage }}
+        </p>
+        <p *ngIf="offlineBlocked && !errorMessage" class="feedback-error" role="status">
+          Sin conexión: no se puede enviar ahora.
+        </p>
+      </div>
+
+      <div class="feedback-actions">
+        <button
+          #primary
+          type="button"
+          class="feedback-secondary ion-activatable"
+          [disabled]="busy"
+          (click)="closeKeepingDraft()"
+        >
+          Cancelar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button
+          type="button"
+          class="feedback-primary ion-activatable"
+          [disabled]="!canSend"
+          (click)="submit()"
+        >
+          {{ busy ? 'Enviando…' : 'Enviar' }}
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+    </ng-container>
+  </section>
+</div>
