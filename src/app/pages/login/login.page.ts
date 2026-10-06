@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import { IonButton, IonContent, IonIcon, IonSpinner } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -10,6 +11,7 @@ import { Session } from '@supabase/supabase-js';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { APP_VERSION_LABEL } from '../../core/app-version';
+import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../core/legal-urls';
 
 @Component({
   selector: 'app-login',
@@ -30,6 +32,11 @@ export class LoginPage implements OnInit, OnDestroy {
 
   busy = false;
   errorMessage = '';
+  /** Enlaces legales públicos (páginas estáticas). */
+  readonly privacyUrl = PRIVACY_PAGE_URL;
+  readonly deleteAccountUrl = DELETE_ACCOUNT_PAGE_URL;
+  /** En nativo los enlaces externos se abren con el plugin Browser. */
+  readonly isNative = Capacitor.isNativePlatform();
 
   constructor() {
     addIcons({ checkmarkCircleOutline });
@@ -47,6 +54,11 @@ export class LoginPage implements OnInit, OnDestroy {
       await this.router.navigateByUrl('/board', { replaceUrl: true });
       return;
     }
+    // Aviso tras un borrado con sesión expirada: la cuenta puede seguir activa y hay
+    // que repetir la eliminación. Viaja en el estado de navegación de board.page.
+    const navegacion = this.router.getCurrentNavigation();
+    const aviso = (navegacion?.extras?.state?.['deleteMessage'] as string | undefined) ?? '';
+    if (aviso) this.errorMessage = aviso;
     if (await this.auth.getSession()) {
       await this.router.navigateByUrl('/board', { replaceUrl: true });
     }
@@ -77,6 +89,19 @@ export class LoginPage implements OnInit, OnDestroy {
       return;
     }
     this.busy = false;
+  }
+
+  /**
+   * Click en un enlace legal: en nativo se abre con el plugin Browser (y se frena la
+   * navegación del `<a>`); en web se deja que el propio enlace abra la pestaña nueva.
+   * Devuelve `false` en nativo para cancelar el click, `true` en web para seguirlo.
+   */
+  openLegal(url: string): boolean {
+    if (this.isNative) {
+      void Browser.open({ url });
+      return false;
+    }
+    return true;
   }
 
   /** Si el usuario vuelve del navegador sin completar el login, desbloqueamos el botón. */

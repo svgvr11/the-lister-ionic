@@ -7,15 +7,20 @@
 --
 -- Modelo de seguridad: la tabla NO tiene políticas RLS para anon ni authenticated, y se les
 -- revocan los privilegios. Así, aunque un cliente intentara leerla por PostgREST, no podría:
--- solo la Edge Function (service_role) lee y escribe. Los reportes sobreviven a la cuenta
--- porque user_id queda en NULL al borrarse el usuario (ON DELETE SET NULL).
+-- solo la Edge Function (service_role) lee y escribe. Si se borra al usuario sin más,
+-- user_id quedaría en NULL (ON DELETE SET NULL); por eso la Edge Function
+-- `delete-account` elimina primero los reportes del usuario y sus imágenes del
+-- bucket y solo después borra al usuario.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 create extension if not exists pgcrypto;
 
 create table if not exists public.feedback_reports (
   id uuid primary key default gen_random_uuid(),
-  -- NULL cuando la cuenta se elimina: el reporte se conserva, anonimizado.
+  -- NULL cuando la cuenta se elimina sin pasar por `delete-account`: el reporte se
+  -- conserva, anonimizado. El borrado de cuenta (`delete-account`) elimina los
+  -- reportes y sus imágenes antes de borrar al usuario, así que este NULL solo
+  -- cubre eliminaciones fuera de ese flujo.
   user_id uuid references auth.users(id) on delete set null,
   type text not null check (type in ('bug', 'suggestion', 'other')),
   message text not null check (char_length(message) between 10 and 2000),

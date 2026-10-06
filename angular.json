@@ -18,7 +18,11 @@
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
-            "assets": ["src/assets"],
+            "assets": [
+              "src/assets",
+              { "glob": "privacidad.html", "input": "src/legal", "output": "" },
+              { "glob": "eliminar-cuenta.html", "input": "src/legal", "output": "" }
+            ],
             "styles": [
               "node_modules/@ionic/angular/css/core.css",
               "node_modules/@ionic/angular/css/normalize.css",

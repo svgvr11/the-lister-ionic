@@ -153,6 +153,33 @@ ion-button {
   border-radius: 50%;
 }
 
+/* Enlaces legales públicos: discretos, bajo la versión, sin romper la tarjeta. */
+.legal-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: #77798b;
+  font-size: 12px;
+}
+
+.legal-links a {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 4px 2px;
+}
+
+.legal-links a:hover {
+  color: #3d4052;
+  text-decoration: underline;
+}
+
+.legal-links a:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
 .login-footer {
   position: absolute;
   right: 0;

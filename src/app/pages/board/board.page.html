@@ -173,6 +173,20 @@
       <ion-ripple-effect></ion-ripple-effect>
     </button>
   </div>
+  <!-- Eliminar cuenta: SOLO en la app nativa (Android). Fuera de la rejilla de tres
+       acciones para no romperla. En web queda fuera del DOM (no oculto con CSS): la
+       página pública solo ofrece "desde la app" o "por correo". -->
+  <button
+    *ngIf="isNative"
+    class="account-danger-link ion-activatable"
+    type="button"
+    role="menuitem"
+    (click)="openDeleteDialog()"
+  >
+    <ion-icon name="person-remove-outline" aria-hidden="true"></ion-icon>
+    <span>Eliminar cuenta</span>
+    <ion-ripple-effect></ion-ripple-effect>
+  </button>
 </section>
 
 <ion-content class="board-content">
@@ -766,6 +780,69 @@
       <button type="button" class="delete-list-confirm ion-activatable" (click)="confirmDeleteList()">
         <ion-icon [name]="removeDialogIcon" aria-hidden="true"></ion-icon>
         {{ removeDialogActionLabel }}
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </div>
+  </section>
+</div>
+<!-- Diálogo de eliminación de cuenta. Va a nivel de página, fuera de <ion-content>, igual
+     que el modal de comentarios: dentro, su scroller interno lo convertiría en containing
+     block en WebKit y se movería pegado al lienzo en lugar de flotar. -->
+<div *ngIf="deleteDialogOpen" class="delete-list-overlay" (click)="cancelDeleteDialog()">
+  <section
+    class="delete-list-dialog delete-account-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-account-title"
+    aria-describedby="delete-account-description"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="delete-list-icon" aria-hidden="true">
+      <ion-icon name="person-remove-outline"></ion-icon>
+    </div>
+    <h2 id="delete-account-title">Eliminar tu cuenta</h2>
+    <p id="delete-account-description">
+      Se borrarán tu cuenta, tu tablero con todas las listas (incluidos el basurero y el
+      archivo) y tus reportes de comentarios con sus imágenes. Esta acción no se puede
+      deshacer. El color de este dispositivo se conserva.
+    </p>
+    <p class="delete-account-confirm-hint">
+      Para confirmar, escribe <strong>{{ deleteConfirmHint }}</strong>:
+    </p>
+    <input
+      class="delete-account-confirm-input"
+      type="text"
+      [(ngModel)]="deleteConfirmText"
+      [disabled]="deleteBusy"
+      placeholder="ELIMINAR"
+      autocomplete="off"
+      autocapitalize="characters"
+      autocorrect="off"
+      spellcheck="false"
+      aria-label="Escribe ELIMINAR para confirmar"
+    />
+    <p *ngIf="deleteError" class="delete-account-error" role="alert">{{ deleteError }}</p>
+    <p *ngIf="deleteBusy" class="delete-account-busy" role="status" aria-live="polite">
+      Eliminando cuenta…
+    </p>
+    <div class="delete-list-actions">
+      <button
+        type="button"
+        class="delete-list-cancel ion-activatable"
+        [disabled]="deleteBusy"
+        (click)="cancelDeleteDialog()"
+      >
+        Cancelar
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+      <button
+        type="button"
+        class="delete-list-confirm ion-activatable"
+        [disabled]="!canConfirmDelete"
+        (click)="confirmDeleteAccount()"
+      >
+        <ion-icon name="person-remove-outline" aria-hidden="true"></ion-icon>
+        Eliminar cuenta
         <ion-ripple-effect></ion-ripple-effect>
       </button>
     </div>

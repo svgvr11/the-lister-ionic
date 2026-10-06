@@ -10,10 +10,11 @@
   <!-- Centro: copyright. -->
   <p class="app-footer-copyright">&copy; {{ year }} Atenis / The Lister</p>
 
-  <!-- Derecha: enlaces legales y versión (texto decorativo, no interactivo). -->
+  <!-- Derecha: enlaces legales (páginas estáticas públicas) y versión. En nativo se abren
+       con el plugin Browser; en web, en pestaña nueva. -->
   <div class="app-footer-meta">
-    <a class="app-footer-link" routerLink="/privacy">Privacidad</a>
-    <a class="app-footer-link" routerLink="/terms">T&eacute;rminos</a>
+    <a class="app-footer-link" [href]="privacyUrl" target="_blank" rel="noopener noreferrer" (click)="openLegal(privacyUrl)">Privacidad</a>
+    <a class="app-footer-link" [href]="deleteAccountUrl" target="_blank" rel="noopener noreferrer" (click)="openLegal(deleteAccountUrl)">Eliminar cuenta</a>
     <span class="app-footer-version">{{ appVersionLabel }}</span>
   </div>
 </footer>

@@ -68,7 +68,7 @@ Si las credenciales no están configuradas, la app omite el login y abre el tabl
 
 El usuario puede reportar un error o comentar una mejora desde la app (botón flotante junto al
 de "Nueva lista", o la entrada "Enviar comentarios" del menú de perfil). El reporte se guarda en
-Supabase y llega por correo a `feedback@atenis.app` con enlaces firmados a las capturas.
+Supabase y llega por correo a `feedback@soporte.atenis.app` con enlaces firmados a las capturas.
 
 ### Arquitectura
 
@@ -108,7 +108,7 @@ Secretos (Dashboard > Edge Functions > Secrets, o `supabase secrets set`):
 | Secreto | Función | Para qué |
 |---|---|---|
 | `RESEND_API_KEY` | `submit-feedback` | clave de la API de Resend |
-| `FEEDBACK_TO` | `submit-feedback` | destinatario; por defecto `feedback@atenis.app` |
+| `FEEDBACK_TO` | `submit-feedback` | destinatario; por defecto `feedback@soporte.atenis.app` |
 | `CLEANUP_SECRET` | `feedback-cleanup` | secreto compartido que autoriza la purga |
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase.
@@ -130,7 +130,7 @@ verify_jwt = true
 verify_jwt = false
 ```
 
-Desde Resend hay que verificar el dominio de `feedback@atenis.app` para poder enviar desde ahí.
+Desde Resend hay que verificar el dominio de `feedback@soporte.atenis.app` para poder enviar desde ahí.
 
 ### SQL (ejecutar a mano)
 
@@ -141,7 +141,7 @@ Desde Resend hay que verificar el dominio de `feedback@atenis.app` para poder en
 
 ### Cómo revisar los reportes
 
-Llega un correo a `feedback@atenis.app` con el mensaje, el tipo, los datos técnicos, el id del
+Llega un correo a `feedback@soporte.atenis.app` con el mensaje, el tipo, los datos técnicos, el id del
 reporte y enlaces firmados a las imágenes. Para consultar la tabla:
 
 ```sql

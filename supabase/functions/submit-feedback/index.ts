@@ -344,10 +344,10 @@ async function sendMail(mail: MailContent, replyTo: string | null): Promise<void
     return;
   }
   // Por defecto va a la misma dirección de la app; se puede cambiar con el secreto.
-  const to = Deno.env.get('FEEDBACK_TO') ?? 'feedback@atenis.app';
+  const to = Deno.env.get('FEEDBACK_TO') ?? 'feedback@soporte.atenis.app';
 
   const cuerpo: Record<string, unknown> = {
-    from: 'The Lister <feedback@atenis.app>',
+    from: 'The Lister <feedback@soporte.atenis.app>',
     to: [to],
     subject: sanitizeHeaderText(mail.subject),
     html: mail.html,

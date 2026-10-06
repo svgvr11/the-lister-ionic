@@ -5,6 +5,13 @@ import { Capacitor } from '@capacitor/core';
 import { createClient, Session, SupabaseClient } from '@supabase/supabase-js';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import {
+  DeleteAccountResponseBody,
+  DeleteAccountResult,
+  classifyDeleteAccountInvoke,
+  deleteAccountMessage,
+} from '../delete-account';
+import { buildGoogleOAuthOptions } from '../google-auth';
 
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';
@@ -53,14 +60,17 @@ export class AuthService {
     return this.activeSession;
   }
 
+  /**
+   * Inicio de sesión con Google. El `prompt: 'select_account'` (ver `google-auth.ts`)
+   * obliga a Google a mostrar SIEMPRE el selector de cuenta: sin él, Google reutiliza
+   * su sesión del navegador del sistema y entra directo con la última cuenta usada,
+   * sin dejar elegir otra tras un cierre de sesión.
+   */
   async signInWithGoogle(): Promise<void> {
     const isNative = Capacitor.isNativePlatform();
     const { data, error } = await this.requireClient().auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: isNative ? NATIVE_REDIRECT : window.location.origin,
-        skipBrowserRedirect: isNative
-      }
+      options: buildGoogleOAuthOptions(isNative, isNative ? NATIVE_REDIRECT : window.location.origin)
     });
     if (error) throw error;
 
@@ -69,10 +79,77 @@ export class AuthService {
     }
   }
 
-  async signOut(): Promise<void> {
-    const { error } = await this.requireClient().auth.signOut();
+  async signOut(options?: { scope: 'global' | 'local' | 'others' }): Promise<void> {
+    const { error } = await this.requireClient().auth.signOut(options);
     if (error) throw error;
     this.activeSession = null;
+  }
+
+  /**
+   * Borrado de cuenta (exigencia de Google Play). Llama a la Edge Function
+   * `delete-account` con el cliente compartido y cierra la sesión LOCAL por dentro
+   * tanto en éxito como ante un 401 persistente (la cuenta puede haberse borrado en
+   * el servidor aunque el token ya no valga: no tiene sentido conservar la sesión).
+   *
+   * - Éxito (`{ ok: true }`) → `signOut local` y `{ ok: true }`.
+   * - 401 → refresca la sesión y repite la petición UNA vez; si sigue en 401,
+   *   `signOut local` y el mensaje de sesión expirada. NUNCA se trata como éxito.
+   * - Red o 5xx → mensaje claro y la sesión INTACTA, para poder reintentar.
+   */
+  async deleteAccount(): Promise<DeleteAccountResult> {
+    const client = this.requireClient();
+    const intento = await this.invokeDeleteAccount(client);
+    if (intento !== 'session-expired') return this.toDeleteAccountResult(intento);
+
+    // Un 401 puede ser solo un access token caducado: se refresca y se reintenta UNA vez.
+    try {
+      const { data, error } = await client.auth.refreshSession();
+      if (error || !data?.session) return this.expiredAfterLocalSignOut();
+    } catch {
+      return this.expiredAfterLocalSignOut();
+    }
+    return this.toDeleteAccountResult(await this.invokeDeleteAccount(client));
+  }
+
+  /** Un intento contra la función; nunca lanza: todo fallo se clasifica. */
+  private async invokeDeleteAccount(
+    client: SupabaseClient
+  ): Promise<ReturnType<typeof classifyDeleteAccountInvoke>> {
+    try {
+      const { data, error } = await client.functions.invoke('delete-account', { body: {} });
+      return classifyDeleteAccountInvoke(
+        data as DeleteAccountResponseBody | null,
+        error ? { status: (error as { status?: number }).status, message: error.message } : null
+      );
+    } catch {
+      return 'network';
+    }
+  }
+
+  /** Convierte el resultado de un intento en respuesta, cerrando la sesión local si toca. */
+  private async toDeleteAccountResult(
+    outcome: ReturnType<typeof classifyDeleteAccountInvoke>
+  ): Promise<DeleteAccountResult> {
+    if (outcome === 'ok') {
+      await this.signOut({ scope: 'local' });
+      return { ok: true };
+    }
+    if (outcome === 'session-expired') return this.expiredAfterLocalSignOut();
+    return { ok: false, reason: outcome, message: deleteAccountMessage(outcome) };
+  }
+
+  /** 401 persistente: se cierra la sesión local y se avisa, sin tratarlo como éxito. */
+  private async expiredAfterLocalSignOut(): Promise<DeleteAccountResult> {
+    try {
+      await this.signOut({ scope: 'local' });
+    } catch {
+      this.activeSession = null;
+    }
+    return {
+      ok: false,
+      reason: 'session-expired',
+      message: deleteAccountMessage('session-expired'),
+    };
   }
 
   private async handleAuthCallback(url: string): Promise<void> {

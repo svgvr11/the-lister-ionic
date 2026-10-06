@@ -8,7 +8,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add, archiveOutline, checkmark, chevronDown, chevronForward, close, logOut,
-  megaphoneOutline, trash, trashBinOutline, personCircle, layersOutline, search, pencil,
+  megaphoneOutline, trash, trashBinOutline, personCircle, personRemoveOutline, layersOutline, search, pencil,
   checkmarkCircle, returnDownBack, reorderThree
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
@@ -26,6 +26,7 @@ import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
+import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
 import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { FeedbackService } from '../../core/services/feedback.service';
@@ -181,7 +182,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   get feedbackFabVisible(): boolean {
     if (!this.feedbackFabEnabled || this.feedbackOpen) return false;
     if (this.addingList || this.listToRemove || this.conflictDialogOpen) return false;
-    if (this.activeConflict || this.accountMenuOpen) return false;
+    if (this.activeConflict || this.accountMenuOpen || this.deleteDialogOpen) return false;
     return !this.isKeyboardOpen;
   }
 
@@ -223,7 +224,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
 
   constructor() {
-    addIcons({search,close,personCircle,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline});
+    addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline});
   }
 
   ngOnInit(): void {
@@ -504,6 +505,104 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
 
+  // ── Eliminar cuenta ─────────────────────────────────────────────────────────
+
+  /** Diálogo de eliminación de cuenta abierto. */
+  deleteDialogOpen = false;
+  /** Texto que escribe el usuario para confirmar; debe ser `ELIMINAR`. */
+  deleteConfirmText = '';
+  /** Se enciende mientras la petición de borrado está en vuelo. */
+  deleteBusy = false;
+  /** Error del último intento (en `aria-live` del diálogo); vacío si no hay. */
+  deleteError = '';
+  /** El id del usuario cuyo borrado se pidió; se captura antes de invocar. */
+  private deleteUserId: string | null = null;
+
+  /** Texto exacto que hay que escribir para habilitar la confirmación. */
+  readonly deleteConfirmHint = DELETE_CONFIRM_TEXT;
+
+  /** El botón de eliminar solo se habilita con el literal exacto y sin carga. */
+  get canConfirmDelete(): boolean {
+    return !this.deleteBusy && isDeleteConfirmText(this.deleteConfirmText);
+  }
+
+  /** Abre el diálogo: cierra el menú y limpia cualquier intento anterior. Solo en nativo. */
+  openDeleteDialog(): void {
+    if (!this.isNative) return;
+    this.accountMenuOpen = false;
+    this.deleteDialogOpen = true;
+    this.deleteConfirmText = '';
+    this.deleteBusy = false;
+    this.deleteError = '';
+    this.deleteUserId = null;
+  }
+
+  /** Cierra el diálogo (Escape o Cancelar); con carga en vuelo no hace nada. */
+  cancelDeleteDialog(): void {
+    if (this.deleteBusy) return;
+    this.deleteDialogOpen = false;
+    this.deleteConfirmText = '';
+    this.deleteError = '';
+    this.deleteUserId = null;
+  }
+
+  /**
+   * Ejecuta el borrado. `AuthService.deleteAccount()` ya cierra la sesión local por
+   * dentro (éxito y 401 persistente); aquí solo se limpia el tablero local y se navega.
+   * Ante red/5xx la sesión sigue intacta y el diálogo muestra el error para reintentar.
+   */
+  async confirmDeleteAccount(): Promise<void> {
+    if (!this.isNative) return;
+    if (!this.canConfirmDelete) return;
+    this.deleteBusy = true;
+    this.deleteError = '';
+    this.deleteUserId ??= this.auth.session?.user.id ?? null;
+    const userId = this.deleteUserId;
+    try {
+      const resultado = await this.auth.deleteAccount();
+      if (resultado.ok) {
+        this.clearLocalUserData(userId);
+        this.deleteDialogOpen = false;
+        await this.router.navigateByUrl('/login', { replaceUrl: true });
+        return;
+      }
+      if (resultado.reason === 'session-expired') {
+        // La sesión local ya está cerrada por dentro: se limpia y se sale al login
+        // con el aviso en el estado de navegación, para que el login lo muestre.
+        // No es un éxito: si la cuenta sigue activa hay que repetir el borrado.
+        this.clearLocalUserData(userId);
+        this.deleteDialogOpen = false;
+        this.deleteError = '';
+        await this.router.navigate(['/login'], {
+          replaceUrl: true,
+          state: { deleteMessage: resultado.message },
+        });
+        return;
+      }
+      this.deleteError = resultado.message;
+    } catch {
+      this.deleteError = 'No se pudo eliminar la cuenta. Inténtalo de nuevo.';
+    } finally {
+      this.deleteBusy = false;
+    }
+  }
+
+  /**
+   * Limpia el tablero guardado en este dispositivo para el usuario borrado: su clave
+   * (`the-lister-ionic-v1:<userId>`) y la heredada (`the-lister-ionic-v1`), que sirve
+   * de semilla para el primer ingreso de cualquier cuenta. El color del dispositivo
+   * (`the-lister-theme-v1`) se conserva a propósito: es compartido entre cuentas.
+   * Nunca lanza: en modo privado o WebView sin almacenamiento no hay nada que borrar.
+   */
+  private clearLocalUserData(userId: string | null): void {
+    try {
+      if (userId) localStorage.removeItem(`the-lister-ionic-v1:${userId}`);
+      localStorage.removeItem('the-lister-ionic-v1');
+    } catch {
+      /* noop */
+    }
+  }
+
   // ── Feedback ──────────────────────────────────────────────────────────────
 
   /**
@@ -524,6 +623,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.cancelDeleteList();
     this.closeConflictDialog();
     this.closeSearch();
+    if (!this.deleteBusy) {
+      this.deleteDialogOpen = false;
+      this.deleteError = '';
+    }
 
     this.feedbackOpener = opener ?? null;
     this.feedbackOpen = true;
@@ -551,6 +654,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
+    if (this.deleteDialogOpen) {
+      this.cancelDeleteDialog();
+      return;
+    }
     if (this.conflictDialogOpen) {
       this.closeConflictDialog();
       return;

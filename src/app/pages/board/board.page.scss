@@ -653,6 +653,43 @@ ion-header {
   background: #fdecec;
 }
 
+/* Eliminar cuenta: enlace discreto de peligro FUERA de la rejilla de acciones, para no
+   romperla. Debajo de la fila, a ancho completo, en rojo tenue sobre fondo claro. */
+.account-danger-link {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  color: #a43c43;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.account-danger-link:hover {
+  background: #fdecec;
+}
+
+.account-danger-link:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.account-danger-link ion-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
 .menu-action:hover,
 .menu-action:focus-visible {
   filter: brightness(0.95);
@@ -1927,6 +1964,73 @@ ion-header {
 
 .sync-conflict-dialog {
   width: min(100%, 460px);
+}
+
+/* ── Eliminar cuenta ─────────────────────────────────────────────────────────
+   Reutiliza .delete-list-overlay/.delete-list-dialog/.delete-list-actions: aquí solo lo
+   propio (campo de confirmación y mensajes). El diálogo no se desborda en móvil:
+   altura máxima con scroll interno y ancho que deja 16px por lado. */
+.delete-account-dialog {
+  width: min(100%, 460px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.delete-account-confirm-hint {
+  max-width: 330px;
+  margin: 0 auto 8px;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.delete-account-confirm-hint strong {
+  color: #25334a;
+  letter-spacing: 1px;
+}
+
+.delete-account-confirm-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  color: #172236;
+  background: #f5f7fc;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.delete-account-confirm-input:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+.delete-account-confirm-input:disabled {
+  opacity: 0.6;
+}
+
+.delete-account-error {
+  max-width: 330px;
+  margin: 8px auto 0;
+  color: #a83331;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.delete-account-busy {
+  max-width: 330px;
+  margin: 8px auto 0;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.delete-account-dialog .delete-list-actions {
+  margin-top: 14px;
 }
 
 .sync-conflict-icon {

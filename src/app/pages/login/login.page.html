@@ -28,6 +28,14 @@
       </section>
 
       <p class="version-label"><span aria-hidden="true"></span>{{ appVersionLabel }}</p>
+
+      <!-- Enlaces legales públicos. En nativo se abren con el plugin Browser; en web,
+           en pestaña nueva. -->
+      <nav class="legal-links" aria-label="Enlaces legales">
+        <a [href]="privacyUrl" target="_blank" rel="noopener noreferrer" (click)="openLegal(privacyUrl)">Privacidad</a>
+        <span aria-hidden="true">·</span>
+        <a [href]="deleteAccountUrl" target="_blank" rel="noopener noreferrer" (click)="openLegal(deleteAccountUrl)">Eliminar cuenta</a>
+      </nav>
     </div>
   </main>
   <footer class="login-footer">2026 Atenis</footer>
