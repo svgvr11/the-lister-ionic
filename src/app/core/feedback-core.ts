@@ -58,18 +58,11 @@ export interface DiagnosticsContext {
 
 export const FEEDBACK_TYPES: readonly FeedbackType[] = ['bug', 'suggestion', 'other'];
 
-/** Etiquetas en español: son las del modal y también las del asunto del correo. */
-export const FEEDBACK_TYPE_LABELS: Readonly<Record<FeedbackType, string>> = {
-  bug: 'Error',
-  suggestion: 'Sugerencia',
-  other: 'Otro'
-};
-
 /** Orden de las fichas del modal. El primero es el que se marca por defecto. */
 export const FEEDBACK_TYPE_CHIPS: readonly { id: FeedbackType; label: string }[] = [
   { id: 'bug', label: 'Error' },
   { id: 'suggestion', label: 'Sugerencia' },
-  { id: 'other', label: 'Otro' }
+  { id: 'other', label: 'Aviso' }
 ];
 
 export const MESSAGE_MIN_LENGTH = 10;
@@ -106,6 +99,16 @@ export const FEEDBACK_RETENTION_DAYS = 90;
 export const FEEDBACK_BUCKET = 'feedback-attachments';
 export const SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
 export const FEEDBACK_SUBJECT_PREFIX = '[The Lister]';
+
+/** Nombre de la app que se usa en el remitente y, si procede, en el asunto. */
+export const FEEDBACK_APP_NAME = 'The Lister';
+
+/** Etiquetas visibles por tipo para el remitente del correo. */
+export const FEEDBACK_TYPE_LABELS: Readonly<Record<FeedbackType, string>> = {
+  bug: 'Error',
+  suggestion: 'Sugerencia',
+  other: 'Aviso'
+};
 
 /** Única llave del botón flotante de comentarios (punto 6 del encargo). */
 export const FEEDBACK_FAB_ENABLED = true;
@@ -396,6 +399,24 @@ export function sanitizeHeaderText(text: unknown): string {
     .replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Construye la cabecera From para Resend: "Feedback - {Etiqueta} / {APP_NAME} <address>".
+ * El nombre visible se sanea (sin saltos de línea, controles, comillas ni "<" ">") y se
+ * entrecomilla si contiene caracteres que lo requieren según RFC 5322.
+ * Tipo desconocido → "Aviso".
+ */
+export function buildFromHeader(type: unknown, address: string): string {
+  const id = isFeedbackType(type) ? type : 'other';
+  const label = FEEDBACK_TYPE_LABELS[id];
+  const rawName = `Feedback - ${label} / ${FEEDBACK_APP_NAME}`;
+  const saneName = sanitizeHeaderText(rawName)
+    .replace(/["<>]/g, '')
+    .trim();
+  const needsQuotes = /[(),:;<>@[\]"]/.test(saneName) || saneName !== rawName;
+  const displayName = needsQuotes ? `"${saneName}"` : saneName;
+  return `${displayName} <${address}>`;
 }
 
 export function buildEmailSubject(type: unknown, message: unknown): string {

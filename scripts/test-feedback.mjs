@@ -7,6 +7,7 @@ import {
   DIAGNOSTICS_COUNT_KEYS,
   FEEDBACK_RETENTION_DAYS,
   FEEDBACK_TYPE_LABELS,
+  FEEDBACK_APP_NAME,
   MAX_DIAGNOSTICS_BYTES,
   MAX_IMAGES,
   MAX_IMAGE_BYTES,
@@ -18,6 +19,7 @@ import {
   RATE_LIMIT_PER_HOUR,
   buildFeedbackImagePath,
   buildEmailSubject,
+  buildFromHeader,
   checkImageBatch,
   checkImageSize,
   checkRateLimit,
@@ -93,10 +95,10 @@ check('el tipo solo admite bug, suggestion u other', () => {
   for (const malo of ['', 'BUG', 'Bug', 'error', 'idea', 'null', null, undefined, 1, {}, ['bug']]) {
     assert.equal(isFeedbackType(malo), false, `no debería admitir ${JSON.stringify(malo)}`);
   }
-  // Las etiquetas del modal son las mismas que las del asunto del correo.
+  // Las etiquetas del modal son las mismas que las del asunto del correo y del remitente.
   assert.equal(FEEDBACK_TYPE_LABELS['bug'], 'Error');
   assert.equal(FEEDBACK_TYPE_LABELS['suggestion'], 'Sugerencia');
-  assert.equal(FEEDBACK_TYPE_LABELS['other'], 'Otro');
+  assert.equal(FEEDBACK_TYPE_LABELS['other'], 'Aviso');
 });
 
 // 3. Mensaje: 10..2000 DESPUÉS de trim, y los espacios no cuentan como reporte.
@@ -523,15 +525,41 @@ check('el asunto del correo no tiene saltos de línea ni caracteres de control',
   assert.ok(largo.endsWith('A'.repeat(60)), 'el resumen se corta en 60');
   assert.equal(largo, `[The Lister] Sugerencia: ${'A'.repeat(60)}`);
 
-  // Cada tipo usa su etiqueta en español, y uno desconocido cae en "Otro".
+  // Cada tipo usa su etiqueta en español, y uno desconocido cae en "Aviso".
   assert.equal(buildEmailSubject('bug', 'algo'), '[The Lister] Error: algo');
   assert.equal(buildEmailSubject('suggestion', 'algo'), '[The Lister] Sugerencia: algo');
-  assert.equal(buildEmailSubject('other', 'algo'), '[The Lister] Otro: algo');
-  assert.equal(buildEmailSubject('inventado', 'algo'), '[The Lister] Otro: algo');
+  assert.equal(buildEmailSubject('other', 'algo'), '[The Lister] Aviso: algo');
+  assert.equal(buildEmailSubject('inventado', 'algo'), '[The Lister] Aviso: algo');
 
   // Entradas raras no rompen la construcción del asunto.
-  assert.equal(buildEmailSubject(null, null), '[The Lister] Otro: ');
+  assert.equal(buildEmailSubject(null, null), '[The Lister] Aviso: ');
   assert.equal(sanitizeHeaderText(null), '');
+});
+
+// 11b. Cabecera From: buildFromHeader produce el formato esperado y sana el nombre.
+check('buildFromHeader genera la cabecera From con etiqueta, app y dirección', () => {
+  const addr = 'feedback@soporte.atenis.app';
+  assert.equal(buildFromHeader('bug', addr), `Feedback - Error / The Lister <${addr}>`);
+  assert.equal(buildFromHeader('suggestion', addr), `Feedback - Sugerencia / The Lister <${addr}>`);
+  assert.equal(buildFromHeader('other', addr), `Feedback - Aviso / The Lister <${addr}>`);
+  // Tipo desconocido cae en "Aviso".
+  assert.equal(buildFromHeader('desconocido', addr), `Feedback - Aviso / The Lister <${addr}>`);
+  assert.equal(buildFromHeader(null, addr), `Feedback - Aviso / The Lister <${addr}>`);
+
+  // La dirección se conserva tal cual.
+  const otra = 'otro@dominio.com';
+  assert.equal(buildFromHeader('bug', otra), `Feedback - Error / The Lister <${otra}>`);
+
+  // El nombre visible se sanea: sin saltos de línea, controles, comillas ni "<" ">" que rompan la cabecera.
+  // Como el nombre viene de constantes (FEEDBACK_TYPE_LABELS, FEEDBACK_APP_NAME), no hay inyección real,
+  // pero la función elimina esos caracteres y entrecomilla si hace falta según RFC 5322.
+  // Verificamos que la salida no contiene saltos de línea ni controles.
+  const resultado = buildFromHeader('bug', addr);
+  assert.doesNotMatch(resultado, /[\r\n\u0000-\u001f\u007f]/, 'sin saltos de línea ni controles');
+  assert.match(resultado, /^Feedback - Error \/ The Lister </);
+
+  // Caracteres que fuerzan comillas según RFC 5322: paréntesis, dos puntos, punto y coma, etc.
+  // No hay forma de inyectarlos en el nombre actual (constantes fijas), pero la función los maneja.
 });
 
 // 12. Escape de HTML: nada del usuario se interpreta como etiqueta en el correo.

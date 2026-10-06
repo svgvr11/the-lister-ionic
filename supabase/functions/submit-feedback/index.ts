@@ -22,6 +22,7 @@ import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-
 import {
   FEEDBACK_BUCKET,
   FEEDBACK_TYPE_LABELS,
+  FEEDBACK_APP_NAME,
   MAX_DIAGNOSTICS_BYTES,
   MAX_IMAGES,
   MAX_REQUEST_BYTES,
@@ -30,6 +31,7 @@ import {
   SIGNED_URL_TTL_SECONDS,
   buildFeedbackImagePath,
   buildEmailSubject,
+  buildFromHeader,
   checkImageBatch,
   checkImageSize,
   checkRateLimit,
@@ -337,7 +339,7 @@ const html = `<!doctype html><html><body style="margin:0;padding:16px;background
  * Si el envío falla, la función NO da error al usuario: el reporte ya está en la tabla y es lo
  * único que no se puede recuperar. Se registra el fallo (sin datos personales) y se responde ok.
  */
-async function sendMail(mail: MailContent, replyTo: string | null): Promise<void> {
+async function sendMail(mail: MailContent, replyTo: string | null, type: string): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   if (!apiKey) {
     log('correo sin RESEND_API_KEY');
@@ -345,9 +347,10 @@ async function sendMail(mail: MailContent, replyTo: string | null): Promise<void
   }
   // Por defecto va a la misma dirección de la app; se puede cambiar con el secreto.
   const to = Deno.env.get('FEEDBACK_TO') ?? 'feedback@soporte.atenis.app';
+  const fromAddress = to; // se usa la misma dirección que el destinatario por defecto
 
   const cuerpo: Record<string, unknown> = {
-    from: 'The Lister <feedback@soporte.atenis.app>',
+    from: buildFromHeader(type, fromAddress),
     to: [to],
     subject: sanitizeHeaderText(mail.subject),
     html: mail.html,
@@ -568,7 +571,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // El correo es lo último: si falla, el reporte ya está y eso es lo importante.
     try {
-      await sendMail(mail, contactEmail);
+      await sendMail(mail, contactEmail, type);
     } catch (error) {
       log('correo con excepción', error instanceof Error ? error.name : 'desconocida');
     }
