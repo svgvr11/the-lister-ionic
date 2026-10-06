@@ -17,8 +17,9 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  /* safe areas: en el APK el modal no puede quedar bajo el gesto ni bajo la barra. */
-  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  /* safe areas vía la variable global (env primero) con suelo de 16px: en el
+     APK el modal no queda bajo la barra porque el WebView ya viene recortado. */
+  padding-block: max(16px, var(--app-safe-area-top)) max(16px, var(--app-safe-area-bottom));
   background: rgba(26, 33, 48, 0.42);
   backdrop-filter: blur(3px);
 }

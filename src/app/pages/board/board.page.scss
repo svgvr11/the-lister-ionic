@@ -16,8 +16,8 @@
   --fab-hover: #8870ad;
   /* Superficie fija de header y footer: no cambia con el tema del tablero. */
   --topbar-surface: #fff;
-  --app-safe-area-top: var(--ion-safe-area-top, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  --app-safe-area-bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  /* --app-safe-area-top/--app-safe-area-bottom: definición única en src/styles.css
+     (global); aquí solo se consumen, con la cadena original intacta. */
   --board-header-height: calc(70px + var(--app-safe-area-top));
   /* El FAB es fijo abajo a la derecha: el pie deja libre su esquina para no taparse. */
   --app-footer-end-inset: 96px;
@@ -2123,7 +2123,9 @@ ion-header {
    lados del buscador centrado, así que el buscador baja a su propia fila a ancho
    completo, igual que en móvil. Va antes del bloque de móvil para que ese siga mandando. */
 @media (min-width: 701px) and (max-width: 1159px) {
-  :host { --board-header-height: 106px; }
+  /* 106px de toolbar (dos filas) + inset superior, para que el menú de cuenta
+     arranque justo bajo el header real también en el APK. */
+  :host { --board-header-height: calc(106px + var(--app-safe-area-top)); }
   .toolbar-inner {
     grid-template-columns: minmax(0, 1fr) auto;
     /* La segunda fila se dimensiona sola (auto) y el hueco real entre la marca y el
@@ -2145,8 +2147,10 @@ ion-header {
 /* Respativo */
 @media (max-width: 700px) {
   :host { height: 100dvh; }
-  /* 15 + 40 (fila marca/acciones) + 5 (gap) + 29 (buscador) + 15 = 104px. */
-  :host { --board-header-height: 104px; --board-section-gap: 14px; }
+  /* 15 + 40 (fila marca/acciones) + 5 (gap) + 29 (buscador) + 15 = 104px, más el
+     inset superior: el header real lleva el padding de ion-header, y la altura del
+     menú de cuenta debe coincidir con él (evita solaparlo con el buscador en APK). */
+  :host { --board-header-height: calc(104px + var(--app-safe-area-top)); --board-section-gap: 14px; }
   ion-header { flex-basis: auto; height: auto; }
   ion-toolbar.topbar {
     --min-height: 0;

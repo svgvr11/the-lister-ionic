@@ -183,7 +183,9 @@ ion-button {
 .login-footer {
   position: absolute;
   right: 0;
-  bottom: var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  /* Inset vía la variable global (env primero): la cadena vieja priorizaba el
+     valor inyectado por SystemBars y duplicaba el inset en el APK. */
+  bottom: var(--app-safe-area-bottom);
   left: 0;
   height: 48px;
   display: grid;

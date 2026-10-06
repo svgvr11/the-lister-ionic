@@ -2,8 +2,10 @@
   display: block;
 }
 
-/* Superficie y safe areas las define la página que usa el pie; los valores de aquí son
-   solo la reserva por si el componente se reutilizara fuera de ellas. */
+/* La superficie (--topbar-surface) la define la página que usa el pie y la safe
+   area inferior vive ahora en src/styles.css (--app-safe-area-bottom, única
+   definición); los valores de aquí son solo la reserva por si el componente se
+   reutilizara fuera de ellas. */
 .app-footer {
   --footer-surface: var(--topbar-surface, #fff);
   --footer-ink: #526075;
@@ -13,7 +15,7 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
-  padding-block: 12px calc(14px + var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-block: 12px calc(14px + var(--app-safe-area-bottom));
   padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
   /* Las páginas con botón flotante (el tablero) reservan aquí la esquina del FAB, para que
      no tape la versión al llegar al final del scroll. */

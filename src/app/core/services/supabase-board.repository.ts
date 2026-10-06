@@ -7,6 +7,7 @@ import { ChecklistBoard } from '../../models/board.models';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../board-merge';
 import { BoardConflict, BoardRepository } from './board.repository';
 import { AuthService } from './auth.service';
+import { isSessionBlocked, throwIfSessionBlocked } from '../session-guard';
 
 interface StoredBoard {
   id: string;
@@ -48,6 +49,8 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   private readonly subject = new BehaviorSubject<ChecklistBoard>(this.emptyBoard());
 
   async initializeForUser(userId: string | null, initialBoard?: ChecklistBoard | null): Promise<void> {
+    // Pestaña bloqueada por un cambio de sesión en otra pestaña: cero lecturas/escrituras.
+    throwIfSessionBlocked();
     if (!userId) throw new Error('Inicia sesión para cargar tu tablero sincronizado.');
     if (this.userId === userId && this.initialized) return;
     this.stopSynchronization();
@@ -94,6 +97,9 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   }
 
   async refresh(): Promise<void> {
+    // Bloqueada: en vez de lanzar (los refrescos automáticos de foco/visibilidad no
+    // tienen quién capture el error) se ignora el refresco por completo.
+    if (isSessionBlocked()) return;
     const userId = this.userId;
     if (!userId) return;
     if (this.refreshInFlight) return this.refreshInFlight;
@@ -104,6 +110,8 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   }
 
   async saveBoard(board: ChecklistBoard): Promise<void> {
+    // Bloqueada: se rechaza ANTES de tocar Supabase (lectura base, escritura o merge).
+    throwIfSessionBlocked();
     const userId = this.userId;
     const unresolvedConflict = this.conflictSubject.value;
     if (unresolvedConflict) {
@@ -155,6 +163,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   }
 
   async resolveConflict(resolution: 'local' | 'remote'): Promise<void> {
+    throwIfSessionBlocked();
     const conflict = this.conflictSubject.value;
     if (!conflict || !this.userId) return;
 

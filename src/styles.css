@@ -22,3 +22,21 @@ button,
 input {
   font: inherit;
 }
+
+/* ── Safe areas ─────────────────────────────────────────────────────────────
+   Única definición de los insets (top y bottom). La prioridad es AL REVÉS que
+   antes: primero env(), que es la señal de la propia plataforma de si la
+   ventana se extiende realmente bajo las barras. Medido en el APK (Android 12,
+   WebView 153): el WebView ya viene recortado por las barras (innerHeight =
+   screen − status bar − nav bar) y env(safe-area-inset-*) = 0px, mientras que
+   SystemBars inyectaba --safe-area-inset-top = 29px / bottom = 48px con los
+   que la cadena vieja DUPLICABA el inset. Con env primero: APK → 0px (sin
+   banda extra), iOS/PWA con notch → env > 0 (se aplica una sola vez), web →
+   0px como siempre. El valor inyectado queda solo como respaldo para
+   navegadores sin soporte de env().
+   Board, archive, trash, legal-page, pie, FAB, login y modales consumen estas
+   variables desde aquí; no repetir la fórmula en los componentes. */
+:root {
+  --app-safe-area-top: env(safe-area-inset-top, var(--safe-area-inset-top, 0px));
+  --app-safe-area-bottom: env(safe-area-inset-bottom, var(--safe-area-inset-bottom, 0px));
+}

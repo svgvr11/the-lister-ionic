@@ -12,6 +12,7 @@ import {
   deleteAccountMessage,
 } from '../delete-account';
 import { buildGoogleOAuthOptions } from '../google-auth';
+import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../session-guard';
 
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';
@@ -67,6 +68,7 @@ export class AuthService {
    * sin dejar elegir otra tras un cierre de sesión.
    */
   async signInWithGoogle(): Promise<void> {
+    markLocalAuthChange();
     const isNative = Capacitor.isNativePlatform();
     const { data, error } = await this.requireClient().auth.signInWithOAuth({
       provider: 'google',
@@ -80,6 +82,7 @@ export class AuthService {
   }
 
   async signOut(options?: { scope: 'global' | 'local' | 'others' }): Promise<void> {
+    markLocalAuthChange();
     const { error } = await this.requireClient().auth.signOut(options);
     if (error) throw error;
     this.activeSession = null;
@@ -97,18 +100,30 @@ export class AuthService {
    * - Red o 5xx → mensaje claro y la sesión INTACTA, para poder reintentar.
    */
   async deleteAccount(): Promise<DeleteAccountResult> {
+    // Pestaña bloqueada: otra pestaña cambió la sesión compartida, así que no se ni
+    // invoca la Edge Function ni se intenta refrescar/cerrar la sesión.
+    if (isSessionBlocked()) return this.blockedResult();
     const client = this.requireClient();
     const intento = await this.invokeDeleteAccount(client);
     if (intento !== 'session-expired') return this.toDeleteAccountResult(intento);
 
     // Un 401 puede ser solo un access token caducado: se refresca y se reintenta UNA vez.
+    // Si durante el primer intento la otra pestaña cambió la sesión, no se refresca ni se
+    // repite: la pestaña ya está bloqueada y tocar Supabase sería escribir con otra cuenta.
+    if (isSessionBlocked()) return this.blockedResult();
     try {
       const { data, error } = await client.auth.refreshSession();
       if (error || !data?.session) return this.expiredAfterLocalSignOut();
     } catch {
       return this.expiredAfterLocalSignOut();
     }
+    if (isSessionBlocked()) return this.blockedResult();
     return this.toDeleteAccountResult(await this.invokeDeleteAccount(client));
+  }
+
+  /** Resultado de `deleteAccount` cuando la pestaña está bloqueada por otra pestaña. */
+  private blockedResult(): DeleteAccountResult {
+    return { ok: false, reason: 'session-expired', message: SESSION_BLOCKED_MESSAGE };
   }
 
   /** Un intento contra la función; nunca lanza: todo fallo se clasifica. */

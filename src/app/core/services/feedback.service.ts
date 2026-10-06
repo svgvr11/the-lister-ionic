@@ -14,6 +14,7 @@ import {
   normalizeContactEmail,
   validateMessage
 } from '../feedback-core';
+import { SESSION_BLOCKED_MESSAGE, isSessionBlocked } from '../session-guard';
 
 /** Una imagen ya preparada para enviar: bytes, tipo real y URL de la miniatura. */
 export interface PreparedImage {
@@ -151,6 +152,10 @@ export class FeedbackService {
   }
 
   async send(draft: FeedbackDraft, images: readonly PreparedImage[]): Promise<FeedbackSendResult> {
+    // Pestaña bloqueada por un cambio de sesión en otra pestaña: no se manda nada a
+    // Supabase (ni siquiera se intenta recuperar la sesión). Se devuelve resultado y no
+    // error porque el modal de feedback solo captura con try/finally.
+    if (isSessionBlocked()) return { ok: false, message: SESSION_BLOCKED_MESSAGE };
     const client = this.auth.supabaseClient;
     if (!client || !this.auth.enabled) {
       return { ok: false, message: 'El envío de comentarios no está disponible en esta instalación.' };

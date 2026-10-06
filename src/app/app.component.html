@@ -1,0 +1,42 @@
+<ion-app>
+  <ion-router-outlet />
+
+  <!--
+    Bloqueo de pestaña (solo web): otra pestaña cerró la sesión o entró con otra
+    cuenta. A pantalla completa, sin cierre por Escape ni por clic fuera; el único
+    camino de salida es el botón.
+  -->
+  <div
+    *ngIf="sessionGuard.blocked() as blocked"
+    class="session-blocked-overlay"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="session-blocked-title"
+    aria-describedby="session-blocked-text"
+    (keydown)="onBlockedKeydown($event)"
+  >
+    <section class="session-blocked-dialog">
+      <div class="session-blocked-icon" aria-hidden="true">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
+      </div>
+      <h2 id="session-blocked-title">Inicia sesión para continuar</h2>
+      <p id="session-blocked-text">
+        {{ blocked === 'signed-out'
+          ? 'Cerraste sesión en otra pestaña.'
+          : 'Iniciaste sesión con otra cuenta en otra pestaña.' }}
+      </p>
+      <p class="session-blocked-note" aria-live="polite">
+        Los cambios de esta pestaña no se están guardando en Supabase.
+      </p>
+      <button
+        type="button"
+        #blockedFocusButton
+        class="session-blocked-button ion-activatable"
+        (click)="goToLogin()"
+      >
+        Ir al inicio de sesión
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </section>
+  </div>
+</ion-app>

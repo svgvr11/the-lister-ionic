@@ -1,0 +1,101 @@
+/* Modal de bloqueo de pestaña (solo web). Por encima de cualquier otro overlay
+   de la app (los diálogos del tablero usan z-index 1000). */
+.session-blocked-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: auto;
+  background: rgba(26, 33, 48, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+/* Mismo lenguaje que los diálogos del tablero (.delete-list-dialog): tarjeta
+   centrada, radio 14px y sombra suave. */
+.session-blocked-dialog {
+  width: min(100%, 420px);
+  padding: 22px 18px 18px;
+  color: #172236;
+  background: #fff;
+  border: 1px solid #e9ecf2;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.28);
+  text-align: center;
+  animation: sessionBlockedDialogEnter 0.16s ease-out;
+}
+
+.session-blocked-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 10px;
+  color: #314d6a;
+  background: #edf4fb;
+  border-radius: 50%;
+}
+
+.session-blocked-icon ion-icon {
+  font-size: 22px;
+}
+
+.session-blocked-dialog h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.session-blocked-dialog p {
+  max-width: 330px;
+  margin: 6px auto 0;
+  color: #5f6878;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.session-blocked-note {
+  font-size: 11px !important;
+  color: #737d8e !important;
+}
+
+.session-blocked-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 10px 16px;
+  overflow: hidden;
+  color: #fff;
+  background: #314d6a;
+  border: 1px solid #314d6a;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.session-blocked-button:hover {
+  background: #27405b;
+}
+
+.session-blocked-button:focus-visible {
+  outline: 2px solid #536782;
+  outline-offset: 2px;
+}
+
+@keyframes sessionBlockedDialogEnter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
