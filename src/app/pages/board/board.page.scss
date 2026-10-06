@@ -184,7 +184,8 @@ ion-header {
 
 .title-edit {
   display: flex;
-  align-items: center;
+  /* Los botones se estiran a la altura real del ion-input (mismo alto, sin agrandarlo). */
+  align-items: stretch;
   gap: 6px;
   flex: 1;
   min-width: 0;
@@ -193,8 +194,9 @@ ion-header {
 
 .title-char-count {
   position: absolute;
-  right: 48px;
-  bottom: 2px;
+  right: 76px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 10px;
   font-weight: 600;
   color: #9fa4a7;
@@ -216,16 +218,17 @@ ion-header {
   --border-radius: 10px;
   border: 1px solid #dfe3ec;
   border-radius: 10px;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
 }
 
-.confirm-title-btn,
-.cancel-title-btn {
+/* Botones del editor del título del tablero (fuera de la PARTE C: se mantienen). */
+.title-edit .confirm-title-btn,
+.title-edit .cancel-title-btn {
   position: relative;
   overflow: hidden;
   width: 34px;
-  height: 34px;
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -235,27 +238,27 @@ ion-header {
   transition: background 0.15s ease;
 }
 
-.confirm-title-btn {
+.title-edit .confirm-title-btn {
   background: #6f9be7;
   color: #fff;
 }
 
-.confirm-title-btn:hover {
+.title-edit .confirm-title-btn:hover {
   background: #8ab0f0;
 }
 
-.cancel-title-btn {
+.title-edit .cancel-title-btn {
   background: transparent;
   color: #9fa4a7;
 }
 
-.cancel-title-btn:hover {
+.title-edit .cancel-title-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
-.confirm-title-btn ion-icon,
-.cancel-title-btn ion-icon {
+.title-edit .confirm-title-btn ion-icon,
+.title-edit .cancel-title-btn ion-icon {
   font-size: 18px;
 }
 
@@ -1144,38 +1147,14 @@ ion-header {
 
 .list-title-edit {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex: 1 1 0;
   min-width: 0;
   gap: 4px;
   position: relative;
-}
-
-.list-title-edit ion-input {
-  min-width: 0;
-  --background: #fff;
-  --color: #172236;
-  --padding-start: 8px;
-  --padding-end: 8px;
-  --border-radius: 7px;
-  border: 1px solid #dfe3ec;
-  border-radius: 7px;
-}
-
-.list-title-edit .title-char-count {
-  position: absolute;
-  right: 40px;
-  bottom: 2px;
-  font-size: 9px;
-  font-weight: 600;
-  color: #9fa4a7;
-  white-space: nowrap;
-  pointer-events: none;
-  transition: color 0.15s ease;
-}
-
-.list-title-edit .title-char-count.at-limit {
-  color: #e11d48;
+  app-inline-edit {
+    width: 100%;
+  }
 }
 
 /* Handle de reordenamiento de tareas: sigue siendo lo único arrastrable del tablero. */
@@ -1302,27 +1281,18 @@ ion-header {
 
 .task-edit {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex: 1;
   min-width: 0;
   gap: 4px;
 }
 
-.task-edit-input {
+/* El host de app-inline-edit es un flex item con ancho de contenido: sin
+   crecer, el campo quedaría apestado a los botones. Ocupa todo el ancho
+   restante de la tarjeta para que ✓/✗ queden alineados a la derecha. */
+.task-edit app-inline-edit {
+  flex: 1 1 auto;
   min-width: 0;
-  color: #172236;
-  background: #fff;
-  border: 1px solid #dfe3ec;
-  border-radius: 6px;
-  --padding-start: 7px;
-  --padding-end: 7px;
-}
-
-.task-edit .confirm-title-btn,
-.task-edit .cancel-title-btn {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
 }
 
 .task.completed .task-text {

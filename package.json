@@ -21,6 +21,8 @@
     "test:overlay-stack": "node --experimental-strip-types scripts/test-overlay-stack.mjs",
     "test:board-sync": "node --experimental-strip-types scripts/test-board-sync.mjs",
     "test:focus-notice": "node --experimental-strip-types scripts/test-focus-notice.mjs",
+    "test:inline-edit": "node --experimental-strip-types scripts/test-inline-edit.mjs",
+    "test:edit-contrast": "node --experimental-strip-types scripts/test-edit-contrast.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

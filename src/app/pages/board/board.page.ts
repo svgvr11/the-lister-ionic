@@ -17,9 +17,11 @@ import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
 import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
+import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
+import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback-core';
 import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
@@ -42,7 +44,7 @@ import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
-    FeedbackModalComponent
+    FeedbackModalComponent, InlineEditComponent
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -163,6 +165,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   @HostBinding('style.--board-bg') boardBackground = this.activeTheme.background;
   @HostBinding('style.--topbar-bg') toolbarBackground = this.activeTheme.toolbar;
   @HostBinding('style.--accent') themeAccent = this.activeTheme.accent;
+  @HostBinding('style.--on-accent') themeOnAccent = onAccentToken(pickOnAccent(this.activeTheme.accent));
   @HostBinding('style.--fab-color') themeFab = this.activeTheme.fab;
   @HostBinding('style.--fab-hover') themeFabHover = this.activeTheme.accent;
   collapsed = new Set<string>();
@@ -194,6 +197,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   /** Contador de caracteres para el título de la lista nueva. */
   newListTitleCount = 0;
+
+  /** Contador de caracteres para el título del tablero en edición. */
+  titleDraftCount = 0;
 
   /** Contador de caracteres para el input de edición de lista. */
   listTitleEditCount = 0;
@@ -282,10 +288,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   @ViewChild('focusTitleButton', { read: ElementRef })
   private set focusTitleButton(button: ElementRef<HTMLButtonElement> | undefined) {
     if (button) requestAnimationFrame(() => button.nativeElement.focus());
-  }
-  @ViewChild('focusTitleInput', { read: IonInput })
-  private set focusTitleInput(input: IonInput | undefined) {
-    if (input) queueMicrotask(() => void input.setFocus());
   }
   @ViewChild('focusTaskInput', { read: IonInput })
   private focusTaskInput?: IonInput;
@@ -401,6 +403,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }
     if (this.feedbackOpen) {
       overlays.push({ id: 'board:feedback', close: () => this.requestFeedbackCloseFromBack() });
+    }
+    // Edición activa: ÚLTIMA para que Escape/Atrás (closeTop) la cancelen
+    // primero sin cerrar el foco. NO es modal: sin foco atrapado, sin inert,
+    // sin atenuar ni bloquear el feedback (getters la excluyen).
+    if (this.editingTaskId || this.editingListId) {
+      overlays.push({ id: 'board:inline-edit', close: () => this.cancelActiveEdit() });
     }
     this.overlayStack.sync('board', overlays);
   }
@@ -1089,6 +1097,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
+    // La edición activa es la capa superior: Escape la cancela sin cerrar el foco.
+    // (El textarea también emite cancel; este es el respaldo para foco en botones.)
+    if (this.editingTaskId || this.editingListId) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancelActiveEdit();
+      return;
+    }
     if (this.listToRemove) {
       event.preventDefault();
       this.cancelDeleteList();
@@ -1125,6 +1141,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.boardBackground = theme.background;
     this.toolbarBackground = theme.toolbar;
     this.themeAccent = theme.accent;
+    this.themeOnAccent = onAccentToken(pickOnAccent(theme.accent));
     this.themeFab = theme.fab;
     this.themeFabHover = theme.accent;
   }
@@ -1170,6 +1187,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   // ✏️ Edición de título
   startEditTitle(): void {
     this.titleDraft = this.board.title;
+    this.titleDraftCount = Array.from(this.titleDraft).length;
     this.editingTitle = true;
   }
 
@@ -1187,14 +1205,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   cancelEditTitle(): void {
     this.editingTitle = false;
     this.titleDraft = '';
+    this.titleDraftCount = 0;
     this.releasePendingRemoteBoard();
   }
 
   startEditList(list: ChecklistList, event: Event): void {
     event.stopPropagation();
+    // Punto 7: se conserva el comportamiento actual — si había otra edición
+    // activa, su borrador se descarta sin guardar ni avisar (se pisa).
+    this.editingTaskId = null;
+    this.taskTextDraft = '';
     this.editingListId = list.id;
     this.listTitleDraft = list.title;
     this.listTitleEditCount = Array.from(list.title).length;
+    this.scheduleMasonryLayout();
   }
 
   async confirmEditList(list: ChecklistList): Promise<void> {
@@ -1213,6 +1237,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.listTitleDraft = '';
     this.listTitleEditCount = 0;
     this.releasePendingRemoteBoard();
+    this.scheduleMasonryLayout();
+  }
+
+  /** Cancela la edición activa (lista o tarea) sin guardar — capa superior de Escape/Atrás. */
+  cancelActiveEdit(): void {
+    if (this.editingListId) { this.cancelEditList(); return; }
+    if (this.editingTaskId) this.cancelEditTask();
   }
 
   /** Actualiza el contador de caracteres al escribir en el input de nueva lista. */
@@ -1220,9 +1251,35 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.newListTitleCount = Array.from(this.newListTitle).length;
   }
 
-  /** Actualiza el contador de caracteres al escribir en el input de edición de lista. */
-  onListTitleEditInput(): void {
-    this.listTitleEditCount = Array.from(this.listTitleDraft).length;
+  /** Actualiza el contador al escribir en el editor de título (lo llama el componente). */
+  onListTitleEditInput(value: string): void {
+    this.listTitleDraft = value;
+    this.listTitleEditCount = Array.from(value).length;
+  }
+
+  /** Actualiza el contador al escribir en el editor de título del tablero. */
+  onTitleDraftInput(value: string): void {
+    this.titleDraft = value;
+    this.titleDraftCount = Array.from(value).length;
+  }
+
+  /** Normaliza el texto pegado en el editor de título del tablero y actualiza el contador. */
+  onTitleDraftPaste(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    const normalized = normalizeListTitle(pasted);
+    this.titleDraft = normalized;
+    this.titleDraftCount = Array.from(normalized).length;
+    event.preventDefault();
+  }
+
+  /** Actualiza el borrador de tarea al escribir en el editor (lo llama el componente). */
+  onTaskEditInput(value: string): void {
+    this.taskTextDraft = value;
+  }
+
+  /** El autosize del editor cambió la altura: remaqueta masonry en el tablero. */
+  onEditHeightChange(): void {
+    this.scheduleMasonryLayout();
   }
 
   /** Normaliza el texto pegado en el input de nueva lista y actualiza el contador. */
@@ -1234,19 +1291,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     event.preventDefault();
   }
 
-  /** Normaliza el texto pegado en el input de edición de lista y actualiza el contador. */
-  onListTitleEditPaste(event: ClipboardEvent): void {
-    const pasted = event.clipboardData?.getData('text') ?? '';
-    const normalized = normalizeListTitle(pasted);
-    this.listTitleDraft = normalized;
-    this.listTitleEditCount = Array.from(normalized).length;
-    event.preventDefault();
-  }
-
   startEditTask(task: ChecklistTask, event: Event): void {
     event.stopPropagation();
+    // Punto 7: se conserva el comportamiento actual — pisar sin avisar.
+    if (this.editingListId) {
+      this.editingListId = null;
+      this.listTitleDraft = '';
+      this.listTitleEditCount = 0;
+    }
     this.editingTaskId = task.id;
     this.taskTextDraft = task.text;
+    this.scheduleMasonryLayout();
   }
 
   async confirmEditTask(task: ChecklistTask): Promise<void> {
@@ -1264,6 +1319,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.editingTaskId = null;
     this.taskTextDraft = '';
     this.releasePendingRemoteBoard();
+    this.scheduleMasonryLayout();
   }
 
   isEditingTask(taskId: string): boolean {

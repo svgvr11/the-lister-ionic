@@ -1,0 +1,33 @@
+<div class="inline-edit" [class.inline-edit--title]="variant === 'title'" [class.inline-edit--task]="variant === 'task'">
+  <div class="inline-edit-row">
+    <textarea
+      #area
+      class="inline-edit-field"
+      rows="1"
+      wrap="soft"
+      autocapitalize="sentences"
+      enterkeyhint="done"
+      [attr.name]="fieldName"
+      [attr.aria-label]="label"
+      [attr.maxlength]="maxlength"
+      [ngModel]="value"
+      (ngModelChange)="onInput($event)"
+      (keydown)="onKeydown($event)"
+      (beforeinput)="onBeforeInput($event)"
+      (paste)="onPaste($event)"
+      (click)="$event.stopPropagation()"
+      (mousedown)="$event.stopPropagation()"
+    ></textarea>
+    <span *ngIf="showCount && value.length > 70" class="title-char-count" [class.at-limit]="atLimit" aria-live="polite">{{ count }} / {{ maxlength }}</span>
+  </div>
+  <div class="inline-edit-actions">
+    <button type="button" class="edit-confirm ion-activatable" (click)="save.emit()" [disabled]="saveDisabled" aria-label="Guardar">
+      <ion-icon name="checkmark"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+    <button type="button" class="edit-cancel ion-activatable" (click)="cancel.emit()" aria-label="Cancelar edición">
+      <ion-icon name="close"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+  </div>
+</div>
