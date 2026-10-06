@@ -599,9 +599,8 @@ ion-header {
 .account-menu-actions {
   display: flex;
   align-items: stretch;
-  /* Con tres acciones ("Enviar comentarios" es la etiqueta más larga) la fila se partiría en
-     pantallas estrechas; con wrap, el cierre de sesión baja a su propia línea en vez de
-     recortar su texto. */
+  /* Con dos acciones la fila se adapta: flex-wrap deja que el cierre de sesión baje
+     a su propia línea en pantallas estrechas sin recortar su texto. */
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
@@ -638,11 +637,9 @@ ion-header {
   white-space: nowrap;
 }
 
-/* Basurero y comentarios comparten el mismo tratamiento neutro: son acciones de la cuenta,
-   no una salida. El cierre de sesión sigue siendo el único que se estira (flex: 1) y el único
-   en rojo, porque ahí sí conviene que se lea como "irse". */
-.menu-trash,
-.menu-feedback {
+/* Basurero: acción neutra de la cuenta. El cierre de sesión sigue siendo el único que se estira
+   (flex: 1) y el único en rojo, porque ahí sí conviene que se lea como "irse". */
+.menu-trash {
   color: #4b5769;
   background: #f2f4f8;
 }
@@ -1474,8 +1471,9 @@ ion-header {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(20, 29, 48, 0.16);
   transition: transform 0.2s ease, background 0.2s ease;
-  /* Por debajo del FAB de nueva lista y su panel (200), pero por encima de las listas. */
-  z-index: 190;
+  /* Por debajo del FAB de nueva lista y su panel (200), pero por encima de las listas
+     y del backdrop del menú de perfil (399) para que siga clicable con el menú abierto. */
+  z-index: 399;
 }
 
 .feedback-fab:hover {

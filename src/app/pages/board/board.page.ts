@@ -177,12 +177,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /**
    * El botón flotante de comentarios se esconde mientras haya otro overlay abierto o el
    * teclado en pantalla, para no quedar debajo del panel de nueva lista ni tapar el footer.
+   * NO se esconde con el menú de perfil: al pulsarlo se cierra el menú y abre el modal.
    * Es `false` solo cuando hay algo que lo taparía de verdad.
    */
   get feedbackFabVisible(): boolean {
     if (!this.feedbackFabEnabled || this.feedbackOpen) return false;
     if (this.addingList || this.listToRemove || this.conflictDialogOpen) return false;
-    if (this.activeConflict || this.accountMenuOpen || this.deleteDialogOpen) return false;
+    if (this.activeConflict || this.deleteDialogOpen) return false;
     return !this.isKeyboardOpen;
   }
 

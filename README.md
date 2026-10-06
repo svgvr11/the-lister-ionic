@@ -22,7 +22,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - El basurero muestra las listas de la más reciente a la más antigua (el orden lo fija la fecha de descarte, por eso no se pueden arrastrar para reordenar).
 - En el basurero el título y las tareas son de solo lectura: no se pueden editar. Las tareas completadas conservan el **Mostrar tareas completadas** del tablero, pero el estado es solo visual y no se guarda.
 - Cada color de tablero muestra su nombre junto al título "Color del tablero".
-- **Enviar comentarios** (botón flotante junto al de "Nueva lista" y entrada del menú de perfil): reporta un error o una mejora con texto, hasta 5 imágenes e información técnica opcional. Llega por correo con enlaces firmados a las capturas y se conserva 90 días. Ver la sección **Feedback**.
+- **Enviar comentarios** (botón flotante junto al de "Nueva lista"): reporta un error o una mejora con texto, hasta 5 imágenes e información técnica opcional. Llega por correo con enlaces firmados a las capturas y se conserva 90 días. Ver la sección **Feedback**.
 - Los datos se guardan como JSON en una fila por usuario, con Row Level Security (RLS).
 - Esquema SQL incluido en `supabase/schema.sql`.
 
@@ -67,7 +67,7 @@ Si las credenciales no están configuradas, la app omite el login y abre el tabl
 ## Feedback
 
 El usuario puede reportar un error o comentar una mejora desde la app (botón flotante junto al
-de "Nueva lista", o la entrada "Enviar comentarios" del menú de perfil). El reporte se guarda en
+de "Nueva lista"). El reporte se guarda en
 Supabase y llega por correo a `feedback@soporte.atenis.app` con enlaces firmados a las capturas.
 
 ### Arquitectura
