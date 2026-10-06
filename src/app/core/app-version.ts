@@ -8,7 +8,7 @@
  * - BUILD: compilación dentro del feature; sube cuando hay cambios sin commitear.
  * El sufijo se conserva al subir. La interfaz muestra APP_VERSION_LABEL (con la "v").
  */
-export const APP_VERSION = '1.20.0-a';
+export const APP_VERSION = '1.21.0-a';
 
 /** Lo que se muestra en la interfaz: la versión con la "v" delante. */
 export const APP_VERSION_LABEL = `v${APP_VERSION}`;
