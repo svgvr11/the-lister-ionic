@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
-  Component, ElementRef, HostBinding, HostListener, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject
+  Component, DoCheck, ElementRef, HostBinding, HostListener, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
@@ -19,6 +19,7 @@ import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-ret
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
+import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
 
 /** Lista archivada pendiente de eliminar para siempre, a la espera de confirmar. */
 type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };
@@ -38,13 +39,15 @@ type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };
   templateUrl: './archive.page.html',
   styleUrls: ['./archive.page.scss']
 })
-export class ArchivePage implements OnInit, OnDestroy {
+export class ArchivePage implements OnInit, OnDestroy, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly navController = inject(NavController);
   private readonly injector = inject(Injector);
+  private readonly overlayStack = inject(OverlayStackService);
   private subscription?: Subscription;
+  private pageActive = false;
 
   board: ChecklistBoard = {
     id: '', title: '', createdAt: new Date().toISOString(), lists: [], archivedLists: []
@@ -67,6 +70,11 @@ export class ArchivePage implements OnInit, OnDestroy {
   @ViewChild('helpButton', { read: ElementRef }) private helpButton?: ElementRef<HTMLButtonElement>;
   @ViewChild('helpDialog', { read: ElementRef }) private helpDialog?: ElementRef<HTMLElement>;
   @ViewChild('helpPrimary', { read: ElementRef }) private helpPrimary?: ElementRef<HTMLButtonElement>;
+  @ViewChild('archiveDeleteCancel', { read: ElementRef })
+  private set archiveDeleteCancel(button: ElementRef<HTMLButtonElement> | undefined) {
+    if (button) requestAnimationFrame(() => button.nativeElement.focus());
+  }
+  private pendingActionOpener: HTMLElement | null = null;
 
   /**
    * Momento de referencia de la cuenta atrás. Los días se calculan al renderizar a partir
@@ -143,7 +151,37 @@ export class ArchivePage implements OnInit, OnDestroy {
     void this.loadArchive();
   }
 
+  ionViewDidEnter(): void {
+    this.pageActive = true;
+    this.syncOverlayStack();
+  }
+
+  ionViewWillLeave(): void {
+    this.pageActive = false;
+    this.helpOpen = false;
+    this.pendingAction = null;
+    this.pendingActionOpener = null;
+    this.overlayStack.unregisterOwner('archive');
+  }
+
+  ngDoCheck(): void {
+    if (this.pageActive) this.syncOverlayStack();
+  }
+
+  private syncOverlayStack(): void {
+    const overlays: RegisteredOverlay[] = [];
+    if (this.pendingAction) {
+      overlays.push({ id: 'archive:delete-confirm', close: () => this.cancelPendingAction() });
+    }
+    if (this.helpOpen) {
+      overlays.push({ id: 'archive:help', close: () => this.closeHelp() });
+    }
+    this.overlayStack.sync('archive', overlays);
+  }
+
   ngOnDestroy(): void {
+    this.pageActive = false;
+    this.overlayStack.unregisterOwner('archive');
     this.subscription?.unsubscribe();
     this.helpOpen = false;
   }
@@ -155,11 +193,12 @@ export class ArchivePage implements OnInit, OnDestroy {
    */
   @HostListener('document:keydown.escape')
   closeOpenDialogOnEscape(): void {
+    if (!this.pageActive) return;
     if (this.helpOpen) {
       this.closeHelp();
       return;
     }
-    this.pendingAction = null;
+    this.cancelPendingAction();
   }
 
   // ── Ayuda del archivo ─────────────────────────────────────────────────────
@@ -172,7 +211,7 @@ export class ArchivePage implements OnInit, OnDestroy {
    */
   openHelp(): void {
     if (this.isEmpty) return;
-    this.pendingAction = null;
+    this.cancelPendingAction(false);
     this.helpOpen = true;
     // El foco entra en el modal (no en la página de detrás) y se queda dentro.
     afterNextRender(() => this.helpPrimary?.nativeElement.focus(), { injector: this.injector });
@@ -353,13 +392,18 @@ export class ArchivePage implements OnInit, OnDestroy {
     return listLimitRestoreMessage();
   }
 
-  requestDelete(entry: ChecklistArchivedList): void {
+  requestDelete(entry: ChecklistArchivedList, event?: Event): void {
     this.restoreError = '';
+    const opener = event?.currentTarget;
+    this.pendingActionOpener = opener instanceof HTMLElement ? opener : null;
     this.pendingAction = { kind: 'delete', entry };
   }
 
-  cancelPendingAction(): void {
+  cancelPendingAction(restoreFocus = true): void {
     this.pendingAction = null;
+    const opener = this.pendingActionOpener;
+    this.pendingActionOpener = null;
+    if (restoreFocus) afterNextRender(() => opener?.isConnected && opener.focus(), { injector: this.injector });
   }
 
   /**
@@ -370,10 +414,27 @@ export class ArchivePage implements OnInit, OnDestroy {
     const action = this.pendingAction;
     if (!action) return;
     this.pendingAction = null;
+    this.pendingActionOpener = null;
     this.collapsed.delete(action.entry.list.id);
     this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== action.entry.list.id);
     this.syncHelpVisibility();
     await this.persist();
+  }
+
+  keepFocusInConfirmation(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement;
+    const items = dialog.querySelectorAll<HTMLElement>('button:not([disabled])');
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   get confirmTitle(): string {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostBinding, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DoCheck, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -15,6 +15,7 @@ import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-ret
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
+import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
 
 /** Acción destructiva pendiente de confirmar en el diálogo del basurero. */
 type PendingAction = { kind: 'purge'; entry: ChecklistTrashedList } | { kind: 'empty' };
@@ -33,13 +34,15 @@ const COUNTDOWN_REFRESH_MS = 60_000;
   templateUrl: './trash.page.html',
   styleUrls: ['./trash.page.scss']
 })
-export class TrashPage implements OnInit, OnDestroy {
+export class TrashPage implements OnInit, OnDestroy, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly navController = inject(NavController);
+  private readonly overlayStack = inject(OverlayStackService);
   private subscription?: Subscription;
   private countdownTimer?: ReturnType<typeof setInterval>;
+  private pageActive = false;
 
   board: ChecklistBoard = {
     id: '', title: '', createdAt: new Date().toISOString(), lists: [], trashedLists: []
@@ -54,6 +57,11 @@ export class TrashPage implements OnInit, OnDestroy {
   /** Estado solo visual del toggle de completadas; en el basurero no se persiste. */
   expandedCompleted = new Set<string>();
   pendingAction: PendingAction | null = null;
+  private pendingActionOpener: HTMLElement | null = null;
+  @ViewChild('trashConfirmCancel', { read: ElementRef })
+  private set trashConfirmCancel(button: ElementRef<HTMLButtonElement> | undefined) {
+    if (button) requestAnimationFrame(() => button.nativeElement.focus());
+  }
 
   /** Mismo límite de vista previa que usa el tablero. */
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
@@ -109,7 +117,33 @@ export class TrashPage implements OnInit, OnDestroy {
     this.countdownTimer = setInterval(() => this.refreshCountdown(), COUNTDOWN_REFRESH_MS);
   }
 
+  ionViewDidEnter(): void {
+    this.pageActive = true;
+    this.syncOverlayStack();
+  }
+
+  ionViewWillLeave(): void {
+    this.pageActive = false;
+    this.pendingAction = null;
+    this.pendingActionOpener = null;
+    this.overlayStack.unregisterOwner('trash');
+  }
+
+  ngDoCheck(): void {
+    if (this.pageActive) this.syncOverlayStack();
+  }
+
+  private syncOverlayStack(): void {
+    const overlays: RegisteredOverlay[] = [];
+    if (this.pendingAction) {
+      overlays.push({ id: 'trash:confirm-action', close: () => this.cancelPendingAction() });
+    }
+    this.overlayStack.sync('trash', overlays);
+  }
+
   ngOnDestroy(): void {
+    this.pageActive = false;
+    this.overlayStack.unregisterOwner('trash');
     this.subscription?.unsubscribe();
     if (this.countdownTimer) clearInterval(this.countdownTimer);
   }
@@ -117,7 +151,8 @@ export class TrashPage implements OnInit, OnDestroy {
   /** Escape cierra el diálogo de confirmación, igual que en el tablero. */
   @HostListener('document:keydown.escape')
   cancelPendingOnEscape(): void {
-    this.pendingAction = null;
+    if (!this.pageActive) return;
+    this.cancelPendingAction();
   }
 
   /**
@@ -270,24 +305,32 @@ export class TrashPage implements OnInit, OnDestroy {
     return listLimitRestoreMessage();
   }
 
-  requestPurge(entry: ChecklistTrashedList): void {
+  requestPurge(entry: ChecklistTrashedList, event?: Event): void {
     this.restoreError = '';
+    const opener = event?.currentTarget;
+    this.pendingActionOpener = opener instanceof HTMLElement ? opener : null;
     this.pendingAction = { kind: 'purge', entry };
   }
 
-  requestEmptyTrash(): void {
+  requestEmptyTrash(event?: Event): void {
     if (this.isEmpty) return;
+    const opener = event?.currentTarget;
+    this.pendingActionOpener = opener instanceof HTMLElement ? opener : null;
     this.pendingAction = { kind: 'empty' };
   }
 
-  cancelPendingAction(): void {
+  cancelPendingAction(restoreFocus = true): void {
     this.pendingAction = null;
+    const opener = this.pendingActionOpener;
+    this.pendingActionOpener = null;
+    if (restoreFocus) requestAnimationFrame(() => opener?.isConnected && opener.focus());
   }
 
   async confirmPendingAction(): Promise<void> {
     const action = this.pendingAction;
     if (!action) return;
     this.pendingAction = null;
+    this.pendingActionOpener = null;
     if (action.kind === 'empty') {
       this.collapsed.clear();
       this.board.trashedLists = [];
@@ -296,6 +339,22 @@ export class TrashPage implements OnInit, OnDestroy {
       this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== action.entry.list.id);
     }
     await this.persist();
+  }
+
+  keepFocusInConfirmation(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement;
+    const items = dialog.querySelectorAll<HTMLElement>('button:not([disabled])');
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   // El texto del diálogo se resuelve aquí para no repetir condiciones en el template.

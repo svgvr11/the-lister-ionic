@@ -39,4 +39,18 @@ input {
 :root {
   --app-safe-area-top: env(safe-area-inset-top, var(--safe-area-inset-top, 0px));
   --app-safe-area-bottom: env(safe-area-inset-bottom, var(--safe-area-inset-bottom, 0px));
+  --overlay-backdrop-color: rgba(26, 33, 48, 0.42);
+  --overlay-backdrop-blur: 3px;
+  /* Layers: content FAB; desktop profile scrim/menu and feedback FAB; mobile profile
+     modal/scrim and page modal; stacked confirmation; feedback modal; session lock. */
+  --z-content-fab: 200;
+  --z-profile-scrim: 397;
+  --z-profile-menu: 398;
+  --z-feedback-fab: 399;
+  --z-page-overlay: 1000;
+  --z-mobile-profile-scrim: 1000;
+  --z-mobile-profile-dialog: 1001;
+  --z-stacked-confirmation: 1100;
+  --z-feedback-overlay: 1200;
+  --z-session-lock: 10000;
 }

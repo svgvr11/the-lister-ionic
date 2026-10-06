@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [attr.inert]="pendingAction ? '' : null" [attr.aria-hidden]="pendingAction ? 'true' : null">
   <ion-toolbar class="topbar">
     <div class="toolbar-inner">
       <button class="back-btn ion-activatable" type="button" (click)="goBack()" aria-label="Volver al tablero">
@@ -10,7 +10,11 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="trash-content">
+<ion-content
+  class="trash-content"
+  [attr.inert]="pendingAction ? '' : null"
+  [attr.aria-hidden]="pendingAction ? 'true' : null"
+>
   <!-- Aviso de retención: siempre visible, incluso con el basurero vacío. -->
   <section class="trash-notice" role="note">
     <div class="trash-notice-copy">
@@ -21,7 +25,7 @@
       type="button"
       class="empty-trash-btn ion-activatable"
       [disabled]="isEmpty"
-      (click)="requestEmptyTrash()"
+      (click)="requestEmptyTrash($event)"
       [attr.aria-label]="isEmpty ? 'No hay listas para vaciar' : 'Vaciar basurero'"
     >
       <ion-icon name="trash-bin-outline" aria-hidden="true"></ion-icon>
@@ -150,7 +154,7 @@
             <span>Restaurar lista</span>
             <ion-ripple-effect></ion-ripple-effect>
           </button>
-          <button type="button" class="purge-btn ion-activatable" (click)="requestPurge(entry)">
+          <button type="button" class="purge-btn ion-activatable" (click)="requestPurge(entry, $event)">
             <ion-icon name="trash" aria-hidden="true"></ion-icon>
             <span>Eliminar permanentemente</span>
             <ion-ripple-effect></ion-ripple-effect>
@@ -175,6 +179,7 @@
     aria-labelledby="trash-dialog-title"
     aria-describedby="trash-dialog-description"
     (click)="$event.stopPropagation()"
+    (keydown)="keepFocusInConfirmation($event)"
   >
     <div class="trash-dialog-icon" aria-hidden="true">
       <ion-icon name="trash"></ion-icon>
@@ -190,7 +195,7 @@
     </div>
 
     <div class="trash-dialog-actions">
-      <button type="button" class="trash-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
+      <button #trashConfirmCancel type="button" class="trash-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
         Cancelar
         <ion-ripple-effect></ion-ripple-effect>
       </button>

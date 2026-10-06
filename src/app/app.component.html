@@ -1,5 +1,8 @@
 <ion-app>
-  <ion-router-outlet />
+  <ion-router-outlet
+    [attr.inert]="sessionGuard.blocked() ? '' : null"
+    [attr.aria-hidden]="sessionGuard.blocked() ? 'true' : null"
+  />
 
   <!--
     Bloqueo de pestaña (solo web): otra pestaña cerró la sesión o entró con otra

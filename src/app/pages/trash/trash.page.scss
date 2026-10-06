@@ -571,12 +571,12 @@ ion-content.trash-content {
 .trash-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-page-overlay, 1000);
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(26, 33, 48, 0.42);
-  backdrop-filter: blur(3px);
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
   /* Permite scroll si el diálogo crece más que el viewport (p. ej., título muy largo). */
   overflow-y: auto;
 }

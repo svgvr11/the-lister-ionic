@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, effect, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { IonApp, IonIcon, IonRippleEffect, IonRouterOutlet } from '@ionic/angular/standalone';
+import { App } from '@capacitor/app';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { addIcons } from 'ionicons';
 import { shieldCheckmarkOutline } from 'ionicons/icons';
 import { Subscription, filter } from 'rxjs';
@@ -9,6 +11,7 @@ import { AuthService } from './core/services/auth.service';
 import { BoardOrderService } from './core/services/board-order.service';
 import { FeedbackService } from './core/services/feedback.service';
 import { SessionGuardService } from './core/services/session-guard.service';
+import { OverlayStackService } from './core/overlay-stack.service';
 
 /** Rutas públicas: no se vigila la sesión desde ellas (el guardia queda desarmado). */
 const PUBLIC_ROUTE_PATTERN = /^\/(login|privacy|terms)([/?#]|$)/;
@@ -26,17 +29,23 @@ const PUBLIC_ROUTE_PATTERN = /^\/(login|privacy|terms)([/?#]|$)/;
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly sessionGuard = inject(SessionGuardService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly boardOrder = inject(BoardOrderService);
   private readonly feedback = inject(FeedbackService);
+  private readonly overlays = inject(OverlayStackService);
+  private readonly zone = inject(NgZone);
 
   /** Botón del modal de bloqueo: único elemento enfocable; recibe el foco al aparecer. */
   @ViewChild('blockedFocusButton') private blockedFocusButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild(IonRouterOutlet) private routerOutlet?: IonRouterOutlet;
 
   private readonly subscription = new Subscription();
+  private backButtonHandle?: PluginListenerHandle;
+  private unregisterBlockedOverlay?: () => void;
+  private destroyed = false;
   /** URL actual (tras redirecciones), para decidir armar/desarmar el guardia. */
   private currentUrl = '';
 
@@ -46,7 +55,15 @@ export class AppComponent implements OnInit, OnDestroy {
     // (el *ngIf debe haber creado el elemento antes de poder enfocarlo).
     effect(() => {
       if (this.sessionGuard.blocked()) {
+        this.unregisterBlockedOverlay ??= this.overlays.register({
+          id: 'session:blocked',
+          close: () => undefined,
+          dismissible: false
+        });
         setTimeout(() => this.blockedFocusButton?.nativeElement.focus(), 0);
+      } else {
+        this.unregisterBlockedOverlay?.();
+        this.unregisterBlockedOverlay = undefined;
       }
     });
   }
@@ -67,8 +84,53 @@ export class AppComponent implements OnInit, OnDestroy {
     this.syncGuard();
   }
 
+  ngAfterViewInit(): void {
+    if (Capacitor.isNativePlatform()) void this.installBackButtonHandler();
+  }
+
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.subscription.unsubscribe();
+    this.unregisterBlockedOverlay?.();
+    void this.removeBackButtonHandler();
+  }
+
+  private async installBackButtonHandler(): Promise<void> {
+    try {
+      const handle = await App.addListener('backButton', () => {
+        this.zone.run(() => void this.handleNativeBack());
+      });
+      if (this.destroyed) {
+        await handle.remove();
+        return;
+      }
+      this.backButtonHandle = handle;
+    } catch (error) {
+      console.error('No se pudo registrar el botón Atrás nativo', error);
+    }
+  }
+
+  private async removeBackButtonHandler(): Promise<void> {
+    try {
+      await this.backButtonHandle?.remove();
+    } catch (error) {
+      console.error('No se pudo retirar el listener del botón Atrás nativo', error);
+    } finally {
+      this.backButtonHandle = undefined;
+    }
+  }
+
+  private async handleNativeBack(): Promise<void> {
+    if (this.sessionGuard.blocked()) return;
+    const result = this.overlays.closeTop();
+    if (result !== 'empty') return;
+
+    try {
+      if (this.routerOutlet?.canGoBack() && await this.routerOutlet.pop()) return;
+      await App.exitApp();
+    } catch (error) {
+      console.error('No se pudo gestionar el botón Atrás nativo', error);
+    }
   }
 
   /**

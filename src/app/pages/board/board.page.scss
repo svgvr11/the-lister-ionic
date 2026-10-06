@@ -14,6 +14,7 @@
   --accent: #8870ad;
   --fab-color: #9780bb;
   --fab-hover: #8870ad;
+  --card-surface: #fff;
   /* Superficie fija de header y footer: no cambia con el tema del tablero. */
   --topbar-surface: #fff;
   /* --app-safe-area-top/--app-safe-area-bottom: definición única en src/styles.css
@@ -31,6 +32,10 @@
    color del propio botón (currentColor). */
 ion-ripple-effect {
   color: var(--ripple-color, currentColor);
+}
+
+.overlay-card {
+  background: var(--card-surface);
 }
 
 ion-content.board-content {
@@ -402,13 +407,14 @@ ion-header {
   white-space: nowrap;
 }
 
-/* El menú y su scrim quedan bajo el FAB de feedback (399) y el bloqueo global (10000). */
+/* La escala compartida vive en :root de styles.css; el FAB feedback queda sobre el
+   scrim del perfil, pero todos los modales y el bloqueo de sesión lo cubren. */
 .account-menu-scrim {
   position: fixed;
   inset: 0;
-  z-index: 397;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  backdrop-filter: blur(1px);
+  z-index: var(--z-profile-scrim, 397);
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
   animation: accountScrimEnter 0.14s ease-out;
 }
 
@@ -417,9 +423,14 @@ ion-header {
   animation: accountScrimExit 0.14s ease-in forwards;
 }
 
+.modal-backdrop {
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+}
+
 .account-menu {
   position: fixed;
-  z-index: 398;
+  z-index: var(--z-profile-menu, 398);
   top: var(--board-header-height);
   right: 16px;
   width: min(320px, calc(100vw - 24px));
@@ -429,7 +440,6 @@ ion-header {
   overscroll-behavior: contain;
   padding: 16px;
   color: #26364d;
-  background: #fff;
   border: 1px solid #dce1e8;
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 29, 48, 0.28);
@@ -459,6 +469,41 @@ ion-header {
 .account-menu.closing {
   pointer-events: none;
   animation: accountPopoverExit 0.14s ease-in forwards;
+}
+
+.account-menu-scrim.mobile-modal {
+  z-index: var(--z-mobile-profile-scrim, 1000);
+}
+
+.account-menu.mobile-modal {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: min(440px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);
+  padding: 16px;
+  overflow-y: auto;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.28);
+  transform: translate(-50%, -50%);
+  animation: profileModalEnter 0.16s ease-out;
+  z-index: var(--z-mobile-profile-dialog, 1001);
+}
+
+.account-menu.mobile-modal.closing {
+  animation: profileModalExit 0.15s ease-in forwards;
+}
+
+@keyframes profileModalEnter {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes profileModalExit {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -48%) scale(0.98); }
 }
 
 .account-profile {
@@ -637,6 +682,12 @@ ion-header {
 
 /* Respeta la preferencia del sistema de reducir animaciones. */
 @media (prefers-reduced-motion: reduce) {
+  .focus-list-overlay,
+  .focus-list-progress > span {
+    animation: none;
+    transition: none;
+  }
+
   .donation-cup {
     animation: none;
   }
@@ -962,7 +1013,7 @@ ion-header {
   width: 358px;
   padding: 12px 14px 14px;
   color: #172236;
-  background: #fff;
+  background: var(--card-surface);
   border: 1px solid #edf0f6;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(34, 47, 76, 0.035);
@@ -974,6 +1025,8 @@ ion-header {
 }
 
 .column-header {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -988,6 +1041,7 @@ ion-header {
  */
 .pin-list-button {
   position: relative;
+  z-index: 1;
   overflow: hidden;
   width: 20px;
   height: 22px;
@@ -1038,26 +1092,60 @@ ion-header {
   }
 }
 
-.column-header strong {
-  flex: 1;
+.list-header-trigger {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 0;
   min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.list-header-trigger::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 9px;
+  content: "";
+  pointer-events: auto;
+}
+
+.list-header-trigger > strong {
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   color: #172236;
   font-size: 15px;
   font-weight: 650;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Permite que títulos muy largos sin espacios se envuelvan dentro del contenedor
-     en lugar de ensanchar la tarjeta o el diálogo. */
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
-.list-title-edit,
-.list-title-display {
+.list-header-trigger:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.list-header-trigger {
+  -webkit-tap-highlight-color: transparent;
+  transition: none;
+}
+
+.list-title-edit {
   display: flex;
   align-items: center;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   gap: 4px;
   position: relative;
@@ -1090,31 +1178,6 @@ ion-header {
   color: #e11d48;
 }
 
-.edit-list-button {
-  position: relative;
-  overflow: hidden;
-  width: 25px;
-  height: 25px;
-  flex: 0 0 25px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: #8992a1;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.edit-list-button:hover {
-  color: #172236;
-  background: #f1f4fa;
-}
-
-.edit-list-button ion-icon {
-  font-size: 14px;
-}
-
 /* Handle de reordenamiento de tareas: sigue siendo lo único arrastrable del tablero. */
 .task-reorder-handle {
   width: 8px;
@@ -1127,9 +1190,9 @@ ion-header {
   background-size: 4px 4px;
 }
 
-.collapse-button,
-.delete-list-button {
+.collapse-button {
   position: relative;
+  z-index: 1;
   overflow: hidden;
   width: 18px;
   height: 22px;
@@ -1151,6 +1214,7 @@ ion-header {
 }
 
 .task-counter {
+  pointer-events: none;
   min-width: 34px;
   height: 20px;
   display: inline-flex;
@@ -1179,18 +1243,6 @@ ion-header {
   height: 6px;
   background: #087750;
   border-radius: 50%;
-}
-
-/* El rojo es la acción destructiva (basurero). */
-.delete-list-button:hover {
-  color: #bf4e58;
-  background: #fff0f0;
-}
-
-/* Archivar no destruye trabajo: es una acción positiva, así que su hover es verde. */
-.delete-list-button.archiving:hover {
-  color: #0a7a4a;
-  background: #e6f5ec;
 }
 
 .list-progress-track {
@@ -1537,8 +1589,8 @@ ion-header {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(20, 29, 48, 0.16);
   transition: transform 0.2s ease, background 0.2s ease;
-  /* Mismo nivel que el FAB Nueva lista; bajo el scrim/perfil (397/398) y todos los modales. */
-  z-index: 200;
+  /* Mantiene la posición sobre Nueva lista y queda pulsable encima del scrim de perfil. */
+  z-index: var(--z-feedback-fab, 399);
 }
 
 .feedback-fab[aria-hidden="true"] {
@@ -1587,6 +1639,39 @@ ion-header {
   overflow-y: auto;
   overscroll-behavior: contain;
   text-align: left;
+}
+
+.new-list-overlay.mobile-sheet {
+  align-items: end;
+  padding: var(--app-safe-area-top) 0 0;
+}
+
+.new-list-dialog.mobile-sheet {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - var(--app-safe-area-top) - 12px);
+  padding: 26px 16px calc(16px + var(--app-safe-area-bottom));
+  border-width: 1px 0 0;
+  border-radius: 18px 18px 0 0;
+  animation: newListSheetEnter 0.18s ease-out;
+}
+
+.new-list-dialog.mobile-sheet::before {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  content: "";
+  background: color-mix(in srgb, var(--accent) 24%, #dce1e8);
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+@keyframes newListSheetEnter {
+  from { opacity: 0.8; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .new-list-header {
@@ -1804,14 +1889,251 @@ ion-header {
 .delete-list-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-page-overlay, 1000);
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(26, 33, 48, 0.42);
-  backdrop-filter: blur(3px);
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
   /* Permite scroll si el diálogo crece más que el viewport (p. ej., título muy largo). */
   overflow-y: auto;
+}
+
+.delete-list-overlay.focus-stacked {
+  z-index: var(--z-stacked-confirmation, 1100);
+}
+
+.focus-list-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-page-overlay, 1000);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  animation: deleteDialogEnter 0.16s ease-out;
+}
+
+.focus-list-dialog {
+  width: min(100%, 680px);
+  min-width: 0;
+  max-height: min(88dvh, 860px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  color: #172236;
+  border: 1px solid #e9ecf2;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  overflow: hidden;
+}
+
+.focus-list-overlay.mobile-card {
+  padding: calc(var(--app-safe-area-top) + 12px) 14px calc(var(--app-safe-area-bottom) + 12px);
+}
+
+.focus-list-dialog.mobile-card {
+  width: min(100%, 680px);
+  height: auto;
+  max-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);
+  border-radius: 18px;
+}
+
+.focus-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.focus-list-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.focus-list-title {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.focus-list-title:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.focus-list-title:focus-visible,
+.focus-list-action:focus-visible,
+.focus-list-footer button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.focus-list-title h2,
+.focus-list-title span {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  font-size: clamp(18px, 3vw, 24px);
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.focus-list-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.focus-list-counter {
+  display: inline-block;
+  margin-top: 7px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.focus-list-counter.complete-counter {
+  color: var(--accent);
+}
+
+.focus-list-progress {
+  height: 5px;
+  margin-top: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 999px;
+}
+
+.focus-list-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 0.18s ease;
+}
+
+.focus-list-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.focus-list-action {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.focus-list-action:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.focus-list-action ion-icon {
+  font-size: 18px;
+}
+
+.focus-list-action .pin-icon {
+  opacity: 1;
+}
+
+.focus-list-action.archiving:hover {
+  color: var(--accent);
+}
+
+.focus-list-tasks {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.focus-task-row {
+  width: 100%;
+  margin-bottom: 7px;
+}
+
+.focus-list-empty {
+  padding: 20px 8px;
+  color: var(--accent);
+  text-align: center;
+  font-size: 13px;
+}
+
+.focus-list-add {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 4px 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 11px;
+}
+
+.focus-list-add ion-input {
+  flex: 1;
+  min-width: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.focus-list-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+.focus-list-footer .new-list-submit {
+  min-width: 90px;
+}
+
+.focus-list-notice {
+  position: fixed;
+  z-index: var(--z-page-overlay, 1000);
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(var(--app-safe-area-bottom) + 18px);
+  max-width: min(90vw, 360px);
+  padding: 10px 14px;
+  color: var(--topbar-surface);
+  background: var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(20, 29, 48, 0.22);
 }
 
 .delete-list-dialog {
@@ -1820,7 +2142,7 @@ ion-header {
   min-width: 0;
   padding: 18px 16px 14px;
   color: #172236;
-  background: #fff;
+  background: var(--card-surface);
   border: 1px solid #e9ecf2;
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
@@ -2158,17 +2480,26 @@ ion-header {
 }
 
 .sync-conflict-actions {
+  align-items: stretch;
   flex-wrap: wrap;
+  overflow: visible;
+  margin-inline: 2px;
+  padding: 2px;
 }
 
-.sync-conflict-actions .sync-cloud-confirm,
-.sync-conflict-actions .sync-local-confirm {
+.sync-conflict-actions button {
   min-height: 38px;
-  flex: 1 1 42%;
+  flex: 1 1 max-content;
+  min-width: max-content;
+  max-width: 100%;
   padding: 6px 10px;
   font-size: 11px;
   line-height: 1.35;
   white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  overflow: visible;
 }
 
 .sync-cloud-confirm {
@@ -2187,7 +2518,9 @@ ion-header {
 .sync-local-confirm:hover { background: #185747; }
 
 @media (max-width: 480px) {
-  .sync-conflict-actions button { flex-basis: 100%; }
+  .sync-conflict-actions button {
+    flex-basis: 100%;
+  }
 }
 
 /* Móviles estrechos: la marca se queda con el logo y el nombre, y el badge de versión
@@ -2222,7 +2555,12 @@ ion-header {
   .account-menu,
   .account-menu-scrim,
   .account-menu.closing,
-  .account-menu-scrim.closing {
+  .account-menu-scrim.closing,
+  .account-menu.mobile-modal,
+  .account-menu.mobile-modal.closing,
+  .account-menu-scrim.mobile-modal,
+  .account-menu-scrim.mobile-modal.closing,
+  .new-list-dialog.mobile-sheet {
     animation: none;
   }
 }
@@ -2255,7 +2593,13 @@ ion-header {
 
 /* Respativo */
 @media (max-width: 700px) {
+  .focus-list-notice {
+    max-width: calc(100vw - 112px);
+  }
   :host { height: 100dvh; }
+  .focus-list-header { gap: 8px; }
+  .focus-list-actions { gap: 1px; }
+  .focus-list-action { width: 30px; height: 32px; }
   /* 15 + 40 (fila marca/acciones) + 5 (gap) + 29 (buscador) + 15 = 104px, más el
      inset superior: el header real lleva el padding de ion-header, y la altura del
      menú de cuenta debe coincidir con él (evita solaparlo con el buscador en APK). */
@@ -2286,43 +2630,6 @@ ion-header {
     width: 100%;
     height: 29px;
     margin: 0;
-  }
-  .account-menu {
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-width: none;
-    max-height: calc(100dvh - var(--app-safe-area-top) - 12px);
-    padding: 26px 16px calc(16px + var(--app-safe-area-bottom));
-    border-right: 0;
-    border-bottom: 0;
-    border-left: 0;
-    border-radius: 18px 18px 0 0;
-    animation: accountSheetEnter 0.18s ease-out;
-  }
-  .account-menu.closing {
-    animation: accountSheetExit 0.15s ease-in forwards;
-  }
-  .account-menu::before {
-    position: absolute;
-    top: 9px;
-    left: 50%;
-    width: 36px;
-    height: 4px;
-    content: "";
-    background: color-mix(in srgb, var(--accent) 24%, #dce1e8);
-    border-radius: 999px;
-    transform: translateX(-50%);
-  }
-  @keyframes accountSheetEnter {
-    from { opacity: 0.8; transform: translateY(18px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes accountSheetExit {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(22px); }
   }
   .board-title {
     font-size: 24px;
@@ -2376,13 +2683,16 @@ ion-header {
 
 @supports not (height: 100dvh) {
   .account-menu { max-height: calc(100vh - 24px); }
+  .account-menu.mobile-modal {
+    max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);
+  }
   .new-list-dialog {
     max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
   }
-}
-
-@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
-  .account-menu { animation: none; }
-  .account-menu-scrim { animation: none; }
-  .account-menu.closing, .account-menu-scrim.closing { animation: none; }
+  .new-list-dialog.mobile-sheet {
+    max-height: calc(100vh - var(--app-safe-area-top) - 12px);
+  }
+  .focus-list-dialog.mobile-card {
+    max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);
+  }
 }

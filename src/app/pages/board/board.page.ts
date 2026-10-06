@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
@@ -32,6 +32,9 @@ import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { FeedbackService } from '../../core/services/feedback.service';
 import { SessionGuardService } from '../../core/services/session-guard.service';
+import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
+import { OwnBoardSnapshots } from '../../core/board-sync';
+import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 
 @Component({
   selector: 'app-board',
@@ -44,21 +47,24 @@ import { SessionGuardService } from '../../core/services/session-guard.service';
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
 })
-export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
+export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly boardOrder = inject(BoardOrderService);
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
   private readonly sessionGuard = inject(SessionGuardService);
+  private readonly overlayStack = inject(OverlayStackService);
   private subscription?: Subscription;
   private lastAppliedBoard: ChecklistBoard | null = null;
   private pendingRemoteBoard: ChecklistBoard | null = null;
+  private readonly ownBoardSnapshots = new OwnBoardSnapshots();
   activeConflict: BoardConflict | null = null;
   conflictDialogOpen = false;
   confirmingLocalConflict = false;
   private conflictFromRepository = false;
   private resolvingConflict = false;
+  private conflictDialogDeferred = false;
 
   board: ChecklistBoard = {
     id: '', title: 'Cargando tablero...', createdAt: new Date().toISOString(), lists: []
@@ -98,7 +104,19 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   activeTheme: BoardTheme = migrateLegacyTheme(this.auth.session?.user.id ?? null);
   accountMenuOpen = false;
   accountMenuClosing = false;
+  isMobilePresentation = false;
+  accountMenuMobilePresentation = false;
+  newListMobilePresentation = false;
+  focusListMobilePresentation = false;
   private accountMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private mobilePresentationQuery: MediaQueryList | null = null;
+  private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
+    this.isMobilePresentation = event.matches;
+    this.scheduleMasonryLayout();
+  };
+  private newListTitleFocusTimer: ReturnType<typeof setTimeout> | null = null;
+  private newListViewportTimer: ReturnType<typeof setTimeout> | null = null;
+  private newListViewportResizeHandler: (() => void) | null = null;
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
@@ -106,11 +124,25 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   get feedbackEnabled(): boolean {
     return this.feedback.available;
   }
-  readonly donationMessage = '!Me gusta la app!';
+
+  private setFocusRemovalCause(list: ChecklistList, cause: FocusListRemovalCause): void {
+    if (this.focusListId !== list.id) return;
+    this.focusRemovalCause = cause;
+    this.focusRemovalListId = list.id;
+  }
+  readonly donationMessage = '¡Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
   private accountMenuNode: HTMLElement | null = null;
   private accountMenuOpener: HTMLElement | null = null;
   private newListOpener: HTMLElement | null = null;
+  private pageActive = false;
+  focusListId: string | null = null;
+  focusTaskDraft = '';
+  focusNotice = '';
+  private focusOpener: HTMLElement | null = null;
+  private focusRemovalCause: FocusListRemovalCause | null = null;
+  private focusRemovalListId: string | null = null;
+  private focusNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 
   get listProgress(): string {
     return `${Math.min(this.board.lists.length, MAX_BOARD_LISTS) / MAX_BOARD_LISTS * 100}%`;
@@ -183,6 +215,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   feedbackOpen = false;
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
   private feedbackOpener: HTMLElement | null = null;
+  private deleteDialogOpener: HTMLElement | null = null;
+  private conflictDialogOpener: HTMLElement | null = null;
 
   /** Interruptor global de la función; el estado visual de la página no oculta el botón. */
   readonly feedbackFabEnabled = FEEDBACK_FAB_ENABLED;
@@ -192,13 +226,38 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * no es modal: el botón queda sobre su scrim para poder abrir feedback desde allí.
    */
   get feedbackFabBlocked(): boolean {
-    return this.accountMenuOpen
-      || this.addingList
+    return this.addingList
+      || (this.accountMenuOpen && this.accountMenuMobilePresentation)
+      || this.focusListId !== null
       || this.listToRemove !== null
       || this.conflictDialogOpen
       || this.deleteDialogOpen
       || this.feedbackOpen
       || this.sessionGuard.blocked() !== null;
+  }
+
+  get accountMenuPopupType(): 'dialog' | 'menu' {
+    return this.accountMenuOpen
+      ? (this.accountMenuMobilePresentation ? 'dialog' : 'menu')
+      : (this.isMobilePresentation ? 'dialog' : 'menu');
+  }
+
+  get boardModalOpen(): boolean {
+    return this.addingList
+      || (this.accountMenuOpen && this.accountMenuMobilePresentation)
+      || this.focusListId !== null
+      || this.listToRemove !== null
+      || this.conflictDialogOpen
+      || this.deleteDialogOpen
+      || this.feedbackOpen
+      || this.sessionGuard.blocked() !== null;
+  }
+
+  /** Resuelve siempre la lista viva por id: applyBoard puede reemplazar el tablero. */
+  get focusList(): ChecklistList | null {
+    return this.focusListId
+      ? this.board.lists.find((list) => list.id === this.focusListId) ?? null
+      : null;
   }
 
   @ViewChildren('boardItem', { read: ElementRef })
@@ -219,9 +278,29 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('newListFab', { read: ElementRef })
   private newListFab?: ElementRef<HTMLButtonElement>;
   @ViewChild('newListTitleInput', { read: IonInput })
-  private set newListTitleInput(input: IonInput | undefined) {
+  private newListTitleInput?: IonInput;
+  @ViewChild('focusTitleButton', { read: ElementRef })
+  private set focusTitleButton(button: ElementRef<HTMLButtonElement> | undefined) {
+    if (button) requestAnimationFrame(() => button.nativeElement.focus());
+  }
+  @ViewChild('focusTitleInput', { read: IonInput })
+  private set focusTitleInput(input: IonInput | undefined) {
     if (input) queueMicrotask(() => void input.setFocus());
   }
+  @ViewChild('focusTaskInput', { read: IonInput })
+  private focusTaskInput?: IonInput;
+  @ViewChild('focusDialog', { read: ElementRef })
+  private focusDialog?: ElementRef<HTMLElement>;
+  @ViewChild('deleteAccountInput', { read: ElementRef })
+  private set deleteAccountInput(input: ElementRef<HTMLInputElement> | undefined) {
+    if (input) requestAnimationFrame(() => input.nativeElement.focus());
+  }
+  @ViewChild('syncConflictFocus', { read: ElementRef })
+  private set syncConflictFocus(button: ElementRef<HTMLButtonElement> | undefined) {
+    if (button) requestAnimationFrame(() => button.nativeElement.focus());
+  }
+  @ViewChild(FeedbackModalComponent)
+  private feedbackModal?: FeedbackModalComponent;
   /**
    * Botón principal del diálogo de archivar. Se resuelve como setter porque el diálogo vive
    * dentro de un `*ngIf`: así el foco entra en cuanto el nodo existe, sin `autofocus` (que
@@ -248,7 +327,237 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
+    this.initializeMobilePresentation();
     void this.initializeBoard();
+  }
+
+  ionViewDidEnter(): void {
+    this.pageActive = true;
+    if (this.activeConflict) this.conflictDialogDeferred = true;
+    this.presentDeferredConflict();
+    this.syncOverlayStack();
+  }
+
+  ionViewWillLeave(): void {
+    this.pageActive = false;
+    this.closePageOverlays();
+    this.overlayStack.unregisterOwner('board');
+  }
+
+  ngDoCheck(): void {
+    if (this.focusListId && !this.focusList) {
+      const cause = this.focusRemovalListId === this.focusListId
+        ? this.focusRemovalCause ?? 'remote'
+        : 'remote';
+      this.closeFocusModal(false);
+      this.focusRemovalCause = null;
+      this.focusRemovalListId = null;
+      this.showFocusNotice(focusListRemovalMessage(cause));
+    }
+    this.presentDeferredConflict();
+    if (this.pageActive) this.syncOverlayStack();
+  }
+
+  private canShowConflictDialog(): boolean {
+    return !this.accountMenuOpen
+      && !this.addingList
+      && !this.focusListId
+      && !this.listToRemove
+      && !this.deleteDialogOpen
+      && !this.feedbackOpen
+      && !this.sessionGuard.blocked();
+  }
+
+  private presentDeferredConflict(): void {
+    if (!this.pageActive || !this.activeConflict || !this.conflictDialogDeferred
+      || !this.canShowConflictDialog()) return;
+    this.conflictDialogOpen = true;
+    this.conflictDialogDeferred = false;
+  }
+
+  private syncOverlayStack(): void {
+    const overlays: RegisteredOverlay[] = [];
+    if (this.accountMenuOpen && !this.accountMenuClosing) {
+      overlays.push({ id: 'board:profile-menu', close: () => this.closeAccountMenu(true) });
+    }
+    if (this.addingList) {
+      overlays.push({ id: 'board:new-list', close: () => this.cancelAddList() });
+    }
+    if (this.focusListId) {
+      overlays.push({ id: 'board:focus-list', close: () => this.closeFocusModal() });
+    }
+    if (this.listToRemove) {
+      overlays.push({ id: 'board:remove-list', close: () => this.cancelDeleteList() });
+    }
+    if (this.deleteDialogOpen) {
+      overlays.push({
+        id: 'board:delete-account',
+        close: () => this.cancelDeleteDialog(),
+        dismissible: !this.deleteBusy
+      });
+    }
+    if (this.conflictDialogOpen) {
+      overlays.push({ id: 'board:sync-conflict', close: () => this.closeConflictDialog() });
+    }
+    if (this.feedbackOpen) {
+      overlays.push({ id: 'board:feedback', close: () => this.requestFeedbackCloseFromBack() });
+    }
+    this.overlayStack.sync('board', overlays);
+  }
+
+  private closePageOverlays(): void {
+    this.closeAccountMenu(true, false);
+    if (this.addingList) this.cancelAddList(false);
+    if (this.focusListId) this.closeFocusModal(false);
+    if (this.listToRemove) this.closeRemoveDialog(false);
+    if (this.editingTitle) this.cancelEditTitle();
+    if (this.editingListId) this.cancelEditList();
+    if (this.editingTaskId) this.cancelEditTask();
+    for (const listId of Object.keys(this.taskDrafts)) this.taskDrafts[listId] = '';
+    this.draggedTask = null;
+    this.closeConflictDialog(false);
+    this.conflictDialogDeferred = Boolean(this.activeConflict);
+    if (!this.deleteBusy) this.cancelDeleteDialog(false);
+    this.feedbackOpen = false;
+    this.feedbackOpener = null;
+    this.focusNotice = '';
+    if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
+    this.focusNoticeTimer = null;
+    this.overlayStack.unregisterOwner('board');
+  }
+
+  private requestFeedbackCloseFromBack(): void {
+    if (this.feedbackModal?.confirmingDiscard) this.feedbackModal.cancelDiscard();
+    else this.feedbackModal?.requestClose();
+    if (this.feedbackOpen) {
+      this.overlayStack.register({
+        id: 'board:feedback',
+        close: () => this.requestFeedbackCloseFromBack()
+      });
+    }
+  }
+
+  openListFocus(list: ChecklistList, event: Event): void {
+    if (this.focusListId || this.editingListId === list.id
+      || this.addingList || this.listToRemove || this.deleteDialogOpen
+      || this.conflictDialogOpen || this.feedbackOpen || this.activeConflict) return;
+    const opener = event.currentTarget;
+    this.focusOpener = opener instanceof HTMLElement ? opener : null;
+
+    this.closeAccountMenu(true, false);
+    if (this.editingTitle) this.cancelEditTitle();
+    if (this.editingListId) this.cancelEditList();
+    if (this.editingTaskId) this.cancelEditTask();
+    for (const listId of Object.keys(this.taskDrafts)) this.taskDrafts[listId] = '';
+    this.draggedTask = null;
+
+    if (!this.board.lists.some((item) => item.id === list.id)) {
+      this.focusOpener = null;
+      return;
+    }
+    this.focusTaskDraft = '';
+    this.focusListMobilePresentation = this.isMobilePresentation;
+    this.focusListId = list.id;
+    this.focusRemovalCause = null;
+    this.focusRemovalListId = null;
+  }
+
+  orderedFocusTasks(list: ChecklistList): ChecklistTask[] {
+    return [...list.tasks].sort((left, right) => left.position - right.position);
+  }
+
+  async addFocusTask(list: ChecklistList, input?: IonInput): Promise<void> {
+    if (!this.focusTaskDraft.trim()) return;
+    this.taskDrafts[list.id] = this.focusTaskDraft;
+    this.focusTaskDraft = '';
+    await this.addTask(list, input);
+  }
+
+  onFocusTaskEnter(event: Event, list: ChecklistList): void {
+    event.preventDefault();
+    void this.addFocusTask(list, this.focusTaskInput);
+  }
+
+  async dropFocusTask(list: ChecklistList, event: DragEvent, taskId?: string): Promise<void> {
+    if (this.draggedTask?.listId !== list.id) return;
+    if (taskId) await this.dropTask(list, taskId, event);
+    else await this.dropTaskInList(list, event);
+  }
+
+  onFocusBackdropClick(event: MouseEvent): void {
+    if (event.target !== event.currentTarget || this.hasUnsavedFocusText()) return;
+    this.closeFocusModal();
+  }
+
+  private hasUnsavedFocusText(): boolean {
+    const list = this.focusList;
+    return Boolean(this.focusTaskDraft.trim())
+      || Boolean(list && this.editingListId === list.id
+        && normalizeListTitle(this.listTitleDraft) !== list.title);
+  }
+
+  async finishFocusModal(): Promise<void> {
+    const list = this.focusList;
+    if (!list) return;
+    if (this.editingListId === list.id) await this.confirmEditList(list);
+    this.closeFocusModal();
+  }
+
+  closeFocusModal(restoreFocus = true): void {
+    if (!this.focusListId) return;
+    const listId = this.focusListId;
+    if (this.editingListId === listId) this.cancelEditList();
+    if (this.editingTaskId) this.cancelEditTask();
+    this.focusListId = null;
+    this.focusTaskDraft = '';
+    this.draggedTask = null;
+    this.finishClosingFocus();
+    if (restoreFocus) {
+      const opener = this.focusOpener;
+      setTimeout(() => opener?.isConnected && opener.focus(), 0);
+    }
+    this.focusOpener = null;
+  }
+
+  private finishClosingFocus(): void {
+    if (this.activeConflict) {
+      this.conflictDialogDeferred = true;
+      this.presentDeferredConflict();
+      return;
+    }
+    this.releasePendingRemoteBoard();
+  }
+
+  private showFocusNotice(message: string): void {
+    this.focusNotice = message;
+    if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
+    this.focusNoticeTimer = setTimeout(() => {
+      this.focusNotice = '';
+      this.focusNoticeTimer = null;
+    }, 3500);
+  }
+
+  trapFocusInFocusModal(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = this.focusDialog?.nativeElement;
+    if (!dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), ion-input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hasAttribute('inert') && element.offsetParent !== null);
+    if (!focusable.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   private async initializeBoard(): Promise<void> {
@@ -310,6 +619,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private receiveBoard(board: ChecklistBoard): void {
+    if (this.ownBoardSnapshots.has(board)) return;
     if (this.hasActiveInteraction() || this.activeConflict) {
       this.pendingRemoteBoard = structuredClone(board);
       return;
@@ -321,15 +631,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (conflict) {
       this.activeConflict = conflict;
       this.pendingRemoteBoard = structuredClone(conflict.remoteBoard);
-      this.conflictDialogOpen = true;
+      this.conflictDialogOpen = false;
+      this.conflictDialogDeferred = true;
       this.confirmingLocalConflict = false;
       this.conflictFromRepository = true;
       this.saveError = '';
+      this.presentDeferredConflict();
       return;
     }
 
     if (!this.resolvingConflict && this.conflictFromRepository) {
       this.activeConflict = null;
+      this.conflictDialogDeferred = false;
       this.conflictFromRepository = false;
       this.conflictDialogOpen = false;
       this.confirmingLocalConflict = false;
@@ -339,6 +652,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   private hasActiveInteraction(): boolean {
     return this.busy
+      || this.focusListId !== null
       || this.editingTitle
       || this.editingListId !== null
       || this.editingTaskId !== null
@@ -360,9 +674,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         reason: 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
       };
       this.conflictFromRepository = false;
-      this.conflictDialogOpen = true;
+      this.conflictDialogOpen = false;
+      this.conflictDialogDeferred = true;
       this.confirmingLocalConflict = false;
       this.saveError = '';
+      this.presentDeferredConflict();
       return false;
     }
 
@@ -398,9 +714,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
           : 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
       };
       this.conflictFromRepository = false;
-      this.conflictDialogOpen = true;
+      this.conflictDialogOpen = false;
+      this.conflictDialogDeferred = true;
       this.confirmingLocalConflict = false;
       this.saveError = '';
+      this.presentDeferredConflict();
       return true;
     }
   }
@@ -418,14 +736,26 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  closeConflictDialog(): void {
+  closeConflictDialog(restoreFocus = true): void {
     this.conflictDialogOpen = false;
     this.confirmingLocalConflict = false;
+    this.conflictDialogDeferred = false;
+    if (restoreFocus) this.restoreConflictFocus();
+    else this.conflictDialogOpener = null;
   }
 
-  openConflictDialog(): void {
-    if (!this.activeConflict) return;
+  private restoreConflictFocus(): void {
+    const opener = this.conflictDialogOpener;
+    this.conflictDialogOpener = null;
+    requestAnimationFrame(() => opener?.isConnected && opener.focus());
+  }
+
+  openConflictDialog(event?: Event): void {
+    if (!this.activeConflict || !this.canShowConflictDialog()) return;
+    const opener = event?.currentTarget;
+    this.conflictDialogOpener = opener instanceof HTMLElement ? opener : null;
     this.conflictDialogOpen = true;
+    this.conflictDialogDeferred = false;
     this.confirmingLocalConflict = false;
   }
 
@@ -450,6 +780,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         const remoteBoard = this.pendingRemoteBoard ?? conflict.remoteBoard;
         this.pendingRemoteBoard = null;
         this.activeConflict = null;
+        this.conflictDialogDeferred = false;
         this.conflictFromRepository = false;
         this.conflictDialogOpen = false;
         this.confirmingLocalConflict = false;
@@ -460,11 +791,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         this.syncSessionOrder();
         this.pendingRemoteBoard = null;
         this.activeConflict = null;
+        this.conflictDialogDeferred = false;
         this.conflictFromRepository = false;
         this.conflictDialogOpen = false;
         this.confirmingLocalConflict = false;
         this.scheduleMasonryLayout();
       }
+      this.restoreConflictFocus();
     } catch (error) {
       console.error('No se pudo resolver el conflicto del tablero', error);
       if (!(error instanceof BoardMergeConflictError)) {
@@ -480,8 +813,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       this.closeAccountMenu();
       return;
     }
-    if (this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.activeConflict || this.listToRemove) return;
+    if (this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.activeConflict || this.listToRemove) return;
     if (this.addingList) this.cancelAddList(false);
+    this.accountMenuMobilePresentation = this.isMobilePresentation;
     this.accountMenuOpener = this.accountButton?.nativeElement ?? null;
     this.accountMenuOpen = true;
   }
@@ -513,7 +847,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.accountMenuOpener = null;
     if (restoreFocus) {
       requestAnimationFrame(() => {
-        if (opener?.isConnected) opener.focus();
+        if (restoreFocus && opener?.isConnected) opener.focus();
       });
     }
   }
@@ -521,7 +855,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private positionAccountMenu(): void {
     const menu = this.accountMenuNode;
     if (!menu) return;
-    if (window.matchMedia('(max-width: 700px)').matches) {
+    if (this.accountMenuMobilePresentation) {
       menu.style.top = '';
       menu.style.right = '';
       return;
@@ -622,7 +956,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   /** Abre el diálogo: cierra el menú y limpia cualquier intento anterior. Solo en nativo. */
   openDeleteDialog(): void {
-    if (!this.isNative) return;
+    if (!this.isNative || (this.boardModalOpen && !this.accountMenuOpen)) return;
+    this.deleteDialogOpener = this.accountButton?.nativeElement ?? null;
     this.closeAccountMenu(true, false);
     this.deleteDialogOpen = true;
     this.deleteConfirmText = '';
@@ -632,12 +967,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /** Cierra el diálogo (Escape o Cancelar); con carga en vuelo no hace nada. */
-  cancelDeleteDialog(): void {
+  cancelDeleteDialog(restoreFocus = true): void {
     if (this.deleteBusy) return;
     this.deleteDialogOpen = false;
     this.deleteConfirmText = '';
     this.deleteError = '';
     this.deleteUserId = null;
+    const opener = this.deleteDialogOpener;
+    this.deleteDialogOpener = null;
+    if (restoreFocus) requestAnimationFrame(() => opener?.isConnected && opener.focus());
   }
 
   /**
@@ -711,11 +1049,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   openFeedback(opener?: HTMLElement): void {
     if (!this.feedbackEnabled) return;
     if (this.feedbackOpen) return;
+    if (this.focusListId) return;
 
     this.closeAccountMenu(true, false);
     this.cancelAddList(false);
     this.cancelDeleteList();
-    this.closeConflictDialog();
+    this.closeConflictDialog(false);
+    this.conflictDialogDeferred = Boolean(this.activeConflict);
     this.closeSearch();
     if (!this.deleteBusy) {
       this.deleteDialogOpen = false;
@@ -745,9 +1085,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
   @HostListener('document:keydown.escape', ['$event'])
   closeOverlaysOnEscape(event: KeyboardEvent): void {
+    if (!this.pageActive) return;
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
+    if (this.listToRemove) {
+      event.preventDefault();
+      this.cancelDeleteList();
+      return;
+    }
+    if (this.focusListId) {
+      event.preventDefault();
+      this.closeFocusModal();
+      return;
+    }
     if (this.deleteDialogOpen) {
       event.preventDefault();
       this.cancelDeleteDialog();
@@ -756,11 +1107,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.conflictDialogOpen) {
       event.preventDefault();
       this.closeConflictDialog();
-      return;
-    }
-    if (this.listToRemove) {
-      event.preventDefault();
-      this.cancelDeleteList();
       return;
     }
     if (this.addingList) {
@@ -802,11 +1148,23 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    this.pageActive = false;
+    this.overlayStack.unregisterOwner('board');
+    this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
+    this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
     this.resizeObserver?.disconnect();
     if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
+    this.clearNewListInputFocusWork();
     this.feedbackOpen = false;
+  }
+
+  private initializeMobilePresentation(): void {
+    this.mobilePresentationQuery = window.matchMedia('(max-width: 700px)');
+    this.isMobilePresentation = this.mobilePresentationQuery.matches;
+    this.mobilePresentationQuery.addEventListener('change', this.onMobilePresentationChange);
   }
 
   // ✏️ Edición de título
@@ -916,11 +1274,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   toggleAddList(): void {
     if (!this.addingList && this.isAtListLimit) return;
     if (!this.addingList && (
-      this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.listToRemove || this.activeConflict
+      this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.listToRemove || this.activeConflict
     )) return;
     if (!this.addingList && this.accountMenuOpen) {
       this.closeAccountMenu(true, false);
     }
+    if (!this.addingList) this.newListMobilePresentation = this.isMobilePresentation;
     this.addingList = !this.addingList;
     if (this.addingList) {
       this.newListOpener = this.newListFab?.nativeElement ?? null;
@@ -928,6 +1287,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
       this.newListTitleCount = 0;
       this.selectedVisualColor = this.visualColors[0].value;
       this.placeNewListAtStart = false;
+      this.newListTitleFocusTimer = setTimeout(() => {
+        this.newListTitleFocusTimer = null;
+        this.focusNewListTitleAfterEntrance();
+      }, 220);
     }
   }
 
@@ -938,6 +1301,63 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   onAddListBackdropClick(): void {
     if (!this.newListTitle.trim()) this.cancelAddList();
+  }
+
+  onNewListEntranceAnimationEnd(event: AnimationEvent): void {
+    if (event.target !== event.currentTarget || !this.addingList) return;
+    this.focusNewListTitleAfterEntrance();
+  }
+
+  private focusNewListTitleAfterEntrance(): void {
+    if (!this.addingList || !this.newListTitleInput) return;
+    if (this.newListTitleFocusTimer !== null) {
+      clearTimeout(this.newListTitleFocusTimer);
+      this.newListTitleFocusTimer = null;
+    }
+    void this.focusNewListTitleInput();
+  }
+
+  private async focusNewListTitleInput(): Promise<void> {
+    const input = this.newListTitleInput;
+    if (!this.addingList || !input) return;
+    await input.setFocus();
+    if (!this.addingList || input !== this.newListTitleInput) return;
+    const nativeInput = await input.getInputElement();
+    const scrollIfNeeded = (): void => {
+      if (!this.addingList || !nativeInput.isConnected) return;
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+      const bounds = nativeInput.getBoundingClientRect();
+      if (bounds.top < viewportTop || bounds.bottom > viewportBottom) {
+        nativeInput.scrollIntoView({ block: 'nearest' });
+      }
+    };
+    this.newListViewportResizeHandler = () => {
+      window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler!);
+      this.newListViewportResizeHandler = null;
+      scrollIfNeeded();
+    };
+    window.visualViewport?.addEventListener('resize', this.newListViewportResizeHandler, { once: true });
+    this.newListViewportTimer = setTimeout(() => {
+      if (this.newListViewportResizeHandler) {
+        window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler);
+        this.newListViewportResizeHandler = null;
+      }
+      this.newListViewportTimer = null;
+      scrollIfNeeded();
+    }, 250);
+  }
+
+  private clearNewListInputFocusWork(): void {
+    if (this.newListTitleFocusTimer !== null) clearTimeout(this.newListTitleFocusTimer);
+    if (this.newListViewportTimer !== null) clearTimeout(this.newListViewportTimer);
+    if (this.newListViewportResizeHandler) {
+      window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler);
+    }
+    this.newListTitleFocusTimer = null;
+    this.newListViewportTimer = null;
+    this.newListViewportResizeHandler = null;
   }
 
   // 🔍 Búsqueda
@@ -952,6 +1372,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    */
   @HostListener('document:keydown', ['$event'])
   onSearchShortcut(event: KeyboardEvent): void {
+    if (!this.pageActive) return;
     if (!this.showSearchShortcut) return;
     if (!event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key.toLowerCase() !== 'k') return;
@@ -1187,7 +1608,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    */
   requestRemoveList(list: ChecklistList, event?: Event | null): void {
     // Con el diálogo de sincronización abierto no se apila un segundo overlay encima.
-    if (this.conflictDialogOpen) return;
+    if (this.conflictDialogOpen || this.feedbackOpen || this.addingList
+      || this.deleteDialogOpen || this.accountMenuOpen) return;
     this.listToRemove = list;
     const opener = event?.currentTarget;
     this.removeDialogOpener = opener instanceof HTMLElement ? opener : null;
@@ -1201,6 +1623,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   async confirmDeleteList(): Promise<void> {
     const list = this.listToRemove;
     if (!list || this.removeDialogBusy) return;
+    this.setFocusRemovalCause(list, this.isListComplete(list) ? 'archived' : 'trashed');
     this.closeRemoveDialog();
     if (this.isListComplete(list)) await this.moveListToArchive(list);
     else await this.moveListToTrash(list);
@@ -1212,7 +1635,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * siendo completa en el momento de pulsar.
    */
   async archiveListFromDialog(): Promise<void> {
-    await this.runRemoveDialogAction((list) => this.moveListToArchive(list));
+    await this.runRemoveDialogAction((list) => this.moveListToArchive(list), 'archived');
   }
 
   /**
@@ -1221,7 +1644,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * definitivo: la lista se puede restaurar durante `TRASH_RETENTION_DAYS` días.
    */
   async trashListFromDialog(): Promise<void> {
-    await this.runRemoveDialogAction((list) => this.moveListToTrash(list));
+    await this.runRemoveDialogAction((list) => this.moveListToTrash(list), 'trashed');
   }
 
   /**
@@ -1229,9 +1652,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * deshabilitados mientras dura, así que por apertura del diálogo solo sale una acción:
    * un doble clic en "Archivar lista" o en "Eliminar" no mueve la lista dos veces.
    */
-  private async runRemoveDialogAction(run: (list: ChecklistList) => Promise<void>): Promise<void> {
+  private async runRemoveDialogAction(
+    run: (list: ChecklistList) => Promise<void>,
+    cause: FocusListRemovalCause
+  ): Promise<void> {
     const list = this.listToRemove;
     if (!list || this.removeDialogBusy) return;
+    this.setFocusRemovalCause(list, cause);
     this.removeDialogBusy = true;
     this.closeRemoveDialog();
     try {
@@ -1242,7 +1669,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /** Cierra el diálogo de archivar y devuelve el foco al botón de la lista que lo abrió. */
-  private closeRemoveDialog(): void {
+  private closeRemoveDialog(restoreFocus = true): void {
     this.listToRemove = null;
     const opener = this.removeDialogOpener;
     this.removeDialogOpener = null;
@@ -1350,6 +1777,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.board.lists = orderedLists;
     // Una lista creada "al inicio del tablero" también arranca pinneada.
     if (this.placeNewListAtStart) this.board.pinnedListId = newList.id;
+    this.clearNewListInputFocusWork();
     this.newListTitle = '';
     this.addingList = false;
     this.newListTitleCount = 0;
@@ -1360,6 +1788,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   cancelAddList(restoreFocus = true): void {
     this.addingList = false;
+    this.clearNewListInputFocusWork();
     this.newListTitle = '';
     this.newListTitleCount = 0;
     this.releasePendingRemoteBoard();
@@ -1470,7 +1899,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     // reintenta en cuanto el contenedor recupera su tamaño.
     if (board.clientWidth === 0) return;
 
-    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    const isMobile = this.isMobilePresentation;
     const columns = isMobile ? 1 : 3;
     const itemWidth = isMobile
       ? Math.min(board.clientWidth, 520)
@@ -1531,6 +1960,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   private async persist(): Promise<void> {
     if (this.activeConflict || this.preparePendingRemoteBeforeSave()) return;
+    const ownSnapshotToken = this.ownBoardSnapshots.begin(this.board);
     this.busy = true;
     this.saveError = '';
     let saved = false;
@@ -1544,6 +1974,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
         this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
       }
     } finally {
+      this.ownBoardSnapshots.complete(ownSnapshotToken, saved);
       this.busy = false;
       this.releasePendingRemoteBoard(saved);
     }

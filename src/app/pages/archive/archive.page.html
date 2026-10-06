@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [attr.inert]="helpOpen || pendingAction ? '' : null" [attr.aria-hidden]="helpOpen || pendingAction ? 'true' : null">
   <ion-toolbar class="topbar">
     <div class="toolbar-inner">
       <button class="back-btn ion-activatable" type="button" (click)="goBack()" aria-label="Volver al tablero">
@@ -10,7 +10,11 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="archive-content">
+<ion-content
+  class="archive-content"
+  [attr.inert]="helpOpen || pendingAction ? '' : null"
+  [attr.aria-hidden]="helpOpen || pendingAction ? 'true' : null"
+>
   <!-- Aviso de retención: siempre visible, incluso con el archivo vacío. -->
   <section class="archive-notice" role="note">
     <div class="archive-notice-copy">
@@ -149,7 +153,7 @@
             <span>Restaurar lista</span>
             <ion-ripple-effect></ion-ripple-effect>
           </button>
-          <button type="button" class="delete-btn ion-activatable" (click)="requestDelete(entry)">
+          <button type="button" class="delete-btn ion-activatable" (click)="requestDelete(entry, $event)">
             <ion-icon name="trash" aria-hidden="true"></ion-icon>
             <span>Eliminar</span>
             <ion-ripple-effect></ion-ripple-effect>
@@ -174,6 +178,7 @@
     aria-labelledby="archive-dialog-title"
     aria-describedby="archive-dialog-description"
     (click)="$event.stopPropagation()"
+    (keydown)="keepFocusInConfirmation($event)"
   >
     <div class="archive-dialog-icon" aria-hidden="true">
       <ion-icon name="trash"></ion-icon>
@@ -189,7 +194,7 @@
     </div>
 
     <div class="archive-dialog-actions">
-      <button type="button" class="archive-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
+      <button #archiveDeleteCancel type="button" class="archive-dialog-cancel ion-activatable" autofocus (click)="cancelPendingAction()">
         Cancelar
         <ion-ripple-effect></ion-ripple-effect>
       </button>
@@ -260,4 +265,3 @@
     </div>
   </section>
 </div>
-
