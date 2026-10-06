@@ -91,7 +91,7 @@
           </button>
 
           <!-- Título solo lectura: en el archivo no se edita nada. -->
-          <strong class="archive-card-title" [title]="entry.list.title">{{ entry.list.title }}</strong>
+          <strong class="archive-card-title" [title]="truncateTitle(entry.list.title)">{{ entry.list.title }}</strong>
 
           <span class="task-counter" [class.complete-counter]="isListComplete(entry.list)">
             <span class="counter-status-dot" *ngIf="isListComplete(entry.list)" aria-hidden="true"></span>
@@ -183,7 +183,7 @@
 
     <div *ngIf="confirmListTitle" class="archive-dialog-preview">
       <span class="archive-dialog-preview-copy">
-        <strong>{{ confirmListTitle }}</strong>
+        <strong [title]="truncateTitle(confirmListTitle)">{{ confirmListTitle }}</strong>
         <span>Lista archivada</span>
       </span>
     </div>

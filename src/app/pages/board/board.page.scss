@@ -183,6 +183,23 @@ ion-header {
   gap: 6px;
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+.title-char-count {
+  position: absolute;
+  right: 48px;
+  bottom: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #9fa4a7;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+
+.title-char-count.at-limit {
+  color: #e11d48;
 }
 
 .title-edit ion-input {
@@ -998,15 +1015,20 @@ ion-header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Permite que títulos muy largos sin espacios se envuelvan dentro del contenedor
+     en lugar de ensanchar la tarjeta o el diálogo. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.list-title-display,
-.list-title-edit {
+.list-title-edit,
+.list-title-display {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
   gap: 4px;
+  position: relative;
 }
 
 .list-title-edit ion-input {
@@ -1018,6 +1040,22 @@ ion-header {
   --border-radius: 7px;
   border: 1px solid #dfe3ec;
   border-radius: 7px;
+}
+
+.list-title-edit .title-char-count {
+  position: absolute;
+  right: 40px;
+  bottom: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #9fa4a7;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+
+.list-title-edit .title-char-count.at-limit {
+  color: #e11d48;
 }
 
 .edit-list-button {
@@ -1729,10 +1767,14 @@ ion-header {
   padding: 16px;
   background: rgba(26, 33, 48, 0.42);
   backdrop-filter: blur(3px);
+  /* Permite scroll si el diálogo crece más que el viewport (p. ej., título muy largo). */
+  overflow-y: auto;
 }
 
 .delete-list-dialog {
   width: min(100%, 420px);
+  max-width: 100%;
+  min-width: 0;
   padding: 18px 16px 14px;
   color: #172236;
   background: #fff;
@@ -1741,6 +1783,9 @@ ion-header {
   box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
   text-align: center;
   animation: deleteDialogEnter 0.16s ease-out;
+  /* Evita que el contenido fuerce el ancho del diálogo. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .delete-list-icon {
@@ -1815,10 +1860,20 @@ ion-header {
   white-space: nowrap;
 }
 
+/* Título de lista en el diálogo: permite hasta 2-3 líneas con ellipsis para
+   títulos muy largos (p. ej., JSON pegado sin espacios) sin ensanchar el diálogo. */
 .delete-list-preview-copy strong {
   color: #25334a;
   font-size: 11px;
   font-weight: 650;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .delete-list-preview-copy > span {
@@ -1962,6 +2017,10 @@ ion-header {
 
 .sync-conflict-dialog {
   width: min(100%, 460px);
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ── Eliminar cuenta ─────────────────────────────────────────────────────────
@@ -1970,8 +2029,12 @@ ion-header {
    altura máxima con scroll interno y ancho que deja 16px por lado. */
 .delete-account-dialog {
   width: min(100%, 460px);
+  max-width: 100%;
+  min-width: 0;
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .delete-account-confirm-hint {

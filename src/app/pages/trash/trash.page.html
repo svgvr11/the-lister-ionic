@@ -73,7 +73,7 @@
           </button>
 
           <!-- Título solo lectura: en el basurero no se edita nada. -->
-          <strong class="trash-card-title" [title]="entry.list.title">{{ entry.list.title }}</strong>
+          <strong class="trash-card-title" [title]="truncateTitle(entry.list.title)">{{ entry.list.title }}</strong>
 
           <span
             class="task-counter"
@@ -184,7 +184,7 @@
 
     <div *ngIf="confirmListTitle" class="trash-dialog-preview">
       <span class="trash-dialog-preview-copy">
-        <strong>{{ confirmListTitle }}</strong>
+        <strong [title]="truncateTitle(confirmListTitle)">{{ confirmListTitle }}</strong>
         <span>Lista descartada</span>
       </span>
     </div>

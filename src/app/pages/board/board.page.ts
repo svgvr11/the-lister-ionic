@@ -23,6 +23,7 @@ import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback-core';
 import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { AuthService } from '../../core/services/auth.service';
@@ -150,6 +151,16 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   titleDraft = '';
   editingListId: string | null = null;
   listTitleDraft = '';
+
+  /** Límite de caracteres para títulos de lista, expuesto al template. */
+  readonly maxListTitleLength = MAX_LIST_TITLE_LENGTH;
+
+  /** Contador de caracteres para el input de nueva lista (panel FAB). */
+  newListTitleCount = 0;
+
+  /** Contador de caracteres para el input de edición de lista. */
+  listTitleEditCount = 0;
+
   editingTaskId: string | null = null;
   taskTextDraft = '';
   /** Lista a la que se le va a abrir el diálogo: se archiva si está completa, si no, al basurero. */
@@ -713,7 +724,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   confirmEditTitle(): void {
-    const newTitle = this.titleDraft.trim();
+    const newTitle = normalizeListTitle(this.titleDraft);
     if (!newTitle) {
       this.cancelEditTitle();
       return;
@@ -733,10 +744,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     event.stopPropagation();
     this.editingListId = list.id;
     this.listTitleDraft = list.title;
+    this.listTitleEditCount = Array.from(list.title).length;
   }
 
   async confirmEditList(list: ChecklistList): Promise<void> {
-    const title = this.listTitleDraft.trim();
+    const title = normalizeListTitle(this.listTitleDraft);
     if (!title) {
       this.cancelEditList();
       return;
@@ -749,7 +761,36 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   cancelEditList(): void {
     this.editingListId = null;
     this.listTitleDraft = '';
+    this.listTitleEditCount = 0;
     this.releasePendingRemoteBoard();
+  }
+
+  /** Actualiza el contador de caracteres al escribir en el input de nueva lista. */
+  onNewListTitleInput(): void {
+    this.newListTitleCount = Array.from(this.newListTitle).length;
+  }
+
+  /** Actualiza el contador de caracteres al escribir en el input de edición de lista. */
+  onListTitleEditInput(): void {
+    this.listTitleEditCount = Array.from(this.listTitleDraft).length;
+  }
+
+  /** Normaliza el texto pegado en el input de nueva lista y actualiza el contador. */
+  onNewListTitlePaste(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    const normalized = normalizeListTitle(pasted);
+    this.newListTitle = normalized;
+    this.newListTitleCount = Array.from(normalized).length;
+    event.preventDefault();
+  }
+
+  /** Normaliza el texto pegado en el input de edición de lista y actualiza el contador. */
+  onListTitleEditPaste(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    const normalized = normalizeListTitle(pasted);
+    this.listTitleDraft = normalized;
+    this.listTitleEditCount = Array.from(normalized).length;
+    event.preventDefault();
   }
 
   startEditTask(task: ChecklistTask, event: Event): void {
@@ -785,6 +826,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     this.addingList = !this.addingList;
     if (this.addingList) {
       this.newListTitle = '';
+      this.newListTitleCount = 0;
       this.selectedVisualColor = this.visualColors[0].value;
       this.placeNewListAtStart = false;
     }
@@ -1181,7 +1223,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * que quede pinneada.
    */
   async addList(): Promise<void> {
-    const title = this.newListTitle.trim();
+    const title = normalizeListTitle(this.newListTitle);
     if (!title || this.isAtListLimit) return;
     const orderedLists = [...this.board.lists].sort((a, b) => a.position - b.position);
     const newList: ChecklistList = {

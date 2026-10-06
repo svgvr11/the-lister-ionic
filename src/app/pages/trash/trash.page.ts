@@ -12,6 +12,7 @@ import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } fr
 import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 
@@ -79,6 +80,19 @@ export class TrashPage implements OnInit, OnDestroy {
 
   get isEmpty(): boolean {
     return this.trashedLists.length === 0;
+  }
+
+  /** Límite de caracteres para títulos de lista, expuesto al template. */
+  readonly maxListTitleLength = MAX_LIST_TITLE_LENGTH;
+
+  /**
+   * Recorta un título a maxListTitleLength para aria-label/title, añadiendo ellipsis si se recorta.
+   */
+  truncateTitle(title: string): string {
+    if (!title) return '';
+    const codePoints = Array.from(title);
+    if (codePoints.length <= this.maxListTitleLength) return title;
+    return codePoints.slice(0, this.maxListTitleLength).join('') + '…';
   }
 
   constructor() {

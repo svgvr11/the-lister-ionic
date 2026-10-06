@@ -309,6 +309,10 @@ ion-content.trash-content {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Permite que títulos muy largos sin espacios se envuelvan en lugar de
+     ensanchar la tarjeta. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .urgent-card .trash-card-title {
@@ -573,10 +577,14 @@ ion-content.trash-content {
   padding: 16px;
   background: rgba(26, 33, 48, 0.42);
   backdrop-filter: blur(3px);
+  /* Permite scroll si el diálogo crece más que el viewport (p. ej., título muy largo). */
+  overflow-y: auto;
 }
 
 .trash-dialog {
   width: min(100%, 420px);
+  max-width: 100%;
+  min-width: 0;
   padding: 18px 16px 14px;
   color: var(--trash-ink);
   background: #fff;
@@ -585,6 +593,9 @@ ion-content.trash-content {
   box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
   text-align: center;
   animation: trashDialogEnter 0.16s ease-out;
+  /* Evita que el contenido fuerce el ancho del diálogo. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @keyframes trashDialogEnter {
@@ -647,10 +658,20 @@ ion-content.trash-content {
   white-space: nowrap;
 }
 
+/* Título de lista en el diálogo: permite hasta 2-3 líneas con ellipsis para
+   títulos muy largos (p. ej., JSON pegado sin espacios) sin ensanchar el diálogo. */
 .trash-dialog-preview-copy strong {
   color: #25334a;
   font-size: 11px;
   font-weight: 650;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .trash-dialog-preview-copy > span {

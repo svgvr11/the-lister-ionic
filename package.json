@@ -17,6 +17,7 @@
     "test:google-auth": "node --experimental-strip-types scripts/test-google-auth.mjs",
     "test:version": "node --experimental-strip-types scripts/test-version.mjs",
     "test:apk-name": "node --experimental-strip-types scripts/test-apk-name.mjs",
+    "test:list-title": "node --experimental-strip-types scripts/test-list-title.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

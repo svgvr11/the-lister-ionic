@@ -16,6 +16,7 @@ import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists
 } from '../../core/archive';
 import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 
@@ -116,6 +117,19 @@ export class ArchivePage implements OnInit, OnDestroy {
 
   get isEmpty(): boolean {
     return this.archivedLists.length === 0;
+  }
+
+  /** Límite de caracteres para títulos de lista, expuesto al template. */
+  readonly maxListTitleLength = MAX_LIST_TITLE_LENGTH;
+
+  /**
+   * Recorta un título a maxListTitleLength para aria-label/title, añadiendo ellipsis si se recorta.
+   */
+  truncateTitle(title: string): string {
+    if (!title) return '';
+    const codePoints = Array.from(title);
+    if (codePoints.length <= this.maxListTitleLength) return title;
+    return codePoints.slice(0, this.maxListTitleLength).join('') + '…';
   }
 
   constructor() {
