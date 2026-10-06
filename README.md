@@ -23,6 +23,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - En el basurero el título y las tareas son de solo lectura: no se pueden editar. Las tareas completadas conservan el **Mostrar tareas completadas** del tablero, pero el estado es solo visual y no se guarda.
 - Cada color de tablero muestra su nombre junto al título "Color del tablero".
 - **Enviar comentarios** (botón flotante junto al de "Nueva lista"): reporta un error o una mejora con texto, hasta 5 imágenes e información técnica opcional. Llega por correo con enlaces firmados a las capturas y se conserva 90 días. Ver la sección **Feedback**.
+- El botón flotante de comentarios permanece visible junto al FAB de nueva lista; los modales y el menú de perfil lo cubren y lo desactivan hasta cerrarse.
 - Los datos se guardan como JSON en una fila por usuario, con Row Level Security (RLS).
 - Esquema SQL incluido en `supabase/schema.sql`.
 

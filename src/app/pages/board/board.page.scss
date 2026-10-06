@@ -402,31 +402,63 @@ ion-header {
   white-space: nowrap;
 }
 
-/* Capa transparente que cierra el menú o panel abierto al hacer clic fuera.
-   Replica el patrón de .delete-list-overlay, pero sin oscurecer el tablero. */
-.menu-backdrop {
+/* El menú y su scrim quedan bajo el FAB de feedback (399) y el bloqueo global (10000). */
+.account-menu-scrim {
   position: fixed;
   inset: 0;
-  background: transparent;
+  z-index: 397;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  backdrop-filter: blur(1px);
+  animation: accountScrimEnter 0.14s ease-out;
 }
 
-.account-menu-backdrop {
-  z-index: 399;
+.account-menu-scrim.closing {
+  pointer-events: none;
+  animation: accountScrimExit 0.14s ease-in forwards;
 }
 
 .account-menu {
-  position: absolute;
-  z-index: 400;
+  position: fixed;
+  z-index: 398;
   top: var(--board-header-height);
   right: 16px;
-  width: 286px;
+  width: min(320px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
-  padding: 14px 16px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
   color: #26364d;
   background: #fff;
   border: 1px solid #dce1e8;
-  border-radius: 8px;
-  box-shadow: 0 14px 34px rgba(24, 38, 64, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.28);
+  animation: accountPopoverEnter 0.14s ease-out;
+}
+
+@keyframes accountPopoverEnter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes accountPopoverExit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-3px) scale(0.98); }
+}
+
+@keyframes accountScrimEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes accountScrimExit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.account-menu.closing {
+  pointer-events: none;
+  animation: accountPopoverExit 0.14s ease-in forwards;
 }
 
 .account-profile {
@@ -535,7 +567,7 @@ ion-header {
   margin-top: 14px;
   margin-bottom: 16px;
   padding: 0 16px;
-  color: #fff;
+  color: #86898e;
   background: var(--donation-color);
   border-radius: 10px;
   /* El texto es blanco sobre un pastel claro: un ripple currentColor sería
@@ -1484,13 +1516,9 @@ ion-header {
   transform: rotate(45deg);
 }
 
-/* Botón flotante de comentarios. Va apilado justo encima del FAB de nueva lista, en la misma
-   esquina, y es más pequeño y discreto: es una entrada secundaria, no un CTA. Se posiciona
-   sobre el FAB (60px) con `bottom: 20 + 60 + 10 de hueco = 90px` y centrado en horizontal
-   con `right` desplazado la mitad de la diferencia de tamaños (60-44)/2 = 8px.
-
-   No reserva sitio en el flujo (es `position: fixed` como el FAB) ni toca el masonry: solo
-   se pinta encima, y se oculta con *ngIf mientras haya otro overlay o el teclado abierto. */
+/* Botón flotante de comentarios. Conserva su posición encima del FAB de nueva lista y no
+   participa en el flujo ni en el masonry. Comparte su nivel de apilado: el scrim de perfil y
+   los backdrops de modal cubren ambos, como el FAB de nueva lista. */
 .feedback-fab {
   position: fixed;
   /* El ripple es bounded: sin esto se sale del círculo. */
@@ -1509,9 +1537,12 @@ ion-header {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(20, 29, 48, 0.16);
   transition: transform 0.2s ease, background 0.2s ease;
-  /* Por debajo del FAB de nueva lista y su panel (200), pero por encima de las listas
-     y del backdrop del menú de perfil (399) para que siga clicable con el menú abierto. */
-  z-index: 399;
+  /* Mismo nivel que el FAB Nueva lista; bajo el scrim/perfil (397/398) y todos los modales. */
+  z-index: 200;
+}
+
+.feedback-fab[aria-hidden="true"] {
+  pointer-events: none;
 }
 
 .feedback-fab:hover {
@@ -1528,8 +1559,7 @@ ion-header {
   outline-offset: 2px;
 }
 
-/* En móvil el FAB de nueva lista mide 54px y está en right:16px / bottom:18px, así que el
-   botón de comentarios se apila a 18 + 54 + 8 = 80px y se centra sobre él con 16 + 5 = 21px. */
+/* En móvil el botón de feedback conserva su ubicación encima del FAB de nueva lista. */
 @media (max-width: 700px) {
   .feedback-fab {
     right: 21px;
@@ -1546,77 +1576,82 @@ ion-header {
   .feedback-fab:hover, .feedback-fab:active { transform: none; }
 }
 
-/* Capa transparente del panel FAB: queda justo por debajo del panel (z-index 200). */
-.fab-panel-backdrop {
-  z-index: 199;
+.new-list-overlay {
+  align-items: center;
+  padding-block: max(16px, var(--app-safe-area-top)) max(16px, var(--app-safe-area-bottom));
 }
 
-/* ✨ Panel que se despliega desde el FAB */
-.fab-panel {
-  position: fixed;
-  right: 24px;
-  bottom: calc(96px + var(--app-safe-area-bottom));
-  width: min(398px, calc(100vw - 32px));
-  padding: 24px;
-  color: #172236;
-  background: #fff;
-  border: 1px solid #eceef4;
-  border-radius: 18px;
-  box-shadow: 0 18px 48px rgba(28, 38, 66, 0.16);
-  z-index: 200;
+.new-list-dialog {
+  width: min(100%, 440px);
+  max-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
 }
 
-@keyframes fabSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.fab-panel-header {
+.new-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  color: #172236;
-  font-size: 21px;
-  font-weight: 700;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.fab-panel-close {
+.new-list-header h2 {
+  min-width: 0;
+  margin: 0;
+  color: #172236;
+  font-size: 17px;
+  font-weight: 750;
+  text-align: left;
+}
+
+.new-list-close {
   position: relative;
   overflow: hidden;
-  background: transparent;
-  border: 0;
-  color: #5c6372;
-  cursor: pointer;
-  padding: 4px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  padding: 0;
+  color: #5c6372;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: 8px;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.fab-panel-close:hover {
+.new-list-close:hover {
   background: #f1f3f8;
   color: #202d42;
 }
 
-.fab-panel-close ion-icon {
+.new-list-close ion-icon {
   font-size: 18px;
 }
 
-.fab-panel-form {
+.new-list-form {
   display: flex;
   flex-direction: column;
   gap: 9px;
 }
 
-.fab-input {
+.new-list-form > .title-char-count {
+  position: static;
+  align-self: flex-end;
+  margin-top: -5px;
+}
+
+.new-list-field-label {
+  padding: 0;
+  color: #25334a;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.new-list-input {
   --background: #f1f3ff;
   --color: #172236;
   --placeholder-color: #737b8c;
@@ -1628,9 +1663,9 @@ ion-header {
   border-radius: 12px;
   width: 100%;
   font-size: 14px;
+  text-align: left;
 }
 
-.fab-field-label,
 .visual-color-field legend {
   padding: 0;
   color: #25334a;
@@ -1647,7 +1682,7 @@ ion-header {
 
 .visual-color-options {
   display: flex;
-  align-items: center;
+  justify-content: space-around;
   gap: 9px;
   margin-top: 9px;
 }
@@ -1710,15 +1745,16 @@ ion-header {
   accent-color: var(--fab-color);
 }
 
-.fab-panel-actions {
+.new-list-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 9px;
   margin-top: 12px;
 }
 
-.fab-submit-btn {
+.new-list-submit {
   position: relative;
   overflow: hidden;
   border: 0;
@@ -1736,16 +1772,16 @@ ion-header {
   transition: background 0.15s ease;
 }
 
-.fab-submit-btn:hover {
+.new-list-submit:hover {
   background: var(--fab-hover);
 }
 
-.fab-submit-btn:disabled {
+.new-list-submit:disabled {
   opacity: 0.48;
   cursor: not-allowed;
 }
 
-.fab-cancel-btn {
+.new-list-cancel {
   position: relative;
   overflow: hidden;
   padding: 10px 14px;
@@ -1756,6 +1792,13 @@ ion-header {
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
+}
+
+.new-list-close:focus-visible,
+.new-list-cancel:focus-visible,
+.new-list-submit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .delete-list-overlay {
@@ -2176,6 +2219,12 @@ ion-header {
   .delete-list-dialog {
     animation: none;
   }
+  .account-menu,
+  .account-menu-scrim,
+  .account-menu.closing,
+  .account-menu-scrim.closing {
+    animation: none;
+  }
 }
 
 /* Respeta safe areas y cabeceras de dos filas en pantallas de escritorio estrechas. */
@@ -2202,7 +2251,6 @@ ion-header {
     width: 100%;
     margin: 0;
   }
-  .account-menu { top: var(--board-header-height); }
 }
 
 /* Respativo */
@@ -2240,9 +2288,41 @@ ion-header {
     margin: 0;
   }
   .account-menu {
-    top: var(--board-header-height);
-    right: 12px;
-    width: min(286px, calc(100vw - 18px));
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - var(--app-safe-area-top) - 12px);
+    padding: 26px 16px calc(16px + var(--app-safe-area-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    animation: accountSheetEnter 0.18s ease-out;
+  }
+  .account-menu.closing {
+    animation: accountSheetExit 0.15s ease-in forwards;
+  }
+  .account-menu::before {
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    content: "";
+    background: color-mix(in srgb, var(--accent) 24%, #dce1e8);
+    border-radius: 999px;
+    transform: translateX(-50%);
+  }
+  @keyframes accountSheetEnter {
+    from { opacity: 0.8; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes accountSheetExit {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(22px); }
   }
   .board-title {
     font-size: 24px;
@@ -2292,11 +2372,17 @@ ion-header {
     width: 54px;
     height: 54px;
   }
-  .fab-panel {
-    right: 16px;
-    left: 16px;
-    bottom: calc(84px + var(--app-safe-area-bottom));
-    width: auto;
-    padding: 22px;
+}
+
+@supports not (height: 100dvh) {
+  .account-menu { max-height: calc(100vh - 24px); }
+  .new-list-dialog {
+    max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
   }
+}
+
+@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+  .account-menu { animation: none; }
+  .account-menu-scrim { animation: none; }
+  .account-menu.closing, .account-menu-scrim.closing { animation: none; }
 }

@@ -104,6 +104,7 @@ export class AppComponent implements OnInit, OnDestroy {
   onBlockedKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     if (event.key === 'Tab') {

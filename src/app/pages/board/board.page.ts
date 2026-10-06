@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
@@ -31,6 +31,7 @@ import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-acco
 import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { FeedbackService } from '../../core/services/feedback.service';
+import { SessionGuardService } from '../../core/services/session-guard.service';
 
 @Component({
   selector: 'app-board',
@@ -49,8 +50,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   private readonly boardOrder = inject(BoardOrderService);
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
-  /** Repintado manual: el listener del viewport visual vive fuera del ciclo de Angular. */
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly sessionGuard = inject(SessionGuardService);
   private subscription?: Subscription;
   private lastAppliedBoard: ChecklistBoard | null = null;
   private pendingRemoteBoard: ChecklistBoard | null = null;
@@ -97,6 +97,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    */
   activeTheme: BoardTheme = migrateLegacyTheme(this.auth.session?.user.id ?? null);
   accountMenuOpen = false;
+  accountMenuClosing = false;
+  private accountMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
@@ -106,6 +108,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
   readonly donationMessage = '!Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
+  private accountMenuNode: HTMLElement | null = null;
+  private accountMenuOpener: HTMLElement | null = null;
+  private newListOpener: HTMLElement | null = null;
 
   get listProgress(): string {
     return `${Math.min(this.board.lists.length, MAX_BOARD_LISTS) / MAX_BOARD_LISTS * 100}%`;
@@ -155,7 +160,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Límite de caracteres para títulos de lista, expuesto al template. */
   readonly maxListTitleLength = MAX_LIST_TITLE_LENGTH;
 
-  /** Contador de caracteres para el input de nueva lista (panel FAB). */
+  /** Contador de caracteres para el título de la lista nueva. */
   newListTitleCount = 0;
 
   /** Contador de caracteres para el input de edición de lista. */
@@ -179,41 +184,44 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
   private feedbackOpener: HTMLElement | null = null;
 
-  /**
-   * El botón flotante de comentarios. La constante vive en feedback-core.ts (un solo sitio):
-   * ponerla a false quita el botón y nada más, sin tocar el resto de la página.
-   */
+  /** Interruptor global de la función; el estado visual de la página no oculta el botón. */
   readonly feedbackFabEnabled = FEEDBACK_FAB_ENABLED;
 
   /**
-   * El botón flotante de comentarios se esconde mientras haya otro overlay abierto o el
-   * teclado en pantalla, para no quedar debajo del panel de nueva lista ni tapar el footer.
-   * NO se esconde con el menú de perfil: al pulsarlo se cierra el menú y abre el modal.
-   * Es `false` solo cuando hay algo que lo taparía de verdad.
+   * Un modal bloquea la interacción con el botón, pero no su renderizado. El menú de perfil
+   * no es modal: el botón queda sobre su scrim para poder abrir feedback desde allí.
    */
-  get feedbackFabVisible(): boolean {
-    if (!this.feedbackFabEnabled || this.feedbackOpen) return false;
-    if (this.addingList || this.listToRemove || this.conflictDialogOpen) return false;
-    if (this.activeConflict || this.deleteDialogOpen) return false;
-    return !this.isKeyboardOpen;
+  get feedbackFabBlocked(): boolean {
+    return this.accountMenuOpen
+      || this.addingList
+      || this.listToRemove !== null
+      || this.conflictDialogOpen
+      || this.deleteDialogOpen
+      || this.feedbackOpen
+      || this.sessionGuard.blocked() !== null;
   }
-
-  /** El teclado está abierto si el viewport visual es bastante más bajo que la ventana. */
-  get isKeyboardOpen(): boolean {
-    const vv = window.visualViewport;
-    if (!vv) return false;
-    // Un margen generoso: en Android web el teclado roba más o menos la mitad inferior, y la
-    // medida puede no haber ocurrido aún justo en el primer focus.
-    return window.innerHeight - vv.height > 120;
-  }
-
-  /** Último estado del teclado conocido, para repintar solo cuando cambia de verdad. */
-  private keyboardWasOpen = false;
 
   @ViewChildren('boardItem', { read: ElementRef })
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
   @ViewChild('searchInput', { read: IonInput })
   private searchInput?: IonInput;
+  @ViewChild('accountButton', { read: ElementRef })
+  private accountButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('accountMenu', { read: ElementRef })
+  private set accountMenu(ref: ElementRef<HTMLElement> | undefined) {
+    this.accountMenuNode = ref?.nativeElement ?? null;
+    if (!ref) return;
+    requestAnimationFrame(() => {
+      this.positionAccountMenu();
+      this.accountMenuNode?.querySelector<HTMLElement>('.theme-option')?.focus();
+    });
+  }
+  @ViewChild('newListFab', { read: ElementRef })
+  private newListFab?: ElementRef<HTMLButtonElement>;
+  @ViewChild('newListTitleInput', { read: IonInput })
+  private set newListTitleInput(input: IonInput | undefined) {
+    if (input) queueMicrotask(() => void input.setFocus());
+  }
   /**
    * Botón principal del diálogo de archivar. Se resuelve como setter porque el diálogo vive
    * dentro de un `*ngIf`: así el foco entra en cuanto el nodo existe, sin `autofocus` (que
@@ -241,20 +249,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     void this.initializeBoard();
-    // Un único listener de resize del viewport visual, registrado una vez y quitado al
-    // destruir la página. `keyboardVisible` no existe: el getter `isKeyboardOpen` lo calcula
-    // cada vez; este listener solo fuerza un repintado cuando el teclado se abre o se cierra,
-    // para que el botón flotante de comentarios se esconda y vuelva.
-    window.visualViewport?.addEventListener('resize', this.onViewportResize);
-    window.addEventListener('scroll', this.onViewportResize, { passive: true });
   }
-
-  private readonly onViewportResize = (): void => {
-    // Detección de cambio: solo se repinta si el estado del teclado ha cambiado de verdad.
-    if (this.keyboardWasOpen === this.isKeyboardOpen) return;
-    this.keyboardWasOpen = this.isKeyboardOpen;
-    this.cdr.markForCheck();
-  };
 
   private async initializeBoard(): Promise<void> {
     const session = this.auth.session;
@@ -481,11 +476,98 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   toggleAccountMenu(): void {
-    this.accountMenuOpen = !this.accountMenuOpen;
+    if (this.accountMenuOpen) {
+      this.closeAccountMenu();
+      return;
+    }
+    if (this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.activeConflict || this.listToRemove) return;
+    if (this.addingList) this.cancelAddList(false);
+    this.accountMenuOpener = this.accountButton?.nativeElement ?? null;
+    this.accountMenuOpen = true;
   }
 
-  closeAccountMenu(): void {
+  closeAccountMenu(immediate = false, restoreFocus = true): void {
+    if (!this.accountMenuOpen) return;
+    if (this.accountMenuClosing) {
+      if (immediate) this.finishAccountMenuClose(restoreFocus);
+      return;
+    }
+    if (!immediate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.accountMenuClosing = true;
+      this.accountMenuCloseTimer = setTimeout(() => {
+        this.finishAccountMenuClose(restoreFocus);
+      }, 150);
+      return;
+    }
+    this.finishAccountMenuClose(restoreFocus);
+  }
+
+  private finishAccountMenuClose(restoreFocus: boolean): void {
+    if (this.accountMenuCloseTimer !== null) {
+      clearTimeout(this.accountMenuCloseTimer);
+      this.accountMenuCloseTimer = null;
+    }
     this.accountMenuOpen = false;
+    this.accountMenuClosing = false;
+    const opener = this.accountMenuOpener;
+    this.accountMenuOpener = null;
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        if (opener?.isConnected) opener.focus();
+      });
+    }
+  }
+
+  private positionAccountMenu(): void {
+    const menu = this.accountMenuNode;
+    if (!menu) return;
+    if (window.matchMedia('(max-width: 700px)').matches) {
+      menu.style.top = '';
+      menu.style.right = '';
+      return;
+    }
+    const anchor = this.accountButton?.nativeElement.getBoundingClientRect();
+    if (!anchor) return;
+    const margin = 12;
+    const top = Math.max(
+      margin,
+      Math.min(anchor.bottom + 8, window.innerHeight - menu.offsetHeight - margin)
+    );
+    const right = Math.max(margin, window.innerWidth - anchor.right);
+    menu.style.top = `${top}px`;
+    menu.style.right = `${right}px`;
+  }
+
+  @HostListener('window:resize')
+  repositionAccountMenu(): void {
+    this.positionAccountMenu();
+  }
+
+  keepFocusInsideAccountMenu(event: KeyboardEvent): void {
+    this.keepFocusInsideOverlay(event, 'button:not([disabled]), a[href], [role="menuitemradio"]');
+  }
+
+  keepFocusInsideDialog(event: KeyboardEvent): void {
+    this.keepFocusInsideOverlay(
+      event,
+      'button:not([disabled]), a[href], input:not([disabled]), ion-input, [tabindex]:not([tabindex="-1"])'
+    );
+  }
+
+  private keepFocusInsideOverlay(event: KeyboardEvent, selector: string): void {
+    if (event.key !== 'Tab') return;
+    const container = event.currentTarget as HTMLElement | null;
+    const items = container?.querySelectorAll<HTMLElement>(selector);
+    if (!items?.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !container?.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !container?.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   /**
@@ -501,18 +583,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
 
   /** Cierra el menú de perfil y abre la pantalla de basurero. */
   async openTrash(): Promise<void> {
-    this.accountMenuOpen = false;
+    this.closeAccountMenu(true, false);
     await this.router.navigateByUrl('/trash');
   }
 
   /** Abre la pantalla de archivo de listas desde el botón del header. */
   async openArchive(): Promise<void> {
-    this.accountMenuOpen = false;
+    this.closeAccountMenu(true, false);
     await this.router.navigateByUrl('/archive');
   }
 
   async logout(): Promise<void> {
-    this.accountMenuOpen = false;
+    this.closeAccountMenu(true, false);
     await this.auth.signOut();
     await this.router.navigateByUrl('/login', { replaceUrl: true });
   }
@@ -541,7 +623,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   /** Abre el diálogo: cierra el menú y limpia cualquier intento anterior. Solo en nativo. */
   openDeleteDialog(): void {
     if (!this.isNative) return;
-    this.accountMenuOpen = false;
+    this.closeAccountMenu(true, false);
     this.deleteDialogOpen = true;
     this.deleteConfirmText = '';
     this.deleteBusy = false;
@@ -623,15 +705,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * y el usuario perdería el texto escrito.
    *
    * Al abrir se cierran TODAS las demás capas para que nunca haya dos overlays a la vez: el
-   * menú de perfil, el panel de nueva lista, los diálogos de eliminar y de conflicto y la
+   * menú de perfil, el modal de nueva lista, los diálogos de eliminar y de conflicto y la
    * búsqueda. Ninguno de ellos depende de estar abierto para funcionar.
    */
   openFeedback(opener?: HTMLElement): void {
     if (!this.feedbackEnabled) return;
     if (this.feedbackOpen) return;
 
-    this.accountMenuOpen = false;
-    this.cancelAddList();
+    this.closeAccountMenu(true, false);
+    this.cancelAddList(false);
     this.cancelDeleteList();
     this.closeConflictDialog();
     this.closeSearch();
@@ -661,22 +743,35 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
-  @HostListener('document:keydown.escape')
-  closeOverlaysOnEscape(): void {
+  @HostListener('document:keydown.escape', ['$event'])
+  closeOverlaysOnEscape(event: KeyboardEvent): void {
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
     if (this.deleteDialogOpen) {
+      event.preventDefault();
       this.cancelDeleteDialog();
       return;
     }
     if (this.conflictDialogOpen) {
+      event.preventDefault();
       this.closeConflictDialog();
       return;
     }
-    this.accountMenuOpen = false;
-    this.cancelAddList();
-    this.cancelDeleteList();
+    if (this.listToRemove) {
+      event.preventDefault();
+      this.cancelDeleteList();
+      return;
+    }
+    if (this.addingList) {
+      event.preventDefault();
+      this.cancelAddList();
+      return;
+    }
+    if (this.accountMenuOpen) {
+      event.preventDefault();
+      this.closeAccountMenu();
+    }
   }
 
   /** Aplica el tema a las variables CSS del tablero. */
@@ -709,11 +804,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     this.subscription?.unsubscribe();
     this.resizeObserver?.disconnect();
+    if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
-    // Los listeners del viewport visual se quitan aquí: abrir y cerrar el modal, o navegar
-    // entre pantallas, nunca deja ninguno colgado.
-    window.visualViewport?.removeEventListener('resize', this.onViewportResize);
-    window.removeEventListener('scroll', this.onViewportResize);
     this.feedbackOpen = false;
   }
 
@@ -820,16 +912,32 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     return this.editingTaskId === taskId;
   }
 
-  // ✨ Toggle del panel FAB (en lugar de solo abrir)
+  // ✨ Toggle del modal de creación desde el FAB
   toggleAddList(): void {
     if (!this.addingList && this.isAtListLimit) return;
+    if (!this.addingList && (
+      this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.listToRemove || this.activeConflict
+    )) return;
+    if (!this.addingList && this.accountMenuOpen) {
+      this.closeAccountMenu(true, false);
+    }
     this.addingList = !this.addingList;
     if (this.addingList) {
+      this.newListOpener = this.newListFab?.nativeElement ?? null;
       this.newListTitle = '';
       this.newListTitleCount = 0;
       this.selectedVisualColor = this.visualColors[0].value;
       this.placeNewListAtStart = false;
     }
+  }
+
+  submitNewListFromInput(event: Event): void {
+    event.preventDefault();
+    void this.addList();
+  }
+
+  onAddListBackdropClick(): void {
+    if (!this.newListTitle.trim()) this.cancelAddList();
   }
 
   // 🔍 Búsqueda
@@ -1223,6 +1331,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
    * que quede pinneada.
    */
   async addList(): Promise<void> {
+    if (!this.addingList) return;
     const title = normalizeListTitle(this.newListTitle);
     if (!title || this.isAtListLimit) return;
     const orderedLists = [...this.board.lists].sort((a, b) => a.position - b.position);
@@ -1243,14 +1352,27 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit {
     if (this.placeNewListAtStart) this.board.pinnedListId = newList.id;
     this.newListTitle = '';
     this.addingList = false;
+    this.newListTitleCount = 0;
+    this.restoreNewListFocus();
     this.syncSessionOrder();
     await this.persist();
   }
 
-  cancelAddList(): void {
+  cancelAddList(restoreFocus = true): void {
     this.addingList = false;
     this.newListTitle = '';
+    this.newListTitleCount = 0;
     this.releasePendingRemoteBoard();
+    if (restoreFocus) this.restoreNewListFocus();
+    else this.newListOpener = null;
+  }
+
+  private restoreNewListFocus(): void {
+    const opener = this.newListOpener;
+    this.newListOpener = null;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
   }
 
   onTaskDraftBlur(): void {
@@ -1438,4 +1560,3 @@ function detectMacOsBrowser(): boolean {
   const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform;
   return /mac/i.test(platform ?? navigator.platform ?? '');
 }
-
