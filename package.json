@@ -15,10 +15,11 @@
     "test:delete-account-result": "node --experimental-strip-types scripts/test-delete-account-result.mjs",
     "test:google-auth": "node --experimental-strip-types scripts/test-google-auth.mjs",
     "test:version": "node --experimental-strip-types scripts/test-version.mjs",
+    "test:apk-name": "node --experimental-strip-types scripts/test-apk-name.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "apk": "npm run build && cap sync android && cd android && ./gradlew assembleDebug"
+    "apk": "npm run build && cap sync android && cd android && ./gradlew assembleDebug && node ../scripts/name-apk.mjs"
   },
   "dependencies": {
     "@angular/common": "^20.3.0",
