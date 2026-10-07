@@ -141,6 +141,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   focusListId: string | null = null;
   focusTaskDraft = '';
   focusNotice = '';
+  private focusInitialTitleFocusPending = false;
   private focusOpener: HTMLElement | null = null;
   private focusRemovalCause: FocusListRemovalCause | null = null;
   private focusRemovalListId: string | null = null;
@@ -289,10 +290,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private newListTitleInput?: IonInput;
   @ViewChild('focusTitleButton', { read: ElementRef })
   private set focusTitleButton(button: ElementRef<HTMLButtonElement> | undefined) {
-    if (button) requestAnimationFrame(() => button.nativeElement.focus());
+    if (!button || !this.focusInitialTitleFocusPending) return;
+    requestAnimationFrame(() => {
+      if (!this.focusInitialTitleFocusPending) return;
+      this.focusInitialTitleFocusPending = false;
+      if (button.nativeElement.isConnected) button.nativeElement.focus();
+    });
   }
-  @ViewChild('focusTaskInput', { read: IonInput })
-  private focusTaskInput?: IonInput;
+  @ViewChild('focusListTasks', { read: ElementRef })
+  private focusListTasks?: ElementRef<HTMLElement>;
   @ViewChild('focusDialog', { read: ElementRef })
   private focusDialog?: ElementRef<HTMLElement>;
   @ViewChild('deleteAccountInput', { read: ElementRef })
@@ -467,6 +473,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }
     this.focusTaskDraft = '';
     this.focusListMobilePresentation = this.isMobilePresentation;
+    this.focusInitialTitleFocusPending = true;
     this.focusListId = list.id;
     this.focusRemovalCause = null;
     this.focusRemovalListId = null;
@@ -477,15 +484,42 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   async addFocusTask(list: ChecklistList, input?: IonInput): Promise<void> {
-    if (!this.focusTaskDraft.trim()) return;
-    this.taskDrafts[list.id] = this.focusTaskDraft;
+    const text = this.focusTaskDraft.trim();
+    if (!text) return;
+    const existingTaskIds = new Set(list.tasks.map((task) => task.id));
+    this.taskDrafts[list.id] = text;
     this.focusTaskDraft = '';
     await this.addTask(list, input);
+    const addedTask = list.tasks.find((task) => !existingTaskIds.has(task.id));
+    if (!addedTask) return;
+    requestAnimationFrame(() => {
+      void input?.setFocus();
+      this.scrollFocusTaskIntoView(addedTask.id);
+    });
   }
 
-  onFocusTaskEnter(event: Event, list: ChecklistList): void {
+  onFocusTaskEnter(event: Event, list: ChecklistList, input?: IonInput): void {
     event.preventDefault();
-    void this.addFocusTask(list, this.focusTaskInput);
+    void this.addFocusTask(list, input);
+  }
+
+  private scrollFocusTaskIntoView(taskId: string): void {
+    const container = this.focusListTasks?.nativeElement;
+    const task = Array.from(container?.querySelectorAll<HTMLElement>('.focus-task-row') ?? [])
+      .find((row) => row.dataset['taskId'] === taskId);
+    if (!container || !task) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const taskRect = task.getBoundingClientRect();
+    let nextScrollTop = container.scrollTop;
+    if (taskRect.bottom > containerRect.bottom) {
+      nextScrollTop += taskRect.bottom - containerRect.bottom;
+    } else if (taskRect.top < containerRect.top) {
+      nextScrollTop -= containerRect.top - taskRect.top;
+    } else {
+      return;
+    }
+    container.scrollTo({ top: nextScrollTop, behavior: 'smooth' });
   }
 
   async dropFocusTask(list: ChecklistList, event: DragEvent, taskId?: string): Promise<void> {
@@ -519,6 +553,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.editingListId === listId) this.cancelEditList();
     if (this.editingTaskId) this.cancelEditTask();
     this.focusListId = null;
+    this.focusInitialTitleFocusPending = false;
     this.focusTaskDraft = '';
     this.draggedTask = null;
     this.finishClosingFocus();

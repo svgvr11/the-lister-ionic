@@ -869,9 +869,9 @@
     (click)="$event.stopPropagation()"
     (keydown)="trapFocusInFocusModal($event)"
   >
-    <header class="focus-list-header">
-      <div class="focus-list-heading">
-        <h2 id="focus-list-dialog-title" class="focus-list-sr-only">{{ focus.title }}</h2>
+<header class="focus-list-header">
+      <!-- Fila 1: título a la izquierda (flex:1) + iconos a la derecha (flex:0 0 auto). -->
+      <div class="focus-list-title-row">
         <div *ngIf="editingListId === focus.id" class="list-title-edit">
           <app-inline-edit
             variant="title"
@@ -898,40 +898,40 @@
         >
           <span>{{ focus.title }}</span>
         </button>
-        <span class="focus-list-counter" [class.complete-counter]="isListComplete(focus)">
-          {{ taskCounterLabel(focus) }}
-        </span>
-        <div
-          class="focus-list-progress"
-          role="progressbar"
-          [attr.aria-valuenow]="completedTaskCount(focus)"
-          [attr.aria-valuemin]="0"
-          [attr.aria-valuemax]="focus.tasks.length"
-          [attr.aria-label]="'Progreso de ' + focus.title"
-        >
-          <span [style.width.%]="listProgressPercent(focus)"></span>
+        <!-- En estado normal los iconos van a la derecha, nunca hacen wrap. -->
+        <div class="focus-list-actions" *ngIf="editingListId !== focus.id">
+          <button type="button" class="focus-list-action ion-activatable" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'">
+            <span class="pin-icon" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="focus-list-action ion-activatable" (click)="startEditList(focus, $event)" aria-label="Editar nombre de lista">
+            <ion-icon name="pencil"></ion-icon>
+          </button>
+          <button type="button" class="focus-list-action ion-activatable" [class.archiving]="isListComplete(focus)" (click)="requestRemoveList(focus, $event)" [attr.aria-label]="isListComplete(focus) ? 'Archivar lista' : 'Mover al basurero'">
+            <ion-icon [name]="isListComplete(focus) ? 'archive-outline' : 'trash'"></ion-icon>
+          </button>
+          <button type="button" class="focus-list-action ion-activatable" (click)="finishFocusModal()" aria-label="Lista">
+            <ion-icon name="close"></ion-icon>
+          </button>
         </div>
       </div>
-      <div class="focus-list-actions">
-        <button type="button" class="focus-list-action ion-activatable" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'">
-          <span class="pin-icon" aria-hidden="true"></span>
-        </button>
-        <button *ngIf="editingListId !== focus.id" type="button" class="focus-list-action ion-activatable" (click)="startEditList(focus, $event)" aria-label="Editar nombre de lista">
-          <ion-icon name="pencil"></ion-icon>
-        </button>
-        <button type="button" class="focus-list-action ion-activatable" [class.archiving]="isListComplete(focus)" (click)="requestRemoveList(focus, $event)" [attr.aria-label]="isListComplete(focus) ? 'Archivar lista' : 'Mover al basurero'">
-          <ion-icon [name]="isListComplete(focus) ? 'archive-outline' : 'trash'"></ion-icon>
-        </button>
-        <button type="button" class="focus-list-action ion-activatable" (click)="finishFocusModal()" aria-label="Cerrar lista">
-          <ion-icon name="close"></ion-icon>
-        </button>
+      <!-- Fila 2: barra de progreso verde a ancho completo, justo debajo del título. -->
+      <div
+        class="list-progress-track"
+        role="progressbar"
+        [attr.aria-valuenow]="completedTaskCount(focus)"
+        [attr.aria-valuemin]="0"
+        [attr.aria-valuemax]="focus.tasks.length"
+        [attr.aria-label]="completedTaskCount(focus) + ' de ' + focus.tasks.length + ' tareas completadas'"
+      >
+        <span class="list-progress-fill" [style.width.%]="listProgressPercent(focus)"></span>
       </div>
     </header>
 
-    <div class="focus-list-tasks" (dragover)="dragOverTask($event)" (drop)="dropFocusTask(focus, $event)">
+    <div #focusListTasks class="focus-list-tasks" (dragover)="dragOverTask($event)" (drop)="dropFocusTask(focus, $event)">
       <div
         *ngFor="let task of orderedFocusTasks(focus); trackBy: trackById"
         class="task focus-task-row"
+        [attr.data-task-id]="task.id"
         [class.completed]="task.completed"
         [draggable]="!isEditingTask(task.id)"
         (dragstart)="startTaskDrag(focus.id, task.id, $event)"
@@ -976,6 +976,22 @@
           <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
+
+      <button
+        *ngIf="shouldShowCompletedToggle(focus)"
+        type="button"
+        class="completed-toggle ion-activatable"
+        [class.expanded]="isCompletedExpanded(focus.id)"
+        (click)="toggleCompletedTasks(focus)"
+        [attr.aria-expanded]="isCompletedExpanded(focus.id)"
+        [attr.aria-label]="isCompletedExpanded(focus.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'"
+      >
+        <ion-icon name="chevron-down" aria-hidden="true"></ion-icon>
+        <span>{{ isCompletedExpanded(focus.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas' }}</span>
+        <span *ngIf="!isCompletedExpanded(focus.id)" class="completed-toggle-count">({{ hiddenCompletedCount(focus) }})</span>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+
       <p *ngIf="focus.tasks.length === 0" class="focus-list-empty">Sin tareas. Añade una para comenzar.</p>
     </div>
 
@@ -989,7 +1005,7 @@
         [name]="'focus-add-task-' + focus.id"
         placeholder="Añadir tarea..."
         aria-label="Añadir tarea a la lista"
-        (keydown.enter)="onFocusTaskEnter($event, focus)"
+        (keydown.enter)="onFocusTaskEnter($event, focus, focusTaskInput)"
       ></ion-input>
       <button type="button" class="add-confirm ion-activatable" [disabled]="!focusTaskDraft.trim()" (click)="addFocusTask(focus, focusTaskInput)" aria-label="Añadir tarea">
         <ion-icon name="checkmark"></ion-icon>

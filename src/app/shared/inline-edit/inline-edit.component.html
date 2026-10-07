@@ -1,23 +1,25 @@
 <div class="inline-edit" [class.inline-edit--title]="variant === 'title'" [class.inline-edit--task]="variant === 'task'">
-  <div class="inline-edit-row">
-    <textarea
-      #area
-      class="inline-edit-field"
-      rows="1"
-      wrap="soft"
-      autocapitalize="sentences"
-      enterkeyhint="done"
-      [attr.name]="fieldName"
-      [attr.aria-label]="label"
-      [attr.maxlength]="maxlength"
-      [ngModel]="value"
-      (ngModelChange)="onInput($event)"
-      (keydown)="onKeydown($event)"
-      (beforeinput)="onBeforeInput($event)"
-      (paste)="onPaste($event)"
-      (click)="$event.stopPropagation()"
-      (mousedown)="$event.stopPropagation()"
-    ></textarea>
+  <div class="inline-edit-field-group">
+    <div class="inline-edit-row">
+      <textarea
+        #area
+        class="inline-edit-field"
+        rows="1"
+        wrap="soft"
+        autocapitalize="sentences"
+        enterkeyhint="done"
+        [attr.name]="fieldName"
+        [attr.aria-label]="label"
+        [attr.maxlength]="maxlength"
+        [ngModel]="value"
+        (ngModelChange)="onInput($event)"
+        (keydown)="onKeydown($event)"
+        (beforeinput)="onBeforeInput($event)"
+        (paste)="onPaste($event)"
+        (click)="$event.stopPropagation()"
+        (mousedown)="$event.stopPropagation()"
+      ></textarea>
+    </div>
     <span *ngIf="showCount && value.length > 70" class="title-char-count" [class.at-limit]="atLimit" aria-live="polite">{{ count }} / {{ maxlength }}</span>
   </div>
   <div class="inline-edit-actions">
