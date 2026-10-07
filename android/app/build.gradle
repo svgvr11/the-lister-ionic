@@ -13,7 +13,7 @@ if (versionPropsFile.exists()) {
     logger.info("version.properties not found. Using default version (1.0 / 1) for debug build. Run 'npm run bundle' or 'npm run apk' to generate version.properties.")
 }
 
-def keystorePropsFile = file('keystore.properties')
+def keystorePropsFile = rootProject.file("keystore.properties")
 def keystoreProps = new Properties()
 if (keystorePropsFile.exists()) {
     keystoreProps.load(new FileInputStream(keystorePropsFile))
@@ -38,8 +38,13 @@ android {
     signingConfigs {
         release {
             if (keystorePropsFile.exists()) {
-                if (keystoreProps.getProperty('storeFile')) {
-                    storeFile file(keystoreProps.getProperty('storeFile'))
+                def storeFilePath = keystoreProps.getProperty('storeFile')
+                if (storeFilePath) {
+                    File sf = new File(storeFilePath)
+                    if (!sf.isAbsolute()) {
+                        sf = rootProject.file(storeFilePath)
+                    }
+                    storeFile sf
                 }
                 storePassword keystoreProps.getProperty('storePassword')
                 keyAlias keystoreProps.getProperty('keyAlias')
@@ -64,6 +69,17 @@ gradle.taskGraph.whenReady { graph ->
         }
         if (!keystorePropsFile.exists()) {
             throw new GradleException("ERROR: keystore.properties no encontrado en android/. Es necesario para firmar builds de release (AAB/APK release). Crea keystore.properties según las instrucciones.")
+        } else {
+            def requiredKeys = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+            def missingKeys = []
+            requiredKeys.each { key ->
+                if (!keystoreProps.getProperty(key)) {
+                    missingKeys.add(key)
+                }
+            }
+            if (!missingKeys.isEmpty()) {
+                throw new GradleException("ERROR: keystore.properties no contiene las siguientes claves requeridas: ${missingKeys.join(', ')}")
+            }
         }
     }
 }
