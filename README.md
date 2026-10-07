@@ -205,6 +205,51 @@ en una región `aria-live`, y hay estilos para `prefers-reduced-motion`.
 `FEEDBACK_FAB_ENABLED` en `src/app/core/feedback-core.ts`. A `false` desaparece el botón y nada
 más; la entrada del menú de perfil sigue funcionando.
 
+## Producción y distribución en Google Play (AAB)
+
+### 1. Gestión de versiones (`version:bump`)
+La única fuente de verdad de la versión de la app es `src/app/core/app-version.ts`.
+- Google Play **rechaza** cualquier subida de AAB cuyo `versionCode` sea igual o inferior a uno ya existente. Por tanto, antes de generar un nuevo `.aab` para subir a Play Store (prueba interna o cerrada), debes ejecutar siempre:
+  ```bash
+  npm run version:bump
+  ```
+  Esto sube la versión aunque el código fuente no haya cambiado, asegurando un `versionCode` estrictamente creciente.
+
+### 2. Creación del Keystore de Release
+Para firmar el App Bundle de producción, necesitas un keystore de Android. Genéralo con `keytool` (reemplazando `the-lister-release-key.jks` por la ruta y alias deseados):
+```bash
+keytool -genkey -v -keystore android/the-lister-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias the-lister-key
+```
+*(Nota: Nunca guardes contraseñas ni el keystore en el repositorio).*
+
+Crea el archivo `android/keystore.properties` con este formato exacto:
+```properties
+storeFile=the-lister-release-key.jks
+storePassword=TU_CONTRASEÑA_STORE
+keyAlias=the-lister-key
+keyPassword=TU_CONTRASEÑA_KEY
+```
+*(Los archivos `keystore.properties`, `version.properties`, `*.jks` y `*.keystore` están excluidos en `.gitignore`).*
+
+### 3. Generación y verificación del `.aab` firmado
+- **Generar el bundle**:
+  ```bash
+  npm run bundle
+  ```
+  Este comando compila en modo producción (`environment.prod.ts`), sincroniza con Android, valida que no haya live reload activo (`server.url`) y compila el `.aab` firmado (`android/app/build/outputs/bundle/release/app-release.aab`).
+- **Verificar el bundle**:
+  ```bash
+  npm run bundle:check
+  ```
+  Ejecuta `jarsigner` para verificar la firma y el certificado.
+
+### 4. Builds de Debug
+Para pruebas locales y desarrollo (incluyendo live reload con `cap run` o APK de debug):
+```bash
+npm run apk
+```
+Los builds de debug funcionan sin necesidad de `keystore.properties` ni `version.properties` (usan valores por defecto).
+
 ## Estructura
 
 ```text

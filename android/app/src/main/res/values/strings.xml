@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">The Lister</string>
     <string name="title_activity_main">The Lister</string>
-    <string name="package_name">dev.vmunoz.thelister</string>
+    <string name="package_name">app.atenis.thelister</string>
     <string name="custom_url_scheme">dev.vmunoz.thelister</string>
 </resources>

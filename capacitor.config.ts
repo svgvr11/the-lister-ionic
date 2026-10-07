@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'dev.vmunoz.thelister',
+  appId: 'app.atenis.thelister',
   appName: 'The Lister',
   webDir: 'dist/the-lister-ionic/browser',
   plugins: {

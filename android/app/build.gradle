@@ -1,14 +1,33 @@
 apply plugin: 'com.android.application'
 
+def versionPropsFile = file('version.properties')
+def appVersionName = "1.0"
+def appVersionCode = 1
+
+if (versionPropsFile.exists()) {
+    def props = new Properties()
+    props.load(new FileInputStream(versionPropsFile))
+    appVersionName = props.getProperty('VERSION_NAME', "1.0")
+    appVersionCode = props.getProperty('VERSION_CODE', "1") as Integer
+} else {
+    logger.info("version.properties not found. Using default version (1.0 / 1) for debug build. Run 'npm run bundle' or 'npm run apk' to generate version.properties.")
+}
+
+def keystorePropsFile = file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace = "dev.vmunoz.thelister"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "dev.vmunoz.thelister"
+        applicationId "app.atenis.thelister"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +35,35 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                if (keystoreProps.getProperty('storeFile')) {
+                    storeFile file(keystoreProps.getProperty('storeFile'))
+                }
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def isReleaseBuild = graph.allTasks.any { it.name == 'bundleRelease' || it.name == 'assembleRelease' }
+    if (isReleaseBuild) {
+        if (!versionPropsFile.exists()) {
+            throw new GradleException("ERROR: version.properties no encontrado. Ejecuta 'npm run bundle' antes de compilar una release.")
+        }
+        if (!keystorePropsFile.exists()) {
+            throw new GradleException("ERROR: keystore.properties no encontrado en android/. Es necesario para firmar builds de release (AAB/APK release). Crea keystore.properties según las instrucciones.")
         }
     }
 }

@@ -6,6 +6,6 @@ Versionado (formato `MAYOR.FEATURE.BUILD-a`, p. ej. `v1.9.5-a`). Al comienzo de 
 
 Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)", `--major` sube MAYOR (deja FEATURE y BUILD en 0). Pruebas: `npm run test:version`.
 
-## Otras fuentes de versión (todas derivados en un paso posterior)
+## Otras fuentes de versión (derivadas automáticamente)
 
-`package.json` (`version`), `android/app/build.gradle` (`versionName` / `versionCode`) y `capacitor.config.ts` (que no tiene campo de versión) NO son la versión de la app: la única fuente de verdad es `src/app/core/app-version.ts`. No los edites a mano ni los uses para mostrar la versión; se derivarán de ella más adelante.
+`package.json` (`version`), `android/app/build.gradle` (`versionName` / `versionCode` leídos de `android/version.properties`) y `capacitor.config.ts` (que no tiene campo de versión) NO son la fuente de verdad de la versión de la app: la única fuente es `src/app/core/app-version.ts`. No los edites a mano ni los uses para mostrar la versión; se derivan automáticamente mediante `scripts/android-version.mjs` (ejecutado por los scripts de build/bundle/apk).
