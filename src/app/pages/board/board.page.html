@@ -929,10 +929,9 @@
 
     <div #focusListTasks class="focus-list-tasks" (dragover)="dragOverTask($event)" (drop)="dropFocusTask(focus, $event)">
       <div
-        *ngFor="let task of orderedFocusTasks(focus); trackBy: trackById"
+        *ngFor="let task of pendingTasks(focus); trackBy: trackById"
         class="task focus-task-row"
         [attr.data-task-id]="task.id"
-        [class.completed]="task.completed"
         [draggable]="!isEditingTask(task.id)"
         (dragstart)="startTaskDrag(focus.id, task.id, $event)"
         (dragover)="dragOverTask($event)"
@@ -943,11 +942,56 @@
         <button
           type="button"
           class="check-button ion-activatable"
-          [class.checked]="task.completed"
           (click)="toggleTask(focus, task)"
-          [attr.aria-label]="task.completed ? 'Desmarcar tarea' : 'Completar tarea'"
+          [attr.aria-label]="'Completar tarea'"
         >
-          <ion-icon *ngIf="task.completed" name="checkmark"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button
+          *ngIf="!isEditingTask(task.id); else focusTaskEditor"
+          type="button"
+          class="task-text task-edit-trigger"
+          (click)="startEditTask(task, $event)"
+          [attr.aria-label]="'Editar tarea: ' + task.text"
+        >{{ task.text }}</button>
+        <ng-template #focusTaskEditor>
+          <div class="task-edit">
+            <app-inline-edit
+              variant="task"
+              label="Editar tarea"
+              [fieldName]="'focus-edit-task-' + task.id"
+              [value]="taskTextDraft"
+              [saveDisabled]="!taskTextDraft.trim()"
+              (valueChange)="onTaskEditInput($event)"
+              (save)="confirmEditTask(task)"
+              (cancel)="cancelEditTask()"
+            ></app-inline-edit>
+          </div>
+        </ng-template>
+        <button type="button" class="delete-button ion-activatable" (click)="deleteTask(focus, task.id)" aria-label="Eliminar tarea">
+          <ion-icon name="trash"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+
+      <div
+        *ngFor="let task of visibleCompletedTasks(focus); trackBy: trackById"
+        class="task completed focus-task-row"
+        [attr.data-task-id]="task.id"
+        [draggable]="!isEditingTask(task.id)"
+        (dragstart)="startTaskDrag(focus.id, task.id, $event)"
+        (dragover)="dragOverTask($event)"
+        (drop)="dropFocusTask(focus, $event, task.id)"
+        (dragend)="clearTaskDragState()"
+      >
+        <span class="task-reorder-handle" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="check-button checked ion-activatable"
+          (click)="toggleTask(focus, task)"
+          [attr.aria-label]="'Desmarcar tarea'"
+        >
+          <ion-icon name="checkmark"></ion-icon>
           <ion-ripple-effect></ion-ripple-effect>
         </button>
         <button
@@ -982,7 +1026,7 @@
         type="button"
         class="completed-toggle ion-activatable"
         [class.expanded]="isCompletedExpanded(focus.id)"
-        (click)="toggleCompletedTasks(focus)"
+        (click)="toggleCompletedTasks(focus, $event)"
         [attr.aria-expanded]="isCompletedExpanded(focus.id)"
         [attr.aria-label]="isCompletedExpanded(focus.id) ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'"
       >
@@ -992,7 +1036,7 @@
         <ion-ripple-effect></ion-ripple-effect>
       </button>
 
-      <p *ngIf="focus.tasks.length === 0" class="focus-list-empty">Sin tareas. Añade una para comenzar.</p>
+      <p *ngIf="pendingTasks(focus).length === 0 && completedTasks(focus).length === 0" class="focus-list-empty">Sin tareas. Añade una para comenzar.</p>
     </div>
 
     <div class="focus-list-add">

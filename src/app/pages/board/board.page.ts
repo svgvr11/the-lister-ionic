@@ -1615,9 +1615,21 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     return this.completedTasks(list).length > this.COMPLETED_PREVIEW_LIMIT;
   }
 
-  toggleCompletedTasks(list: ChecklistList): void {
-    if (this.expandedCompleted.has(list.id)) this.expandedCompleted.delete(list.id);
+  toggleCompletedTasks(list: ChecklistList, event?: Event): void {
+    const wasExpanded = this.expandedCompleted.has(list.id);
+    if (wasExpanded) this.expandedCompleted.delete(list.id);
     else this.expandedCompleted.add(list.id);
+
+    const target = event?.currentTarget;
+    if (target instanceof HTMLElement) {
+      requestAnimationFrame(() => {
+        target.focus();
+        if (wasExpanded) {
+          target.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    }
+
     this.scheduleMasonryLayout();
   }
 
