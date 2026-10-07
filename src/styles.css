@@ -54,3 +54,17 @@ input {
   --z-feedback-overlay: 1200;
   --z-session-lock: 10000;
 }
+
+/* Desactiva la raya inferior de foco (highlight) en todos los ion-input/ion-textarea.
+   Usa selectores de clase de modo (`.md`/`.ios`) para ganar a .sc-ion-input-md-h/.sc-ion-input-ios-h
+   que Ionic aplica con mayor especificidad. El foco visible se mantiene via
+   :focus-within o :focus-visible en los contenedores. */
+ion-input.md,
+ion-input.ios,
+ion-textarea.md,
+ion-textarea.ios {
+  --highlight-height: 0px;
+  --highlight-color-focused: transparent;
+  --highlight-color-valid: transparent;
+  --highlight-color-invalid: transparent;
+}
