@@ -268,6 +268,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   @ViewChildren('boardItem', { read: ElementRef })
   private boardItems!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('boardContent', { read: IonContent })
+  private boardContent?: IonContent;
   @ViewChild('searchInput', { read: IonInput })
   private searchInput?: IonInput;
   @ViewChild('accountButton', { read: ElementRef })
@@ -1457,6 +1459,24 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   onSearchChange(): void {
     this.searching = Boolean(this.searchQuery.trim());
     this.scheduleMasonryLayout();
+  }
+
+  onBrandClick(event: MouseEvent): void {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const content = this.boardContent;
+    if (!content) {
+      return;
+    }
+    void content.getScrollElement().then((scrollEl) => {
+      if (scrollEl.scrollTop <= 0) {
+        return;
+      }
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = prefersReducedMotion ? 0 : 300;
+      content.scrollToTop(duration);
+    });
   }
 
   getHighlightedSegments(title: string): { text: string; highlight: boolean }[] {

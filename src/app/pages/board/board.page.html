@@ -2,14 +2,10 @@
   <ion-toolbar class="topbar">
     <div class="toolbar-inner">
       <div class="brand">
-        <img
-          class="brand-logo"
-          src="assets/app-icon.svg"
-          alt="The Lister"
-          width="40"
-          height="40"
-        />
-        <span class="brand-name">The Lister</span>
+        <button type="button" class="brand-button" (click)="onBrandClick($event)" aria-label="Volver arriba">
+          <img class="brand-logo" src="assets/app-icon.svg" alt="" width="40" height="40" />
+          <span class="brand-name">The Lister</span>
+        </button>
         <span class="version-badge" [attr.aria-label]="'Versión ' + appVersionLabel">{{ appVersionLabel }}</span>
       </div>
 
@@ -206,6 +202,7 @@
 </section>
 
 <ion-content
+  #boardContent
   class="board-content"
   [attr.inert]="boardModalOpen ? '' : null"
   [attr.aria-hidden]="boardModalOpen ? 'true' : null"

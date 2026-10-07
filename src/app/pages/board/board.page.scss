@@ -118,8 +118,8 @@ ion-header {
   border-radius: 10px;
   object-fit: contain;
 }
-
 /* Nombre de la app junto al logo, con tipografía fuerte. */
+
 .brand-name {
   color: #172236;
   font-size: 17px;
@@ -129,6 +129,42 @@ ion-header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.brand-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.brand-button:hover,
+.brand-button:active {
+  background: transparent;
+  transform: none;
+  box-shadow: none;
+}
+
+.brand-button:focus-visible {
+  outline: 2px solid #172236;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.brand-button:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* Badge de versión: se alimenta de APP_VERSION_LABEL, nunca escrito a mano. */
