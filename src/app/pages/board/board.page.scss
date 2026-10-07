@@ -72,13 +72,9 @@ ion-header {
   height: auto;
   min-height: 40px;
   display: grid;
-  /* Columnas laterales iguales: el buscador queda centrado respecto a la pantalla y la
-     marca se pega a la izquierda, las acciones a la derecha. Por debajo de 1160px no
-     caben a los dos lados y el buscador baja a su propia fila (ver más abajo). */
-  grid-template-columns: minmax(0, 1fr) minmax(280px, min(42vw, 470px)) minmax(0, 1fr);
+  grid-template-columns: auto minmax(160px, 1fr) auto;
   align-items: center;
   gap: clamp(10px, 2vw, 24px);
-  /* Las safe areas laterales evitan que el notch tape los botones en horizontal. */
   padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
   overflow: visible;
 }
@@ -257,6 +253,12 @@ ion-header {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
+  outline: none;
+}
+
+.title-edit ion-input:focus-visible {
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
 }
 
 /* Botones del editor del título del tablero (fuera de la PARTE C: se mantienen). */
@@ -849,6 +851,11 @@ ion-header {
   box-shadow: 0 1px 2px rgba(24, 36, 59, 0.03);
 }
 
+.search-box:focus-within {
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
+}
+
 .search-icon {
   font-size: 14px;
   color: #70788a;
@@ -865,6 +872,7 @@ ion-header {
   min-height: 26px;
   flex: 1;
   font-size: 11px;
+  outline: none;
 }
 
 /* Keycap del atajo ⌘K: solo macOS web y solo con el buscador vacío. */
@@ -1437,7 +1445,8 @@ ion-header {
 
 .add-form:focus-within {
   background: #fff;
-  border-color: #dbe2fa;
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
 }
 
 .add-form ion-input {
@@ -1450,6 +1459,7 @@ ion-header {
   min-height: 29px;
   flex: 1;
   font-size: 11px;
+  outline: none;
 }
 
 .add-confirm {
@@ -1755,6 +1765,12 @@ ion-header {
   width: 100%;
   font-size: 14px;
   text-align: left;
+  outline: none;
+}
+
+.new-list-input:focus-visible {
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
 }
 
 .visual-color-field legend {
@@ -2103,7 +2119,7 @@ ion-header {
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
-  min-height: 46px;
+  height: 33px;
   padding: 4px 8px;
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 7%, transparent);
@@ -2116,6 +2132,13 @@ ion-header {
   min-width: 0;
   --padding-start: 0;
   --padding-end: 0;
+  font-size: 11px;
+  outline: none;
+}
+
+.focus-list-add:focus-within {
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
 }
 
 .focus-list-footer {
@@ -2434,11 +2457,12 @@ ion-header {
   letter-spacing: 1px;
   text-align: center;
   text-transform: uppercase;
+  outline: none;
 }
 
 .delete-account-confirm-input:focus-visible {
-  outline: 2px solid #536782;
-  outline-offset: 2px;
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
 }
 
 .delete-account-confirm-input:disabled {
@@ -2571,34 +2595,10 @@ ion-header {
   }
 }
 
-/* Respeta safe areas y cabeceras de dos filas en pantallas de escritorio estrechas. */
-
-/* Escritorio estrecho (701–1159px): a este ancho no caben marca y acciones a los dos
-   lados del buscador centrado, así que el buscador baja a su propia fila a ancho
-   completo, igual que en móvil. Va antes del bloque de móvil para que ese siga mandando. */
-@media (min-width: 701px) and (max-width: 1159px) {
-  /* 106px de toolbar (dos filas) + inset superior, para que el menú de cuenta
-     arranque justo bajo el header real también en el APK. */
-  :host { --board-header-height: calc(106px + var(--app-safe-area-top)); }
-  .toolbar-inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    /* La segunda fila se dimensiona sola (auto) y el hueco real entre la marca y el
-       buscador lo aporta el gap de 6px, en vez de un margen que solo desplazaba el campo. */
-    grid-template-rows: minmax(40px, auto) auto;
-    gap: 6px 12px;
-  }
-  .brand { grid-column: 1; grid-row: 1; }
-  .toolbar-actions { grid-column: 2; grid-row: 1; }
-  .search-box {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-    margin: 0;
-  }
-}
+/* Header en dos filas a partir de 768px; a partir de 769px cabe todo en una sola fila. */
 
 /* Respativo */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .focus-list-notice {
     max-width: calc(100vw - 112px);
   }
