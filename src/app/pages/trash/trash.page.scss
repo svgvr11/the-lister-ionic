@@ -241,12 +241,15 @@ ion-content.trash-content {
 
 /* ── Rejilla de listas descartadas ─────────────────────────────────────── */
 
-.trash-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  align-items: start;
-  gap: 18px;
+.trash-scroller {
+  overflow: visible;
   padding: 18px 16px 30px;
+}
+
+.trash-grid {
+  position: relative;
+  width: 100%;
+  min-height: 74px;
 }
 
 .trash-card {
@@ -259,7 +262,7 @@ ion-content.trash-content {
   border: 1px solid #edf0f6;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(34, 47, 76, 0.05);
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Último día: la lista completa se tiñe de rojo. */
@@ -787,9 +790,7 @@ ion-content.trash-content {
     justify-content: center;
   }
 
-  .trash-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .trash-scroller {
     padding: 14px 12px 26px;
   }
 

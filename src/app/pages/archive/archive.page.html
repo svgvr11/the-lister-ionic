@@ -75,13 +75,15 @@
     </section>
 
     <!-- Listas archivadas: cuenta atrás, tareas en solo lectura y acciones al pie. -->
-    <div *ngIf="!isEmpty" class="archive-grid">
-      <article
-        *ngFor="let entry of archivedLists"
-        class="archive-card"
-        [class.urgent-card]="isUrgent(entry)"
-        [style.--list-visual-color]="entry.list.visualColor"
-      >
+    <div *ngIf="!isEmpty" class="archive-scroller">
+      <div class="archive-grid" #archiveGrid>
+        <article
+          #archiveCard
+          *ngFor="let entry of archivedLists; trackBy: trackByEntryId"
+          class="archive-card"
+          [class.urgent-card]="isUrgent(entry)"
+          [style.--list-visual-color]="entry.list.visualColor"
+        >
         <header class="archive-card-header">
           <button
             type="button"
@@ -160,6 +162,7 @@
           </button>
         </footer>
       </article>
+      </div>
     </div>
   </ng-container>
 </ion-content>

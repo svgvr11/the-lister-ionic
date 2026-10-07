@@ -322,13 +322,16 @@ ion-content.archive-content {
 
 /* ── Rejilla de listas archivadas ───────────────────────────────────────── */
 
-/* Misma maquetación que el basurero: 3 columnas en escritorio y 1 en móvil. */
-.archive-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 18px;
+/* Misma maquetación que el basurero y el tablero: 3 columnas en escritorio y 1 en móvil. */
+.archive-scroller {
+  overflow: visible;
   padding: 18px 16px 30px;
+}
+
+.archive-grid {
+  position: relative;
+  width: 100%;
+  min-height: 74px;
 }
 
 .archive-card {
@@ -341,7 +344,7 @@ ion-content.archive-content {
   border: 1px solid #edf0f6;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(34, 47, 76, 0.05);
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Últimos 3 días: la lista completa se tiñe de rojo. */
@@ -993,11 +996,6 @@ ion-content.archive-content {
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 
-/* En tablets la rejilla pasa a dos columnas antes de colapsar a una en móvil. */
-@media (max-width: 1100px) {
-  .archive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @media (max-width: 700px) {
   ion-header { flex-basis: auto; height: auto; }
   .toolbar-inner { padding: 0 12px; }
@@ -1015,9 +1013,7 @@ ion-content.archive-content {
   .archive-help-dialog { width: 100%; padding: 16px 14px 14px; }
   .archive-help-header { gap: 10px; padding-right: 28px; }
 
-  .archive-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .archive-scroller {
     padding: 14px 12px 26px;
   }
 

@@ -1,5 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  DoCheck,
+  ElementRef,
+  HostBinding,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+  inject
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -13,6 +26,7 @@ import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
+import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
@@ -34,7 +48,7 @@ const COUNTDOWN_REFRESH_MS = 60_000;
   templateUrl: './trash.page.html',
   styleUrls: ['./trash.page.scss']
 })
-export class TrashPage implements OnInit, OnDestroy, DoCheck {
+export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -58,10 +72,26 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   expandedCompleted = new Set<string>();
   pendingAction: PendingAction | null = null;
   private pendingActionOpener: HTMLElement | null = null;
+
+  @ViewChild('trashGrid', { read: ElementRef, static: false })
+  private trashGrid?: ElementRef<HTMLElement>;
+
+  @ViewChildren('trashCard', { read: ElementRef })
+  private trashCards!: QueryList<ElementRef<HTMLElement>>;
+
   @ViewChild('trashConfirmCancel', { read: ElementRef })
   private set trashConfirmCancel(button: ElementRef<HTMLButtonElement> | undefined) {
     if (button) requestAnimationFrame(() => button.nativeElement.focus());
   }
+
+  private layoutFrame: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private mobilePresentationQuery: MediaQueryList | null = null;
+  private isMobilePresentation = false;
+  private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
+    this.isMobilePresentation = event.matches;
+    this.scheduleMasonryLayout();
+  };
 
   /** Mismo límite de vista previa que usa el tablero. */
   private readonly COMPLETED_PREVIEW_LIMIT = 2;
@@ -103,6 +133,10 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
     return codePoints.slice(0, this.maxListTitleLength).join('') + '…';
   }
 
+  trackByEntryId(_: number, entry: ChecklistTrashedList): string {
+    return entry.list.id;
+  }
+
   constructor() {
     addIcons({
       arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown, chevronForward,
@@ -111,14 +145,44 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   }
 
   ngOnInit(): void {
+    this.initializeMobilePresentation();
     void this.loadTrash();
     // Nada se restaura solo, pero la cuenta atrás tiene que refrescar para ponerse
     // roja al llegar el último día.
     this.countdownTimer = setInterval(() => this.refreshCountdown(), COUNTDOWN_REFRESH_MS);
   }
 
+  ngAfterViewInit(): void {
+    this.trashCards.changes.subscribe(() => this.scheduleMasonryLayout());
+    this.observeTrashGrid();
+    this.scheduleMasonryLayout();
+  }
+
+  private observeTrashGrid(): void {
+    const grid = this.trashGrid?.nativeElement;
+    if (!grid) return;
+    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
+    this.resizeObserver.observe(grid);
+  }
+
+  scheduleMasonryLayout(): void {
+    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = null;
+      this.applyMasonryLayout();
+    });
+  }
+
+  private applyMasonryLayout(): void {
+    const grid = this.trashGrid?.nativeElement;
+    const items = this.trashCards?.toArray().map((item) => item.nativeElement) ?? [];
+    applyMasonryLayout(grid, items, { isMobile: this.isMobilePresentation, gap: MASONRY_GAP });
+  }
+
   ionViewDidEnter(): void {
     this.pageActive = true;
+    this.observeTrashGrid();
+    this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
 
@@ -144,8 +208,18 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   ngOnDestroy(): void {
     this.pageActive = false;
     this.overlayStack.unregisterOwner('trash');
+    this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
+    this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
+    this.resizeObserver?.disconnect();
+    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     if (this.countdownTimer) clearInterval(this.countdownTimer);
+  }
+
+  private initializeMobilePresentation(): void {
+    this.mobilePresentationQuery = window.matchMedia('(max-width: 700px)');
+    this.isMobilePresentation = this.mobilePresentationQuery.matches;
+    this.mobilePresentationQuery.addEventListener('change', this.onMobilePresentationChange);
   }
 
   /** Escape cierra el diálogo de confirmación, igual que en el tablero. */
@@ -184,13 +258,18 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   private applyBoard(board: ChecklistBoard): void {
     const purged = purgeExpiredLists(board);
     this.board = board;
+    this.scheduleMasonryLayout();
+    setTimeout(() => this.observeTrashGrid());
     // Sin este guardado, una lista vencida reaparece al volver a entrar.
     if (purged) void this.persist();
   }
 
   /** Al cruzar el día de expiración, la lista se borra sola y los badges se recalculan. */
   private refreshCountdown(): void {
-    if (purgeExpiredLists(this.board)) void this.persist();
+    if (purgeExpiredLists(this.board)) {
+      this.scheduleMasonryLayout();
+      void this.persist();
+    }
   }
 
   // ── Tareas y progreso (solo lectura) ──────────────────────────────────────
@@ -230,6 +309,7 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   toggleCompletedTasks(listId: string): void {
     if (this.expandedCompleted.has(listId)) this.expandedCompleted.delete(listId);
     else this.expandedCompleted.add(listId);
+    this.scheduleMasonryLayout();
   }
 
   completedTaskCount(list: ChecklistList): number {
@@ -257,6 +337,7 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
   toggleCollapsed(listId: string): void {
     if (this.collapsed.has(listId)) this.collapsed.delete(listId);
     else this.collapsed.add(listId);
+    this.scheduleMasonryLayout();
   }
 
   // ── Cuenta atrás ──────────────────────────────────────────────────────────
@@ -297,6 +378,7 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
     }
     this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
+    this.scheduleMasonryLayout();
     await this.persist();
   }
 
@@ -338,6 +420,7 @@ export class TrashPage implements OnInit, OnDestroy, DoCheck {
       this.collapsed.delete(action.entry.list.id);
       this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== action.entry.list.id);
     }
+    this.scheduleMasonryLayout();
     await this.persist();
   }
 

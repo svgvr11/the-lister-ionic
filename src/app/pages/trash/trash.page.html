@@ -57,13 +57,15 @@
     </section>
 
     <!-- Listas descartadas: cuenta atrás, tareas en solo lectura y acciones al pie. -->
-    <div *ngIf="!isEmpty" class="trash-grid">
-      <article
-        *ngFor="let entry of trashedLists"
-        class="trash-card"
-        [class.urgent-card]="isUrgent(entry)"
-        [style.--list-visual-color]="entry.list.visualColor"
-      >
+    <div *ngIf="!isEmpty" class="trash-scroller">
+      <div class="trash-grid" #trashGrid>
+        <article
+          #trashCard
+          *ngFor="let entry of trashedLists; trackBy: trackByEntryId"
+          class="trash-card"
+          [class.urgent-card]="isUrgent(entry)"
+          [style.--list-visual-color]="entry.list.visualColor"
+        >
         <header class="trash-card-header">
           <button
             type="button"
@@ -161,6 +163,7 @@
           </button>
         </footer>
       </article>
+      </div>
     </div>
   </ng-container>
 </ion-content>

@@ -1,6 +1,19 @@
 import { CommonModule } from '@angular/common';
 import {
-  Component, DoCheck, ElementRef, HostBinding, HostListener, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject
+  AfterViewInit,
+  Component,
+  DoCheck,
+  ElementRef,
+  HostBinding,
+  HostListener,
+  Injector,
+  OnDestroy,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+  afterNextRender,
+  inject
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
@@ -17,6 +30,7 @@ import {
 } from '../../core/archive';
 import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
+import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
@@ -39,7 +53,7 @@ type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };
   templateUrl: './archive.page.html',
   styleUrls: ['./archive.page.scss']
 })
-export class ArchivePage implements OnInit, OnDestroy, DoCheck {
+export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -63,6 +77,12 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
   /** Abre la guía "¿Cómo funciona el Archivo?" desde el botón de la banda informativa. */
   helpOpen = false;
 
+  @ViewChild('archiveGrid', { read: ElementRef, static: false })
+  private archiveGrid?: ElementRef<HTMLElement>;
+
+  @ViewChildren('archiveCard', { read: ElementRef })
+  private archiveCards!: QueryList<ElementRef<HTMLElement>>;
+
   /**
    * Botón de ayuda de la banda informativa y cuadro del modal. Se guardan para mover el
    * foco al abrir y devolverlo al botón al cerrar.
@@ -75,6 +95,15 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     if (button) requestAnimationFrame(() => button.nativeElement.focus());
   }
   private pendingActionOpener: HTMLElement | null = null;
+
+  private layoutFrame: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private mobilePresentationQuery: MediaQueryList | null = null;
+  private isMobilePresentation = false;
+  private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
+    this.isMobilePresentation = event.matches;
+    this.scheduleMasonryLayout();
+  };
 
   /**
    * Momento de referencia de la cuenta atrás. Los días se calculan al renderizar a partir
@@ -140,6 +169,10 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     return codePoints.slice(0, this.maxListTitleLength).join('') + '…';
   }
 
+  trackByEntryId(_: number, entry: ChecklistArchivedList): string {
+    return entry.list.id;
+  }
+
   constructor() {
     addIcons({
       archiveOutline, arrowBack, arrowUndoOutline, checkmark, chevronBack, chevronDown,
@@ -148,11 +181,41 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
   }
 
   ngOnInit(): void {
+    this.initializeMobilePresentation();
     void this.loadArchive();
+  }
+
+  ngAfterViewInit(): void {
+    this.archiveCards.changes.subscribe(() => this.scheduleMasonryLayout());
+    this.observeArchiveGrid();
+    this.scheduleMasonryLayout();
+  }
+
+  private observeArchiveGrid(): void {
+    const grid = this.archiveGrid?.nativeElement;
+    if (!grid) return;
+    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
+    this.resizeObserver.observe(grid);
+  }
+
+  scheduleMasonryLayout(): void {
+    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = null;
+      this.applyMasonryLayout();
+    });
+  }
+
+  private applyMasonryLayout(): void {
+    const grid = this.archiveGrid?.nativeElement;
+    const items = this.archiveCards?.toArray().map((item) => item.nativeElement) ?? [];
+    applyMasonryLayout(grid, items, { isMobile: this.isMobilePresentation, gap: MASONRY_GAP });
   }
 
   ionViewDidEnter(): void {
     this.pageActive = true;
+    this.observeArchiveGrid();
+    this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
 
@@ -182,8 +245,18 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
   ngOnDestroy(): void {
     this.pageActive = false;
     this.overlayStack.unregisterOwner('archive');
+    this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
+    this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
+    this.resizeObserver?.disconnect();
+    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     this.helpOpen = false;
+  }
+
+  private initializeMobilePresentation(): void {
+    this.mobilePresentationQuery = window.matchMedia('(max-width: 700px)');
+    this.isMobilePresentation = this.mobilePresentationQuery.matches;
+    this.mobilePresentationQuery.addEventListener('change', this.onMobilePresentationChange);
   }
 
   /**
@@ -269,6 +342,7 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     // Al cruzar el día de expiración, la lista se borra sola y los badges se recalculan.
     if (purgeExpiredArchivedLists(this.board, this.now)) {
       this.syncHelpVisibility();
+      this.scheduleMasonryLayout();
       void this.persist();
     }
   }
@@ -305,6 +379,8 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     this.board = board;
     // Una sincronización puede dejar el archivo vacío; la guía no sobrevive a eso.
     this.syncHelpVisibility();
+    this.scheduleMasonryLayout();
+    setTimeout(() => this.observeArchiveGrid());
     // Sin este guardado, una lista vencida reaparece al volver a entrar.
     if (purged) void this.persist();
   }
@@ -343,6 +419,7 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
   toggleCollapsed(listId: string): void {
     if (this.collapsed.has(listId)) this.collapsed.delete(listId);
     else this.collapsed.add(listId);
+    this.scheduleMasonryLayout();
   }
 
   // ── Cuenta atrás ──────────────────────────────────────────────────────────
@@ -384,6 +461,7 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
     this.syncHelpVisibility();
+    this.scheduleMasonryLayout();
     await this.persist();
   }
 
@@ -418,6 +496,7 @@ export class ArchivePage implements OnInit, OnDestroy, DoCheck {
     this.collapsed.delete(action.entry.list.id);
     this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== action.entry.list.id);
     this.syncHelpVisibility();
+    this.scheduleMasonryLayout();
     await this.persist();
   }
 

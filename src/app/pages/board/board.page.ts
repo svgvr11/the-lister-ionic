@@ -28,6 +28,7 @@ import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
+import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
 import { BoardOrderService } from '../../core/services/board-order.service';
@@ -1999,69 +2000,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   /**
-   * Recoloca las tarjetas en columnas sin perder el scroll.
-   *
-   * Las tarjetas son position:absolute, así que el contenedor no crece con ellas: si
-   * se dejara en height:auto para medir, el tablero colapsaría a su min-height, el
-   * contenedor de scroll perdería toda la altura disponible y el navegador recortaría
-   * el scrollTop a 0. Al restituir la altura, la posición ya se había perdido y la
-   * vista saltaba al principio. Por eso aquí la altura actual se conserva durante
-   * toda la medición y el ancho se fija en las tarjetas para leer su offsetHeight.
+   * Recoloca las tarjetas en columnas sin perder el scroll delegando en la utilidad compartida.
    */
   private applyMasonryLayout(): void {
     const board = this.boardGrid?.nativeElement;
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
-    if (!board) return;
-    if (items.length === 0) {
-      board.style.height = '';
-      return;
-    }
-    // Con ancho 0 la página está oculta o todavía sin maquetar (pasa al volver del
-    // basurero). Grabar las posiciones con ancho 0 deja las tarjetas superpuestas y
-    // nada las arregla después, así que se sale sin tocar nada: el ResizeObserver
-    // reintenta en cuanto el contenedor recupera su tamaño.
-    if (board.clientWidth === 0) return;
-
-    const isMobile = this.isMobilePresentation;
-    const columns = isMobile ? 1 : 3;
-    const itemWidth = isMobile
-      ? Math.min(board.clientWidth, 520)
-      : Math.max(0, (board.clientWidth - this.GAP * (columns - 1)) / columns);
-    const heights = new Array(columns).fill(0);
-
-    board.style.position = 'relative';
-    // La altura vigente se mantiene mientras se mide; min-height la protege aunque el
-    // alto explícito esté a punto de recalcularse. Se anula al final para no arrastrar
-    // el valor viejo cuando el tablero crece o se encoge.
-    const previousHeight = board.getBoundingClientRect().height;
-    board.style.minHeight = `${previousHeight}px`;
-
-    // El ancho basta para medir: la tarjeta conserva su posición anterior hasta que
-    // se le asigna la definitiva, y así nunca se apilan en top:0.
-    items.forEach((item) => {
-      item.style.position = 'absolute';
-      item.style.width = `${itemWidth}px`;
-    });
-
-    void board.offsetHeight;
-
-    items.forEach((item) => {
-      const column = heights.indexOf(Math.min(...heights));
-      const x = isMobile
-        ? (board.clientWidth - itemWidth) / 2
-        : column * (itemWidth + this.GAP);
-      const y = heights[column];
-      item.style.left = `${x}px`;
-      item.style.top = `${y}px`;
-      heights[column] = y + item.offsetHeight + this.GAP;
-    });
-
-    board.style.minHeight = '';
-    // heights[column] ya incluye un GAP de separación detrás de la última tarjeta de cada
-    // columna, así que la altura real del tablero es esa suma menos ese hueco final. Sin
-    // restarlo, el pie queda ese GAP más abajo que el resto del diseño.
-    const occupied = Math.max(...heights, 0);
-    board.style.height = `${items.length > 0 ? Math.max(occupied - this.GAP, 0) : 0}px`;
+    applyMasonryLayout(board, items, { isMobile: this.isMobilePresentation, gap: this.GAP });
   }
 
   /** Normaliza el orden estable guardado tras quitar una lista del tablero. */
