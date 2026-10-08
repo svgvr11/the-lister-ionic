@@ -133,6 +133,31 @@
       <ion-ripple-effect></ion-ripple-effect>
     </button>
   </div>
+  <div *ngIf="isNative" class="account-menu-heading board-view-heading">
+    <span>Vista del tablero</span>
+  </div>
+  <div *ngIf="isNative" class="board-view-switch" role="radiogroup" aria-label="Vista del tablero">
+    <button
+      type="button"
+      class="board-view-option ion-activatable"
+      [class.selected]="boardViewMode === 'cards'"
+      [attr.aria-checked]="boardViewMode === 'cards'"
+      (click)="setBoardViewMode('cards')"
+    >
+      <span>Tarjetas</span>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+    <button
+      type="button"
+      class="board-view-option ion-activatable"
+      [class.selected]="boardViewMode === 'list'"
+      [attr.aria-checked]="boardViewMode === 'list'"
+      (click)="setBoardViewMode('list')"
+    >
+      <span>Lista</span>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+  </div>
   <!-- Botón de donación local: mismo enlace y estilo que el widget oficial de Ko-fi,
      sin depender de su script ni de fuentes externas. No se renderiza en la app
      nativa: Google Play no admite enlaces externos de donación dentro del APK. -->
@@ -267,14 +292,75 @@
       Añade una lista para comenzar
     </div>
 
-    <div *ngIf="visibleLists.length > 0" class="board" #boardGrid>
+    <div
+      *ngIf="visibleLists.length > 0"
+      class="board"
+      [class.board-cards]="boardViewMode === 'cards' && isNative"
+      #boardGrid
+    >
       <div
         #boardItem
         *ngFor="let list of visibleLists; trackBy: trackById"
         class="checklist-column"
         [class.collapsed]="isCollapsed(list.id)"
         [class.list-complete]="isListComplete(list)"
+        [attr.role]="boardViewMode === 'cards' && isNative ? 'button' : null"
+        [attr.tabindex]="boardViewMode === 'cards' && isNative ? 0 : null"
+        (click)="boardViewMode === 'cards' && isNative ? openListFocus(list, $event) : null"
+        (keydown)="onCardKeydown($event, list)"
+        [attr.aria-label]="boardViewMode === 'cards' && isNative ? cardAriaLabel(list) : null"
+        [title]="boardViewMode === 'cards' && isNative ? cardTitleTooltip(list) : null"
       >
+        <ng-container *ngIf="boardViewMode === 'cards' && isNative; else listViewTemplate">
+          <div class="card-header-row">
+            <button
+              type="button"
+              class="pin-list-button ion-activatable card-pin-btn"
+              [class.pinned]="isPinned(list)"
+              (click)="onCardPinClick(list, $event)"
+              [attr.aria-pressed]="isPinned(list)"
+              [attr.aria-label]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar esta lista al inicio del tablero'"
+              [title]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar lista al inicio del tablero'"
+            >
+              <span class="pin-icon" aria-hidden="true" [style.color]="isPinned(list) ? 'var(--accent)' : null"></span>
+              <ion-ripple-effect></ion-ripple-effect>
+            </button>
+            <span *ngIf="isPinned(list)" class="card-pinned-dot" aria-hidden="true"></span>
+          </div>
+
+          <div class="card-title-block">
+            <h3 class="card-title">
+              <span
+                *ngFor="let seg of getHighlightedSegments(list.title)"
+                [class.highlight]="seg.highlight"
+              >{{ seg.text }}</span>
+            </h3>
+          </div>
+
+          <div class="card-footer-block">
+            <div class="list-progress-track" role="progressbar"
+              [attr.aria-valuenow]="completedTaskCount(list)"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuemax]="list.tasks.length"
+              [attr.aria-label]="'Progreso de ' + list.title"
+            >
+              <span class="list-progress-fill" [style.width.%]="listProgressPercent(list)"></span>
+            </div>
+            <div class="card-bottom-row">
+              <span
+                class="task-counter"
+                [class.complete-counter]="isListComplete(list)"
+                [style.--list-visual-color]="list.visualColor || themeAccent"
+                aria-hidden="true"
+              >
+                <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
+                {{ taskCounterLabel(list) }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #listViewTemplate>
         <div class="column-header">
           <button
             type="button"
@@ -487,8 +573,9 @@
               <ion-icon name="checkmark"></ion-icon>
               <ion-ripple-effect></ion-ripple-effect>
             </button>
-          </form>
-        </div>
+           </form>
+         </div>
+        </ng-template>
       </div>
 
     </div>
