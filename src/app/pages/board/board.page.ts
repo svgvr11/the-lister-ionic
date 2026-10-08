@@ -38,6 +38,7 @@ import { SessionGuardService } from '../../core/services/session-guard.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
 import { OwnBoardSnapshots } from '../../core/board-sync';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
+import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
 
 @Component({
   selector: 'app-board',
@@ -123,6 +124,58 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
+  boardViewMode: BoardViewMode = readStoredBoardView(this.isNative);
+
+  setBoardViewMode(mode: BoardViewMode): void {
+    this.boardViewMode = mode;
+    storeBoardView(mode, null);
+    if (mode === 'cards' && this.isNative) {
+      this.clearMasonryStyles();
+    } else {
+      this.scheduleMasonryLayout();
+    }
+  }
+
+  private clearMasonryStyles(): void {
+    const board = this.boardGrid?.nativeElement;
+    if (board) {
+      board.style.position = '';
+      board.style.height = '';
+      board.style.minHeight = '';
+    }
+    this.boardItems?.forEach((item) => {
+      const el = item.nativeElement;
+      if (el) {
+        el.style.position = '';
+        el.style.width = '';
+        el.style.left = '';
+        el.style.top = '';
+      }
+    });
+  }
+
+  cardTitleTooltip(list: ChecklistList): string {
+    const t = list.title;
+    return t.length > 90 ? t.slice(0, 87) + '...' : t;
+  }
+
+  cardAriaLabel(list: ChecklistList): string {
+    const t = this.cardTitleTooltip(list);
+    return `${t}, ${this.completedTaskCount(list)} de ${list.tasks.length} tareas completadas`;
+  }
+
+  onCardPinClick(list: ChecklistList, event: MouseEvent): void {
+    event.stopPropagation();
+    void this.pinList(list);
+  }
+
+  onCardKeydown(event: KeyboardEvent, list: ChecklistList): void {
+    if (this.boardViewMode !== 'cards' || !this.isNative) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.openListFocus(list, event);
+    }
+  }
   /** El envío de comentarios necesita sesión: sin ella la función responde 401. */
   get feedbackEnabled(): boolean {
     return this.feedback.available;
@@ -1992,6 +2045,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private scheduleMasonryLayout(): void {
+    if (this.boardViewMode === 'cards' && this.isNative) return;
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     this.layoutFrame = requestAnimationFrame(() => {
       this.layoutFrame = null;
@@ -2003,6 +2057,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * Recoloca las tarjetas en columnas sin perder el scroll delegando en la utilidad compartida.
    */
   private applyMasonryLayout(): void {
+    if (this.boardViewMode === 'cards' && this.isNative) return;
     const board = this.boardGrid?.nativeElement;
     const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
     applyMasonryLayout(board, items, { isMobile: this.isMobilePresentation, gap: this.GAP });
