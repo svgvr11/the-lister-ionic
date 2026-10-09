@@ -29,12 +29,14 @@ export class InlineEditComponent implements AfterViewInit {
   private lastHeight = 0;
   constructor(private readonly host: ElementRef<HTMLElement>) {}
   ngAfterViewInit(): void {
-    this.autosize();
-    const el = this.area?.nativeElement;
-    if (!el) return;
-    el.focus();
-    try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* noop */ }
-    if (el.scrollIntoView) { try { el.scrollIntoView({ block: 'nearest' }); } catch { /* noop */ } }
+    requestAnimationFrame(() => {
+      this.autosize();
+      const el = this.area?.nativeElement;
+      if (!el) return;
+      el.focus();
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* noop */ }
+      if (el.scrollIntoView) { try { el.scrollIntoView({ block: 'nearest' }); } catch { /* noop */ } }
+    });
   }
   onInput(val: string): void {
     const split = splitEditOnNewline(val);
