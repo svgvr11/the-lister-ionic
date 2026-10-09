@@ -64,7 +64,13 @@ ion-input.ios,
 ion-textarea.md,
 ion-textarea.ios {
   --highlight-height: 0px;
-  --highlight-color-focused: transparent;
-  --highlight-color-valid: transparent;
-  --highlight-color-invalid: transparent;
+}
+
+input,
+textarea,
+.native-input,
+ion-input .native-input,
+ion-textarea .native-textarea {
+  caret-color: var(--ion-text-color, #172236);
+  user-select: text;
 }

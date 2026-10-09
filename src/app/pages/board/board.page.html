@@ -664,19 +664,21 @@
       </div>
       <form (ngSubmit)="addList()" class="new-list-form">
         <label class="new-list-field-label" for="new-list-title">Nombre de la lista</label>
-        <ion-input
-          #newListTitleInput
-          id="new-list-title"
-          autocapitalize="sentences"
-          [(ngModel)]="newListTitle"
-          name="newListTitle"
-          placeholder="Escribe el nombre de la lista..."
-          class="new-list-input"
-          (keyup.enter)="submitNewListFromInput($event)"
-          (input)="onNewListTitleInput()"
-          (paste)="onNewListTitlePaste($event)"
-          [maxlength]="maxListTitleLength"
-        ></ion-input>
+        <div class="new-list-field">
+          <ion-input
+            #newListTitleInput
+            id="new-list-title"
+            autocapitalize="sentences"
+            [(ngModel)]="newListTitle"
+            name="newListTitle"
+            placeholder="Escribe el nombre de la lista..."
+            class="new-list-input"
+            (keyup.enter)="submitNewListFromInput($event)"
+            (input)="onNewListTitleInput()"
+            (paste)="onNewListTitlePaste($event)"
+            [maxlength]="maxListTitleLength"
+          ></ion-input>
+        </div>
         <span *ngIf="newListTitleCount > 70" class="title-char-count" [class.at-limit]="newListTitleCount >= maxListTitleLength" aria-live="polite">
           {{ newListTitleCount }} / {{ maxListTitleLength }}
         </span>
