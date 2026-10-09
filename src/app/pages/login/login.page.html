@@ -1,4 +1,13 @@
 <ion-content [fullscreen]="true" class="login-content">
+  <!-- Overlay spinner local a la página de login -->
+  <div class="spinner-overlay" *ngIf="signingIn()" role="status" aria-live="polite">
+    <div class="spinner-content">
+      <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+      <p>Iniciando sesión…</p>
+      <p class="hint">Esto puede tardar unos segundos</p>
+    </div>
+  </div>
+
   <main class="login-stage">
     <div class="login-stack">
       <section class="login-card" aria-labelledby="login-title">

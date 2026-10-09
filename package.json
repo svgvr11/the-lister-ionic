@@ -26,6 +26,7 @@
     "test:edit-contrast": "node --experimental-strip-types scripts/test-edit-contrast.mjs",
     "test:masonry": "node --experimental-strip-types scripts/test-masonry.mjs",
     "test:board-view": "node --experimental-strip-types scripts/test-board-view.mjs",
+    "test:login-spinner": "node --experimental-strip-types scripts/test-login-spinner.ts",
     "version:bump": "node scripts/bump-version.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
