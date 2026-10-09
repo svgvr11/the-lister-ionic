@@ -1751,25 +1751,34 @@ ion-header {
   font-weight: 650;
 }
 
+.new-list-field {
+  display: flex;
+  align-items: center;
+  background: #f1f3ff;
+  border: 1px solid #e9ecf6;
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.new-list-field:focus-within {
+  background: #fff;
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
+}
+
 .new-list-input {
-  --background: #f1f3ff;
+  --background: transparent;
   --color: #172236;
   --placeholder-color: #737b8c;
   --padding-start: 12px;
   --padding-end: 12px;
-  --border-radius: 12px;
   min-height: 46px;
-  border: 1px solid #e9ecf6;
-  border-radius: 12px;
+  flex: 1;
   width: 100%;
   font-size: 14px;
   text-align: left;
   outline: none;
-}
-
-.new-list-input:focus-visible {
-  border-color: var(--accent, #8870ad);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
+  border: 0;
 }
 
 .visual-color-field legend {
