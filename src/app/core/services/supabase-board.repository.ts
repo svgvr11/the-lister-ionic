@@ -5,17 +5,18 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { ChecklistBoard } from '../../models/board.models';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../board-merge';
+import {
+  StoredBoard,
+  deserializeBoard,
+  isNewerVersion,
+  isSameVersion,
+  nextBoardVersion
+} from '../board-serialization';
 import { BoardConflict, BoardRepository } from './board.repository';
 import { AuthService } from './auth.service';
 import { isSessionBlocked, throwIfSessionBlocked } from '../session-guard';
 
-interface StoredBoard {
-  id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-  board_data: ChecklistBoard | null;
-}
+export type { StoredBoard };
 
 @Injectable({ providedIn: 'root' })
 export class SupabaseBoardRepository extends BoardRepository implements OnDestroy {
@@ -139,7 +140,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
 
     const remoteRecord = await this.findBoard(userId);
     if (!remoteRecord) throw new Error('No se pudo recuperar la versión remota del tablero.');
-    const remoteBoard = this.deserializeBoard(remoteRecord);
+    const remoteBoard = deserializeBoard(remoteRecord);
     let mergedBoard: ChecklistBoard;
     try {
       mergedBoard = mergeBoardAdditions(baseBoard, localBoard, remoteBoard);
@@ -152,7 +153,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     const retryVersion = await this.updateBoard(mergedBoard, userId, remoteRecord.updated_at);
     if (!retryVersion) {
       const latestRecord = await this.findBoard(userId);
-      const latestBoard = latestRecord ? this.deserializeBoard(latestRecord) : remoteBoard;
+      const latestBoard = latestRecord ? deserializeBoard(latestRecord) : remoteBoard;
       const latestVersion = latestRecord?.updated_at ?? remoteRecord.updated_at;
       const reason = 'El tablero volvió a cambiar mientras se guardaba. Resuelve el conflicto para continuar.';
       this.publishConflict(localBoard, latestBoard, latestVersion, reason);
@@ -181,7 +182,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
       if (latestRecord) {
         this.publishConflict(
           conflict.localBoard,
-          this.deserializeBoard(latestRecord),
+          deserializeBoard(latestRecord),
           latestRecord.updated_at,
           'El tablero remoto cambió otra vez. Revisa las dos versiones antes de resolver.'
         );
@@ -206,8 +207,8 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   private async refreshBoard(userId: string): Promise<void> {
     const record = await this.findBoard(userId);
     if (!record || userId !== this.userId) return;
-    if (this.lastKnownUpdatedAt && Date.parse(record.updated_at) <= Date.parse(this.lastKnownUpdatedAt)) return;
-    const board = this.deserializeBoard(record);
+    if (!isNewerVersion(record.updated_at, this.lastKnownUpdatedAt)) return;
+    const board = deserializeBoard(record);
     const conflict = this.conflictSubject.value;
     if (conflict) {
       this.publishConflict(conflict.localBoard, board, record.updated_at, conflict.reason);
@@ -217,7 +218,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   }
 
   private async updateBoard(board: ChecklistBoard, userId: string, expectedVersion: string): Promise<string | null> {
-    const nextVersion = new Date(Math.max(Date.now(), Date.parse(expectedVersion) + 1)).toISOString();
+    const nextVersion = nextBoardVersion(expectedVersion);
     this.pendingWriteVersion = nextVersion;
     try {
       const { data, error } = await this.requireClient()
@@ -236,7 +237,7 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   }
 
   private publishBoard(record: StoredBoard): void {
-    const board = this.deserializeBoard(record);
+    const board = deserializeBoard(record);
     this.lastKnownUpdatedAt = record.updated_at;
     this.lastKnownBoard = structuredClone(board);
     this.subject.next(board);
@@ -319,19 +320,6 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     this.stopSynchronization();
   }
 
-  private deserializeBoard(record: StoredBoard): ChecklistBoard {
-    const data = record.board_data;
-    if (data && Array.isArray(data.lists)) {
-      return {
-        ...data,
-        id: record.id,
-        title: record.title,
-        createdAt: record.created_at
-      };
-    }
-    return { id: record.id, title: record.title, createdAt: record.created_at, lists: [] };
-  }
-
   private emptyBoard(): ChecklistBoard {
     return { id: '', title: 'Mi tablero', createdAt: new Date().toISOString(), lists: [] };
   }
@@ -341,8 +329,4 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     if (!client) throw new Error('Configura Supabase para sincronizar el tablero.');
     return client;
   }
-}
-
-function isSameVersion(left: string, right: string | null): boolean {
-  return right !== null && Date.parse(left) === Date.parse(right);
 }
