@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone, inject, InjectionToken } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -17,14 +17,32 @@ import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';
 
+/**
+ * Cliente de Supabase, inyectable.
+ *
+ * Se extrae a un token único por una razón práctica: para poder probar `AuthService` con
+ * un cliente falso, sin crear uno real con las credenciales de verdad. La factoría sigue
+ * siendo la misma regla de antes (credenciales válidas → cliente; si no → null), así que
+ * el comportamiento de la app no cambia.
+ */
+export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient | null>('SUPABASE_CLIENT', {
+  providedIn: 'root',
+  factory: () => createSupabaseClient()
+});
+
+/** Crea el cliente solo si hay credenciales completas; si no, la app va en modo local. */
+function createSupabaseClient(): SupabaseClient | null {
+  const { url, anonKey } = environment.supabase;
+  const hasCredentials = Boolean(
+    url.trim() && anonKey.trim() && !url.includes('YOUR_') && !anonKey.includes('YOUR_')
+  );
+  return hasCredentials ? createClient(url, anonKey, { auth: { flowType: 'pkce' } }) : null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  readonly enabled = this.hasCredentials();
-  private readonly client: SupabaseClient | null = this.enabled
-    ? createClient(environment.supabase.url, environment.supabase.anonKey, {
-        auth: { flowType: 'pkce' }
-      })
-    : null;
+  private readonly client: SupabaseClient | null = inject(SUPABASE_CLIENT);
+  readonly enabled = this.client !== null;
   private activeSession: Session | null = null;
   private readonly sessionChangesSubject = new Subject<Session | null>();
   readonly sessionChanges = this.sessionChangesSubject.asObservable();
@@ -206,10 +224,5 @@ export class AuthService {
   private requireClient(): SupabaseClient {
     if (!this.client) throw new Error('Configura las credenciales de Supabase para habilitar el acceso.');
     return this.client;
-  }
-
-  private hasCredentials(): boolean {
-    const { url, anonKey } = environment.supabase;
-    return Boolean(url.trim() && anonKey.trim() && !url.includes('YOUR_') && !anonKey.includes('YOUR_'));
   }
 }
