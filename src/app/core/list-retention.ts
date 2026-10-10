@@ -54,9 +54,35 @@ export const ARCHIVE_POLICY: RetentionPolicy = {
  */
 export const MAX_BOARD_LISTS = 50;
 
+/**
+ * Interpreta la fecha en que una lista salió del tablero (`deletedAt` / `archivedAt`).
+ *
+ * BUG-02: el valor viene de un tablero guardado, así que puede estar corrupto: cadena
+ * vacía, texto que no es fecha, `null`, un número, un objeto... Con cualquiera de esas
+ * cosas `Date.parse` da NaN, y con NaN todas las comparaciones salen false. Eso hacía que
+ * la purga tratara la entrada como vencida y la BORRARA, y que el contador pintara "NaN días".
+ *
+ * Regla: una fecha inválida NUNCA purga. Se conserva la entrada y se trata como recién
+ * salida del tablero, es decir, con el plazo completo por delante. Para eso se devuelve
+ * `now`, que es el instante de referencia del cálculo. Centralizarlo aquí es lo que
+ * garantiza que la purga y el contador decidan siempre lo mismo.
+ *
+ * Se admite solo texto con contenido y parseable. Ojo con `new Date(null)` y
+ * `new Date(0)`: dan el 1 de enero de 1970, que es una fecha VÁLIDA (aunque absurda), y
+ * eso sí debe purgarse con normalidad. Por eso se exige `typeof === 'string'` antes de
+ * parsear, en lugar de dejar que el constructor convierta el valor.
+ */
+function parseStartedAt(startedAt: string, now: Date): Date {
+  if (typeof startedAt !== 'string') return now;
+  const trimmed = startedAt.trim();
+  if (!trimmed) return now;
+  const parsed = Date.parse(trimmed);
+  return Number.isFinite(parsed) ? new Date(parsed) : now;
+}
+
 /** Fecha en la que una lista de la colección se elimina definitivamente. */
-export function retentionDeadline(startedAt: string, policy: RetentionPolicy): Date {
-  return new Date(new Date(startedAt).getTime() + policy.retentionDays * MS_PER_DAY);
+export function retentionDeadline(startedAt: string, policy: RetentionPolicy, now: Date = new Date()): Date {
+  return new Date(parseStartedAt(startedAt, now).getTime() + policy.retentionDays * MS_PER_DAY);
 }
 
 /**
@@ -68,7 +94,7 @@ export function retentionDaysLeft(
   policy: RetentionPolicy,
   now: Date = new Date()
 ): number {
-  return Math.ceil((retentionDeadline(startedAt, policy).getTime() - now.getTime()) / MS_PER_DAY);
+  return Math.ceil((retentionDeadline(startedAt, policy, now).getTime() - now.getTime()) / MS_PER_DAY);
 }
 
 /**

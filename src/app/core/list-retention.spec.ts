@@ -336,3 +336,95 @@ describe('list-retention: lo que conserva el repositorio al leer', () => {
     expect(purgeExpiredArchivedLists(board, NOW)).toBe(false);
   });
 });
+
+/**
+ * BUG-02: una fecha ilegible en el basurero o en el archivo borraba la lista.
+ *
+ * `Date.parse('lo-que-sea')` da NaN, y `NaN > 0` es false, así que la entrada caía en el
+ * filtro de "vencida" y desaparecía en el siguiente arranque. Además `daysLeft` habría
+ * pintado "NaN días". Regla acordada: una fecha inválida NUNCA purga; la entrada se
+ * conserva y se trata como recién descartada (plazo completo por delante).
+ */
+describe('list-retention: fechas inválidas (BUG-02)', () => {
+  /** Fechas que no se pueden interpretar, en todas las formas que pueden llegar. */
+  const fechasInvalidas: unknown[] = [
+    '',
+    '   ',
+    'no-es-una-fecha',
+    'ayer',
+    '2026-13-45T99:99:99Z',
+    'null',
+    'undefined',
+    'Invalid Date',
+    null,
+    undefined,
+    0,
+    42,
+    NaN,
+    true,
+    {},
+    []
+  ];
+
+  it('retentionDaysLeft con fecha inválida devuelve el plazo completo del basurero', () => {
+    for (const startedAt of fechasInvalidas) {
+      expect(retentionDaysLeft(startedAt as string, TRASH_POLICY, NOW)).toBe(7);
+    }
+  });
+
+  it('retentionDaysLeft con fecha inválida devuelve el plazo completo del archivo', () => {
+    for (const startedAt of fechasInvalidas) {
+      expect(retentionDaysLeft(startedAt as string, ARCHIVE_POLICY, NOW)).toBe(60);
+    }
+  });
+
+  it('la purga del basurero conserva una entrada con fecha inválida', () => {
+    for (const deletedAt of fechasInvalidas) {
+      const board = makeBoard([], {
+        trashedLists: [{ list: makeList('l1'), deletedAt: deletedAt as string }]
+      });
+      expect(purgeExpiredLists(board, NOW), `no debe purgar ${JSON.stringify(deletedAt)}`).toBe(false);
+      expect(board.trashedLists?.length).toBe(1);
+      expect(board.trashedLists?.[0].list.id).toBe('l1');
+    }
+  });
+
+  it('la purga del archivo conserva una entrada con fecha inválida', () => {
+    for (const archivedAt of fechasInvalidas) {
+      const board = makeBoard([], {
+        archivedLists: [{ list: makeList('l1'), archivedAt: archivedAt as string }]
+      });
+      expect(purgeExpiredArchivedLists(board, NOW), `no debe purgar ${JSON.stringify(archivedAt)}`).toBe(
+        false
+      );
+      expect(board.archivedLists?.length).toBe(1);
+      expect(board.archivedLists?.[0].list.id).toBe('l1');
+    }
+  });
+
+  it('la cuenta atrás nunca muestra NaN ni valores negativos', () => {
+    for (const startedAt of fechasInvalidas) {
+      const dias = retentionDaysLeft(startedAt as string, TRASH_POLICY, NOW);
+      expect(Number.isNaN(dias)).toBe(false);
+      expect(dias).toBeGreaterThan(0);
+      expect(countdownLabel(dias)).toBe('7 días');
+    }
+  });
+
+  /**
+   * El límite de la regla: una fecha que SÍ es interpretable, aunque sea absurda, se purga
+   * con normalidad. `null` y `0` dan el 1 de enero de 1970 con `new Date(...)`, así que
+   * estos casos fijan que no se está conservando todo por defecto.
+   */
+  it('una fecha válida pero antiquísima sí se purga', () => {
+    const antiguas = ['1970-01-01T00:00:00.000Z', '1999-12-31T23:59:59.000Z'];
+    for (const deletedAt of antiguas) {
+      const board = makeBoard([], {
+        trashedLists: [{ list: makeList('l1'), deletedAt }]
+      });
+      expect(purgeExpiredLists(board, NOW)).toBe(true);
+      expect(board.trashedLists).toEqual([]);
+      expect(retentionDaysLeft(deletedAt, TRASH_POLICY, NOW)).toBeLessThan(0);
+    }
+  });
+});
