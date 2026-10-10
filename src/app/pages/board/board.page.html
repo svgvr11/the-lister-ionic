@@ -322,10 +322,9 @@
               [attr.aria-label]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar esta lista al inicio del tablero'"
               [title]="isPinned(list) ? 'Lista fijada al inicio del tablero' : 'Fijar lista al inicio del tablero'"
             >
-              <span class="pin-icon" aria-hidden="true" [style.color]="isPinned(list) ? 'var(--accent)' : null"></span>
+              <span class="pin-icon" aria-hidden="true"></span>
               <ion-ripple-effect></ion-ripple-effect>
             </button>
-            <span *ngIf="isPinned(list)" class="card-pinned-dot" aria-hidden="true"></span>
           </div>
 
           <div class="card-title-block">
@@ -989,7 +988,7 @@
         </button>
         <!-- En estado normal los iconos van a la derecha, nunca hacen wrap. -->
         <div class="focus-list-actions" *ngIf="editingListId !== focus.id">
-          <button type="button" class="focus-list-action ion-activatable" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'">
+          <button type="button" class="focus-list-action ion-activatable" [class.pinned]="isPinned(focus)" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'">
             <span class="pin-icon" aria-hidden="true"></span>
           </button>
           <button type="button" class="focus-list-action ion-activatable" (click)="startEditList(focus, $event)" aria-label="Editar nombre de lista">
