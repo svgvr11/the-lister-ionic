@@ -24,7 +24,7 @@ import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../
 import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback-core';
-import { archiveList, isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
+import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
@@ -37,6 +37,21 @@ import { FeedbackService } from '../../core/services/feedback.service';
 import { SessionGuardService } from '../../core/services/session-guard.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
 import { OwnBoardSnapshots } from '../../core/board-sync';
+import {
+  addListToBoard,
+  completedTaskCount,
+  isAtListLimit,
+  isPinned,
+  listLimitLabel,
+  listProgress,
+  listProgressPercent,
+  moveListToArchive,
+  moveListToTrash,
+  pinList,
+  reorderLists,
+  syncPinnedList,
+  taskCounterLabel
+} from '../../core/board-list-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
 
@@ -202,11 +217,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private focusNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 
   get listProgress(): string {
-    return `${Math.min(this.board.lists.length, MAX_BOARD_LISTS) / MAX_BOARD_LISTS * 100}%`;
+    return listProgress(this.board);
   }
 
   get isAtListLimit(): boolean {
-    return this.board.lists.length >= MAX_BOARD_LISTS;
+    return isAtListLimit(this.board);
   }
 
   /** Límite de listas del tablero, leído de la constante compartida. */
@@ -214,7 +229,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   /** Texto del botón de añadir lista: avisa cuando el tablero ya está lleno. */
   get listLimitLabel(): string {
-    return this.isAtListLimit ? `Límite de ${MAX_BOARD_LISTS} listas alcanzado` : 'Añadir lista';
+    return listLimitLabel(this.board);
   }
 
   @HostBinding('style.--board-bg') boardBackground = this.activeTheme.background;
@@ -1611,13 +1626,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   isPinned(list: ChecklistList): boolean {
-    return this.board.pinnedListId === list.id;
+    return isPinned(this.board, list.id);
   }
 
   /** Fija una lista al inicio del tablero, reemplazando a la que estaba pinneada. */
   async pinList(list: ChecklistList): Promise<void> {
-    if (this.isPinned(list)) return;
-    this.board.pinnedListId = list.id;
+    if (!pinList(this.board, list.id)) return;
     // La nueva sube al primer lugar y la anterior conserva su hueco en el orden de sesión.
     this.syncSessionOrder();
     await this.persist();
@@ -1632,13 +1646,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * que el tablero debe guardarse.
    */
   private syncPinnedList(): boolean {
-    const current = this.board.pinnedListId ?? null;
-    const stillInBoard = current !== null && this.board.lists.some((list) => list.id === current);
-    const first = [...this.board.lists].sort((a, b) => a.position - b.position)[0]?.id ?? null;
-    const pinnedListId = stillInBoard ? current : first;
-    if (pinnedListId === current) return false;
-    this.board.pinnedListId = pinnedListId;
-    return true;
+    return syncPinnedList(this.board);
   }
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
@@ -1688,12 +1696,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   completedTaskCount(list: ChecklistList): number {
-    return list.tasks.reduce((count, task) => count + Number(task.completed), 0);
+    return completedTaskCount(list);
   }
 
   listProgressPercent(list: ChecklistList): number {
-    if (!list.tasks.length) return 0;
-    return Math.round((this.completedTaskCount(list) / list.tasks.length) * 100);
+    return listProgressPercent(list);
   }
 
   /** Una lista está terminada cuando tiene tareas y todas están marcadas. */
@@ -1702,8 +1709,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   taskCounterLabel(list: ChecklistList): string {
-    if (this.isListComplete(list)) return '100% Hecho';
-    return `${this.completedTaskCount(list)}/${list.tasks.length}`;
+    return taskCounterLabel(list);
   }
 
   isCollapsed(listId: string): boolean {
@@ -1745,16 +1751,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * y se puede restaurar desde la pantalla de Basurero.
    */
   async moveListToTrash(list: ChecklistList): Promise<void> {
-    this.board.lists = this.board.lists.filter((item) => item.id !== list.id);
-    this.board.trashedLists = [
-      ...(this.board.trashedLists ?? []),
-      { list: { ...list, tasks: [...list.tasks] }, deletedAt: new Date().toISOString() }
-    ];
+    if (!moveListToTrash(this.board, list.id)) return;
     this.collapsed.delete(list.id);
     this.expandedCompleted.delete(list.id);
-    this.reorderLists();
-    // Si se descartó la lista pinneada, el pin pasa a la siguiente del tablero.
-    this.syncPinnedList();
     // La lista desaparece del orden de sesión; si vuelve desde el basurero, entra al final.
     this.syncSessionOrder();
     await this.persist();
@@ -1766,12 +1765,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * Mismo recorrido que el basurero (pin y orden de sesión se reajustan igual).
    */
   async moveListToArchive(list: ChecklistList): Promise<void> {
-    if (!archiveList(this.board, list)) return;
+    if (!moveListToArchive(this.board, list.id)) return;
     this.collapsed.delete(list.id);
     this.expandedCompleted.delete(list.id);
-    this.reorderLists();
-    // Si se archivó la lista pinneada, el pin pasa a la siguiente del tablero.
-    this.syncPinnedList();
     // La lista sale del orden de sesión; si se restaura, entra al final.
     this.syncSessionOrder();
     await this.persist();
@@ -1936,24 +1932,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    */
   async addList(): Promise<void> {
     if (!this.addingList) return;
-    const title = normalizeListTitle(this.newListTitle);
-    if (!title || this.isAtListLimit) return;
-    const orderedLists = [...this.board.lists].sort((a, b) => a.position - b.position);
-    const newList: ChecklistList = {
-      id: crypto.randomUUID(),
-      boardId: this.board.id,
-      title,
-      visualColor: this.selectedVisualColor,
-      position: this.placeNewListAtStart ? 0 : orderedLists.length,
-      createdAt: new Date().toISOString(),
-      tasks: []
-    };
-    if (this.placeNewListAtStart) orderedLists.unshift(newList);
-    else orderedLists.push(newList);
-    orderedLists.forEach((list, index) => list.position = index);
-    this.board.lists = orderedLists;
-    // Una lista creada "al inicio del tablero" también arranca pinneada.
-    if (this.placeNewListAtStart) this.board.pinnedListId = newList.id;
+    // El título se normaliza dentro: si se queda vacío o el tablero está en el límite,
+    // no se crea nada y el formulario sigue abierto para corregirlo.
+    const creada = addListToBoard(this.board, this.newListTitle, {
+      alInicio: this.placeNewListAtStart,
+      colorVisual: this.selectedVisualColor
+    });
+    if (!creada) return;
     this.clearNewListInputFocusWork();
     this.newListTitle = '';
     this.addingList = false;
@@ -2065,9 +2050,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   /** Normaliza el orden estable guardado tras quitar una lista del tablero. */
   private reorderLists(): void {
-    [...this.board.lists]
-      .sort((a, b) => a.position - b.position)
-      .forEach((list, index) => list.position = index);
+    reorderLists(this.board);
   }
 
   private reorderTasks(list: ChecklistList): void {
