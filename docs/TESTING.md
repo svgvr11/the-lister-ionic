@@ -131,32 +131,80 @@ al almacenamiento. Por eso el test detecta un fallo real.
 Para código que usa `inject()` de Angular (servicios, guardas) se usa `TestBed` con
 `useValue`, como en `src/app/core/services/auth.guard.spec.ts`.
 
+### Limitación del runner: `vi.mock` NO funciona
+
+El runner de pruebas es el builder experimental `@angular/build:unit-test` con Vitest.
+Compila los specs con el mismo pipeline que el build, y por eso **`vi.mock(...)` con
+factoría no tiene efecto**: el módulo real se usa siempre. Se comprobó con un módulo de
+prueba; no es un error de sintaxis.
+
+Consecuencias prácticas, y cómo se resolvieron:
+
+| Problema | Solución usada |
+|---|---|
+| Sustituir `environment.supabase` | El cliente de Supabase se inyecta por el token `SUPABASE_CLIENT`, que la app ya usa. En los tests se pasa uno falso con `{ provide: SUPABASE_CLIENT, useValue: clienteFalso }`. |
+| Sustituir plugins de Capacitor (`App`, `Browser`) | Son proxies sin propiedades propias: ni `vi.spyOn` ni asignar la propiedad funcionan. Lo que sí se puede es sustituir `Capacitor.isNativePlatform` (objeto normal) y, para el navegador, comprobar la decisión en vez del efecto. |
+| Llegar a métodos privados | Se llaman con un cast: `(servicio as unknown as { metodo: (…) => … }).metodo(…)`. |
+
+Si en el futuro hace falta mockear módulos de verdad (por ejemplo para probar Edge
+Functions), hay que cambiar de runner a Vitest directo (`vitest.config.ts`), perdiendo la
+compilación de Angular para los specs.
+
 ---
 
-## 5. Estado actual de la cobertura
+## 5. Clientes de Supabase falsos
 
-**En Vitest (`npm test`, 155 casos):**
+En `src/app/core/services/testing/` hay dos helpers reutilizables:
+
+- `fake-supabase.ts` → tablero (`boards`): búsquedas, inserciones, guardados por versión,
+  canal de realtime y `realtime.setAuth`. Usado por `supabase-board.repository.spec.ts`.
+- `fake-auth-client.ts` → autenticación: `getSession`, `onAuthStateChange`,
+  `signInWithOAuth`, `exchangeCodeForSession`, `signOut`, `refreshSession` y
+  `functions.invoke`. Usado por `auth.service.spec.ts`.
+
+Ambos guardan un historial de llamadas legible (`s.llamadas`), que es lo que se comprueba
+en las aserciones.
+
+---
+
+## 6. Estado actual de la cobertura
+
+**En Vitest (`npm test`, 299 casos):**
+
+Lógica pura del core (`src/app/core/`):
 
 | Archivo | Casos |
 |---|---|
-| `src/app/core/list-retention.spec.ts` | 15 |
-| `src/app/core/edit-contrast.spec.ts` | 37 |
-| `src/app/core/limits.spec.ts` | 13 |
-| `src/app/core/board-themes.spec.ts` | 10 |
-| `src/app/core/session-order.spec.ts` | 9 |
-| `src/app/core/session-guard.spec.ts` | 9 |
-| `src/app/core/inline-edit.spec.ts` | 8 |
-| `src/app/core/trash.spec.ts` | 7 |
-| `src/app/core/masonry-layout.spec.ts` | 7 |
-| `src/app/core/board-view.spec.ts` | 6 |
-| `src/app/core/board-merge.spec.ts` | 6 |
-| `src/app/core/board-sync.spec.ts` | 5 |
-| `src/app/core/overlay-stack.spec.ts` | 5 |
-| `src/app/core/delete-account.spec.ts` | 5 |
-| `src/app/core/archive.spec.ts` | 5 |
-| `src/app/core/focus-notice.spec.ts` | 3 |
-| `src/app/core/google-auth.spec.ts` | 2 |
-| `src/app/core/services/auth.guard.spec.ts` | 3 |
+| `list-retention.spec.ts` | 21 |
+| `edit-contrast.spec.ts` | 37 |
+| `limits.spec.ts` | 13 |
+| `board-themes.spec.ts` | 10 |
+| `session-order.spec.ts` | 9 |
+| `session-guard.spec.ts` | 9 |
+| `inline-edit.spec.ts` | 8 |
+| `trash.spec.ts` | 7 |
+| `masonry-layout.spec.ts` | 7 |
+| `board-merge.spec.ts` | 6 |
+| `board-view.spec.ts` | 6 |
+| `archive.spec.ts` | 5 |
+| `board-sync.spec.ts` | 5 |
+| `overlay-stack.spec.ts` | 5 |
+| `delete-account.spec.ts` | 5 |
+| `board-serialization.spec.ts` | 19 |
+| `focus-notice.spec.ts` | 3 |
+| `google-auth.spec.ts` | 2 |
+
+Servicios (`src/app/core/services/`):
+
+| Archivo | Casos |
+|---|---|
+| `supabase-board.repository.spec.ts` | 30 |
+| `auth.service.spec.ts` | 26 |
+| `local-board.repository.spec.ts` | 19 |
+| `session-guard.service.spec.ts` | 18 |
+| `board-order.service.spec.ts` | 14 |
+| `board-session.service.spec.ts` | 12 |
+| `auth.guard.spec.ts` | 3 |
 
 **Siguen como scripts de Node (`npm run test:legacy`, 50 casos):**
 
@@ -170,7 +218,7 @@ Para código que usa `inject()` de Angular (servicios, guardas) se usa `TestBed`
 
 ---
 
-## 6. Si algo no funciona
+## 7. Si algo no funciona
 
 - **`ng test` se queja de tipos** → el spec usa algo que no existe o le faltan campos a un
   molde de prueba. El error señala archivo y línea.
