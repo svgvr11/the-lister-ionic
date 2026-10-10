@@ -66,6 +66,16 @@
             "development": { "buildTarget": "the-lister-ionic:build:development" }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "buildTarget": "the-lister-ionic:build:development",
+            "tsConfig": "tsconfig.spec.json",
+            "include": ["src/**/*.spec.ts"],
+            "watch": false
+          }
         }
       }
     }

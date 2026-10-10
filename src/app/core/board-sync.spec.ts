@@ -1,0 +1,139 @@
+import { describe, expect, it } from 'vitest';
+import { OwnBoardSnapshots } from './board-sync';
+import { mergeBoardAdditions } from './board-merge';
+import type { ChecklistBoard } from '../models/board.models';
+
+/**
+ * Pruebas del detector de ecos propios. Migrado desde scripts/test-board-sync.mjs.
+ *
+ * Cuando la app guarda, Supabase le devuelve el mismo tablero por el canal de realtime.
+ * Sin `OwnBoardSnapshots` ese eco se confundiría con un cambio de otro dispositivo y
+ * abriría un conflicto inventado.
+ */
+
+/**
+ * Ficha del tablero base. A propósito NO lleva `boardId` ni `createdAt` en la lista ni
+ * `listId` en la tarea, igual que el script original: `canonicalBoardContentKey` solo mira
+ * id, título, createdAt, pin, listas, basurero y archivo, así que añadir campos aquí
+ * cambiaría la clave y el eco canónico dejaría de reconocerse. Por eso el molde va con
+ * casteo y no como ChecklistBoard.
+ */
+const base = {
+  id: 'board-1',
+  title: 'Board',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  pinnedListId: null,
+  lists: [
+    {
+      id: 'list-1',
+      title: 'List',
+      position: 0,
+      tasks: [
+        {
+          id: 'task-1',
+          text: 'Original',
+          completed: false,
+          position: 0,
+          createdAt: '2026-01-01T00:00:00.000Z'
+        }
+      ]
+    }
+  ],
+  trashedLists: [],
+  archivedLists: []
+} as unknown as ChecklistBoard;
+
+describe('board-sync: canonicalBoardContentKey', () => {
+  it('reconoce como eco propio un tablero canónicamente equivalente', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const token = snapshots.begin(base);
+    snapshots.complete(token, true);
+    const equivalentEcho = {
+      archivedLists: [],
+      trashedLists: [],
+      lists: [
+        {
+          tasks: [
+            {
+              position: 0,
+              completed: false,
+              text: 'Original',
+              id: 'task-1',
+              createdAt: '2025-12-31T21:00:00-03:00'
+            }
+          ],
+          position: 0,
+          title: 'List',
+          id: 'list-1',
+          updated_at: 'server-only',
+          serverVersion: 'row-version'
+        }
+      ],
+      pinnedListId: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      title: 'Board',
+      id: 'board-1',
+      version: 3,
+      updated_at: 'another-server-value'
+    };
+    expect(snapshots.has(equivalentEcho)).toBe(true);
+  });
+
+  it('no clasifica como eco propio un cambio remoto de verdad', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const token = snapshots.begin(base);
+    snapshots.complete(token, true);
+    const remote = structuredClone(base);
+    remote.lists[0].title = 'Changed remotely';
+    expect(snapshots.has(remote)).toBe(false);
+  });
+});
+
+describe('board-sync: OwnBoardSnapshots', () => {
+  it('un eco tardío de A no sustituye al guardado más reciente B', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const savedA = structuredClone(base);
+    savedA.lists[0].title = 'Saved A';
+    const tokenA = snapshots.begin(savedA);
+    snapshots.complete(tokenA, true);
+
+    const savedB = structuredClone(savedA);
+    savedB.lists[0].title = 'Saved B';
+    const tokenB = snapshots.begin(savedB);
+    snapshots.complete(tokenB, true);
+
+    let current = structuredClone(savedB);
+    const echoedA = structuredClone(savedA);
+    if (!snapshots.has(echoedA)) current = echoedA;
+    expect(current.lists[0].title).toBe('Saved B');
+    expect(snapshots.has(echoedA)).toBe(true);
+  });
+
+  it('conserva solo los 20 últimos snapshots y olvida los guardados fallidos', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const boards: ChecklistBoard[] = Array.from({ length: 21 }, (_, index) => ({
+      ...structuredClone(base),
+      title: `Snapshot ${index}`
+    }));
+    for (const board of boards) {
+      const token = snapshots.begin(board);
+      snapshots.complete(token, true);
+    }
+    expect(snapshots.has(boards[0])).toBe(false);
+    expect(snapshots.has(boards[20])).toBe(true);
+
+    const failed = snapshots.begin({ ...structuredClone(base), title: 'Failed save' });
+    snapshots.complete(failed, false);
+    expect(snapshots.has({ ...structuredClone(base), title: 'Failed save' })).toBe(false);
+  });
+});
+
+describe('board-merge: ediciones divergentes', () => {
+  it('dos ediciones distintas de la misma tarea siguen siendo un conflicto', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.lists[0].tasks[0].text = 'Local task edit';
+    remote.lists[0].tasks[0].text = 'Remote task edit';
+    expect(() => mergeBoardAdditions(base, local, remote)).toThrow(/editadas/i);
+  });
+});
