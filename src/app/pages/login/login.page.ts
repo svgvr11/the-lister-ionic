@@ -12,6 +12,13 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../core/legal-urls';
+import {
+  abrirConBrowserNativo,
+  avisoDeNavegacion,
+  decidirInicioLogin,
+  debeDesbloquearTrasReanudar,
+  mensajeErrorLogin
+} from '../../core/login-rules';
 
 @Component({
   selector: 'app-login',
@@ -50,18 +57,18 @@ export class LoginPage implements OnInit, OnDestroy {
     }));
     this.listenForNativeResume();
 
-    if (!this.auth.enabled) {
-      await this.router.navigateByUrl('/board', { replaceUrl: true });
+    const destino = decidirInicioLogin({
+      credenciales: this.auth.enabled,
+      sesion: await this.auth.getSession(),
+      aviso: avisoDeNavegacion(this.router.getCurrentNavigation()?.extras?.state)
+    });
+    if (destino.tipo === 'ir-a') {
+      await this.router.navigateByUrl(destino.ruta, { replaceUrl: true });
       return;
     }
     // Aviso tras un borrado con sesión expirada: la cuenta puede seguir activa y hay
     // que repetir la eliminación. Viaja en el estado de navegación de board.page.
-    const navegacion = this.router.getCurrentNavigation();
-    const aviso = (navegacion?.extras?.state?.['deleteMessage'] as string | undefined) ?? '';
-    if (aviso) this.errorMessage = aviso;
-    if (await this.auth.getSession()) {
-      await this.router.navigateByUrl('/board', { replaceUrl: true });
-    }
+    if (destino.aviso) this.errorMessage = destino.aviso;
   }
 
   ngOnDestroy(): void {
@@ -76,9 +83,7 @@ export class LoginPage implements OnInit, OnDestroy {
     try {
       await this.auth.signInWithGoogle();
     } catch (error) {
-      this.errorMessage = error instanceof Error
-        ? error.message
-        : 'No se pudo iniciar sesión con Google. Inténtalo de nuevo.';
+      this.errorMessage = mensajeErrorLogin(error);
       this.busy = false;
     }
   }
@@ -97,7 +102,7 @@ export class LoginPage implements OnInit, OnDestroy {
    * Devuelve `false` en nativo para cancelar el click, `true` en web para seguirlo.
    */
   openLegal(url: string): boolean {
-    if (this.isNative) {
+    if (abrirConBrowserNativo(url, this.isNative)) {
       void Browser.open({ url });
       return false;
     }

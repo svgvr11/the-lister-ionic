@@ -15,6 +15,14 @@ import {
   validateMessage
 } from '../feedback-core';
 import { SESSION_BLOCKED_MESSAGE, isSessionBlocked } from '../session-guard';
+import {
+  mensajeEnvioNoDisponible,
+  mensajeErrorDeEnvio,
+  mensajeParaError,
+  mensajeRespuestaNoOk,
+  mensajeSinConexion,
+  mensajeSinSesion
+} from '../feedback-messages';
 
 /** Una imagen ya preparada para enviar: bytes, tipo real y URL de la miniatura. */
 export interface PreparedImage {
@@ -158,13 +166,13 @@ export class FeedbackService {
     if (isSessionBlocked()) return { ok: false, message: SESSION_BLOCKED_MESSAGE };
     const client = this.auth.supabaseClient;
     if (!client || !this.auth.enabled) {
-      return { ok: false, message: 'El envío de comentarios no está disponible en esta instalación.' };
+      return { ok: false, message: mensajeEnvioNoDisponible() };
     }
 
     // Sin sesión no se llama a la función: el servidor respondería 401 y el usuario vería un
     // error técnico. Antes se intenta recuperar la sesión del almacenamiento (arranque en frío).
     if (!(await this.ensureSession())) {
-      return { ok: false, message: 'Inicia sesión para enviar comentarios.' };
+      return { ok: false, message: mensajeSinSesion() };
     }
 
     const mensaje = validateMessage(draft.message);
@@ -200,30 +208,14 @@ export class FeedbackService {
       // como bearer para funciones (`omitApiKeyAsBearer`), así que lo que viaja es el JWT
       // real del usuario y no la anonKey.
       const { data, error } = await client.functions.invoke('submit-feedback', { body: form });
-      if (error) return { ok: false, message: this.messageForError(error) };
+      if (error) return { ok: false, message: mensajeParaError(error) };
       const respuesta = data as { ok?: boolean; error?: string } | null;
       if (respuesta?.ok) return { ok: true };
-      return { ok: false, message: respuesta?.error ?? 'No se pudo enviar el reporte. Inténtalo de nuevo.' };
+      return { ok: false, message: mensajeRespuestaNoOk(respuesta) };
     } catch {
       // Cualquier excepción (sin red, CORS, aborted) llega aquí y siempre es transitoria: el
       // formulario y las imágenes se conservan para reintentar.
-      return { ok: false, message: 'No se pudo enviar el reporte. Revisa la conexión e inténtalo de nuevo.' };
+      return { ok: false, message: mensajeErrorDeEnvio() };
     }
-  }
-
-  /**
-   * Traduce el fallo a un mensaje en español según el código. Para 400/413/429 el servidor ya
-   * devuelve un texto pensado para el usuario y se respeta; el resto son fallos de red o de
-   * servidor que no explican nada útil, así que se sustituyen por uno propio.
-   */
-  private messageForError(error: { status?: number; message?: string }): string {
-    const status = error?.status ?? 0;
-    if (status === 0) return 'No se pudo enviar el reporte. Revisa la conexión e inténtalo de nuevo.';
-    if (status === 401) return 'Inicia sesión para enviar comentarios.';
-    if (status === 429) return 'Has enviado demasiados comentarios. Inténtalo más tarde.';
-    if (status === 413) return 'Las imágenes son demasiado grandes. Adjunta menos o más pequeñas.';
-    if (status >= 500) return 'El servidor no ha podido guardar el reporte. Inténtalo en un momento.';
-    if (status >= 400 && error?.message) return error.message;
-    return 'No se pudo enviar el reporte. Inténtalo de nuevo.';
   }
 }

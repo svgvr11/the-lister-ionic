@@ -24,7 +24,29 @@ import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.models';
 import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
-import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
+import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
+import {
+  claseUrgencia,
+  diasRestantesSeguro,
+  eliminarDelBasurero,
+  esUrgente,
+  ordenarEntradasPorFecha,
+  restaurarDesdeBasurero,
+  textosAccionBasurero,
+  vaciarBasurero
+} from '../../core/board-retention-page-rules';
+import {
+  completedTasks,
+  hiddenCompletedCount,
+  pendingTasks,
+  shouldShowCompletedToggle,
+  visibleCompletedTasks
+} from '../../core/board-task-rules';
+import {
+  completedTaskCount,
+  listProgressPercent,
+  taskCounterLabel
+} from '../../core/board-list-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
@@ -111,9 +133,7 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
    * usuario, en el basurero no tiene sentido arrastrar para reordenar.
    */
   get trashedLists(): ChecklistTrashedList[] {
-    return [...(this.board.trashedLists ?? [])].sort(
-      (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
-    );
+    return ordenarEntradasPorFecha(this.board.trashedLists ?? [], (entry) => entry.deletedAt);
   }
 
   get isEmpty(): boolean {
@@ -275,11 +295,11 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   // ── Tareas y progreso (solo lectura) ──────────────────────────────────────
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => !task.completed).sort((a, b) => a.position - b.position);
+    return pendingTasks(list);
   }
 
   completedTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
+    return completedTasks(list);
   }
 
   /**
@@ -287,19 +307,15 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
    * detrás del toggle. Es solo vista, por eso el estado no se guarda en el tablero.
    */
   visibleCompletedTasks(list: ChecklistList): ChecklistTask[] {
-    const completed = this.completedTasks(list);
-    if (this.isCompletedExpanded(list.id) || completed.length <= this.COMPLETED_PREVIEW_LIMIT) {
-      return completed;
-    }
-    return completed.slice(0, this.COMPLETED_PREVIEW_LIMIT);
+    return visibleCompletedTasks(list, this.isCompletedExpanded(list.id));
   }
 
   hiddenCompletedCount(list: ChecklistList): number {
-    return Math.max(0, this.completedTasks(list).length - this.COMPLETED_PREVIEW_LIMIT);
+    return hiddenCompletedCount(list);
   }
 
   shouldShowCompletedToggle(list: ChecklistList): boolean {
-    return this.completedTasks(list).length > this.COMPLETED_PREVIEW_LIMIT;
+    return shouldShowCompletedToggle(list);
   }
 
   isCompletedExpanded(listId: string): boolean {
@@ -313,21 +329,19 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   }
 
   completedTaskCount(list: ChecklistList): number {
-    return list.tasks.reduce((count, task) => count + Number(task.completed), 0);
+    return completedTaskCount(list);
   }
 
   listProgressPercent(list: ChecklistList): number {
-    if (!list.tasks.length) return 0;
-    return Math.round((this.completedTaskCount(list) / list.tasks.length) * 100);
+    return listProgressPercent(list);
   }
 
   isListComplete(list: ChecklistList): boolean {
-    return list.tasks.length > 0 && this.completedTaskCount(list) === list.tasks.length;
+    return isListComplete(list);
   }
 
   taskCounterLabel(list: ChecklistList): string {
-    if (this.isListComplete(list)) return '100% Hecho';
-    return `${this.completedTaskCount(list)}/${list.tasks.length}`;
+    return taskCounterLabel(list);
   }
 
   isCollapsed(listId: string): boolean {
@@ -344,7 +358,7 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   /** Días que faltan; nunca 0 porque la lista se purga apenas llega a ese punto. */
   daysLeft(entry: ChecklistTrashedList): number {
-    return Math.max(daysLeft(entry.deletedAt), 1);
+    return diasRestantesSeguro(daysLeft(entry.deletedAt));
   }
 
   countdownLabel(entry: ChecklistTrashedList): string {
@@ -353,12 +367,12 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   /** Clase de urgencia del badge: gris → ámbar → rojo. */
   urgencyClass(entry: ChecklistTrashedList): string {
-    return `countdown-${trashUrgency(daysLeft(entry.deletedAt))}`;
+    return claseUrgencia(trashUrgency(daysLeft(entry.deletedAt)));
   }
 
   /** En el último día la lista completa se tiñe de rojo. */
   isUrgent(entry: ChecklistTrashedList): boolean {
-    return trashUrgency(daysLeft(entry.deletedAt)) === 'danger';
+    return esUrgente(trashUrgency(daysLeft(entry.deletedAt)));
   }
 
   // ── Acciones ─────────────────────────────────────────────────────────────
@@ -372,11 +386,10 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
    */
   async restore(entry: ChecklistTrashedList): Promise<void> {
     this.restoreError = '';
-    if (!restoreListToBoard(this.board, entry.list)) {
+    if (!restaurarDesdeBasurero(this.board, entry)) {
       this.restoreError = listLimitRestoreMessage();
       return;
     }
-    this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
     this.scheduleMasonryLayout();
     await this.persist();
@@ -415,10 +428,10 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     this.pendingActionOpener = null;
     if (action.kind === 'empty') {
       this.collapsed.clear();
-      this.board.trashedLists = [];
+      vaciarBasurero(this.board);
     } else {
       this.collapsed.delete(action.entry.list.id);
-      this.board.trashedLists = this.trashedLists.filter((item) => item.list.id !== action.entry.list.id);
+      eliminarDelBasurero(this.board, action.entry);
     }
     this.scheduleMasonryLayout();
     await this.persist();
@@ -440,16 +453,22 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     }
   }
 
-  // El texto del diálogo se resuelve aquí para no repetir condiciones en el template.
+  // El texto del diálogo se resuelve aquí para no repetir condiciones en la template.
+  private textosConfirmacion(): ReturnType<typeof textosAccionBasurero> | null {
+    if (!this.pendingAction) return null;
+    return textosAccionBasurero(
+      this.pendingAction.kind === 'empty'
+        ? { kind: 'empty', cantidad: this.trashedLists.length }
+        : { kind: 'purge' }
+    );
+  }
+
   get confirmTitle(): string {
-    return this.pendingAction?.kind === 'empty' ? '¿Vaciar el basurero?' : '¿Eliminar permanentemente?';
+    return this.textosConfirmacion()?.title ?? '';
   }
 
   get confirmMessage(): string {
-    if (this.pendingAction?.kind === 'empty') {
-      return `Se eliminarán las ${this.trashedLists.length} listas del basurero con todas sus tareas. Esta acción no se puede deshacer.`;
-    }
-    return 'Esta lista y todas sus tareas se eliminarán de forma definitiva. Esta acción no se puede deshacer.';
+    return this.textosConfirmacion()?.message ?? '';
   }
 
   get confirmListTitle(): string {
@@ -457,7 +476,7 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   }
 
   get confirmActionLabel(): string {
-    return this.pendingAction?.kind === 'empty' ? 'Vaciar basurero' : 'Eliminar permanentemente';
+    return this.textosConfirmacion()?.actionLabel ?? '';
   }
 
   private async persist(): Promise<void> {

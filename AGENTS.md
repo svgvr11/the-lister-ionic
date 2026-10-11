@@ -9,3 +9,7 @@ Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)", `--maj
 ## Otras fuentes de versión (derivadas automáticamente)
 
 `package.json` (`version`), `android/app/build.gradle` (`versionName` / `versionCode` leídos de `android/version.properties`) y `capacitor.config.ts` (que no tiene campo de versión) NO son la fuente de verdad de la versión de la app: la única fuente es `src/app/core/app-version.ts`. No los edites a mano ni los uses para mostrar la versión; se derivan automáticamente mediante `scripts/android-version.mjs` (ejecutado por los scripts de build/bundle/apk).
+
+## Otras reglas de testing
+Todo cambio de lógica incluye su test.
+Al añadir un campo al tablero, actualizar `canonicalBoardContentKey`.

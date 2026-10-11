@@ -28,7 +28,21 @@ import { readStoredTheme } from '../../core/board-themes';
 import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists
 } from '../../core/archive';
-import { listLimitRestoreMessage, restoreListToBoard } from '../../core/list-retention';
+import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
+import {
+  claseUrgencia,
+  diasRestantesSeguro,
+  eliminarDelArchivo,
+  esUrgente,
+  ordenarEntradasPorFecha,
+  restaurarDesdeArchivo
+} from '../../core/board-retention-page-rules';
+import {
+  completedTaskCount,
+  listProgressPercent,
+  taskCounterLabel
+} from '../../core/board-list-rules';
+import { completedTasks, pendingTasks } from '../../core/board-task-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
@@ -147,9 +161,7 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
    * usuario, así que en el archivo no tiene sentido arrastrar para reordenar.
    */
   get archivedLists(): ChecklistArchivedList[] {
-    return [...(this.board.archivedLists ?? [])].sort(
-      (a, b) => new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime()
-    );
+    return ordenarEntradasPorFecha(this.board.archivedLists ?? [], (entry) => entry.archivedAt);
   }
 
   get isEmpty(): boolean {
@@ -388,28 +400,27 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   // ── Tareas y progreso (solo lectura) ──────────────────────────────────────
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => !task.completed).sort((a, b) => a.position - b.position);
+    return pendingTasks(list);
   }
 
   completedTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
+    return completedTasks(list);
   }
 
   completedTaskCount(list: ChecklistList): number {
-    return list.tasks.reduce((count, task) => count + Number(task.completed), 0);
+    return completedTaskCount(list);
   }
 
   listProgressPercent(list: ChecklistList): number {
-    if (!list.tasks.length) return 0;
-    return Math.round((this.completedTaskCount(list) / list.tasks.length) * 100);
+    return listProgressPercent(list);
   }
 
   isListComplete(list: ChecklistList): boolean {
-    return list.tasks.length > 0 && this.completedTaskCount(list) === list.tasks.length;
+    return isListComplete(list);
   }
 
   taskCounterLabel(list: ChecklistList): string {
-    return this.isListComplete(list) ? '100% Hecho' : `${this.completedTaskCount(list)}/${list.tasks.length}`;
+    return taskCounterLabel(list);
   }
 
   isCollapsed(listId: string): boolean {
@@ -426,7 +437,7 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   /** Días que faltan; nunca 0 porque la lista se purga apenas llega a ese punto. */
   daysLeft(entry: ChecklistArchivedList): number {
-    return Math.max(archiveDaysLeft(entry.archivedAt, this.now), 1);
+    return diasRestantesSeguro(archiveDaysLeft(entry.archivedAt, this.now));
   }
 
   countdownLabel(entry: ChecklistArchivedList): string {
@@ -435,12 +446,12 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   /** Clase de urgencia del badge: gris → ámbar → rojo. */
   urgencyClass(entry: ChecklistArchivedList): string {
-    return `countdown-${archiveUrgency(archiveDaysLeft(entry.archivedAt, this.now))}`;
+    return claseUrgencia(archiveUrgency(archiveDaysLeft(entry.archivedAt, this.now)));
   }
 
   /** En los 3 últimos días la lista completa se tiñe de rojo. */
   isUrgent(entry: ChecklistArchivedList): boolean {
-    return archiveUrgency(archiveDaysLeft(entry.archivedAt, this.now)) === 'danger';
+    return esUrgente(archiveUrgency(archiveDaysLeft(entry.archivedAt, this.now)));
   }
 
   // ── Acciones ─────────────────────────────────────────────────────────────
@@ -454,11 +465,10 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
    */
   async restore(entry: ChecklistArchivedList): Promise<void> {
     this.restoreError = '';
-    if (!restoreListToBoard(this.board, entry.list)) {
+    if (!restaurarDesdeArchivo(this.board, entry)) {
       this.restoreError = listLimitRestoreMessage();
       return;
     }
-    this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== entry.list.id);
     this.collapsed.delete(entry.list.id);
     this.syncHelpVisibility();
     this.scheduleMasonryLayout();
@@ -494,7 +504,7 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     this.pendingAction = null;
     this.pendingActionOpener = null;
     this.collapsed.delete(action.entry.list.id);
-    this.board.archivedLists = this.archivedLists.filter((item) => item.list.id !== action.entry.list.id);
+    eliminarDelArchivo(this.board, action.entry);
     this.syncHelpVisibility();
     this.scheduleMasonryLayout();
     await this.persist();

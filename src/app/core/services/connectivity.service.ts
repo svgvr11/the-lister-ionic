@@ -2,10 +2,11 @@ import { Injectable, Injector, NgZone, OnDestroy, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { BoardSessionService } from './board-session.service';
+import { esFlancoDeReconexion, leerConexionNavegador } from '../connectivity-rules';
 
 /** Valor inicial: el navegador solo sabe si el equipo tiene red, no si llega a Supabase. */
 function readNavigatorOnline(): boolean {
-  return typeof navigator === 'undefined' ? true : navigator.onLine !== false;
+  return typeof navigator === 'undefined' ? true : leerConexionNavegador(navigator.onLine);
 }
 
 /**
@@ -54,7 +55,8 @@ export class ConnectivityService implements OnDestroy {
     if (previous === value) return;
     this.onlineSubject.next(value);
     // Solo en el flanco offline → online, y una sola vez: el evento se dispara por cambio real.
-    if (value) void this.refreshBoard();
+    // Solo en el flanco offline → online; la regla está en connectivity-rules.ts.
+    if (esFlancoDeReconexion(previous, value)) void this.refreshBoard();
   }
 
   /** Trae lo que se quedó pendiente mientras no había red. */
