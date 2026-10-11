@@ -13,3 +13,6 @@ Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)", `--maj
 ## Otras reglas de testing
 Todo cambio de lógica incluye su test.
 Al añadir un campo al tablero, actualizar `canonicalBoardContentKey`.
+
+## Zonas horarias
+En el código de producción NUNCA se fija una zona horaria (`America/Santiago` ni ninguna otra): las funciones de formato usan siempre la del dispositivo (`Intl.DateTimeFormat().resolvedOptions().timeZone`) cuando no reciben `timeZone`. Las zonas fijas son solo para los tests, donde hacen falta para que el resultado sea determinista.

@@ -453,19 +453,19 @@
               (click)="startEditTask(task, $event)"
               [attr.aria-label]="'Editar tarea: ' + task.text"
             >{{ task.text }}</button>
-            <ng-template #pendingTaskEditor>
-              <div class="task-edit">
-                <app-inline-edit
-                  variant="task"
-                  label="Editar tarea"
-                  [fieldName]="'edit-task-' + task.id"
-                  [value]="taskTextDraft"
-                  [saveDisabled]="!taskTextDraft.trim()"
-                  (valueChange)="onTaskEditInput($event)"
-                  (save)="confirmEditTask(task)"
-                  (cancel)="cancelEditTask()"
-                  (heightChange)="onEditHeightChange()"
-                ></app-inline-edit>
+             <ng-template #pendingTaskEditor>
+               <div class="task-edit">
+                 <app-inline-edit
+                   variant="task"
+                   label="Editar tarea"
+                   [fieldName]="'edit-task-' + task.id"
+                   [value]="taskTextDraft"
+                   [saveDisabled]="!taskTextDraft.trim()"
+                   (valueChange)="onTaskEditInput($event)"
+                   (save)="confirmEditTask(list, task)"
+                   (cancel)="cancelEditTask()"
+                   (heightChange)="onEditHeightChange()"
+                 ></app-inline-edit>
               </div>
             </ng-template>
             <button
@@ -504,19 +504,19 @@
               (click)="startEditTask(task, $event)"
               [attr.aria-label]="'Editar tarea: ' + task.text"
             >{{ task.text }}</button>
-            <ng-template #completedTaskEditor>
-              <div class="task-edit">
-                <app-inline-edit
-                  variant="task"
-                  label="Editar tarea"
-                  [fieldName]="'edit-task-' + task.id"
-                  [value]="taskTextDraft"
-                  [saveDisabled]="!taskTextDraft.trim()"
-                  (valueChange)="onTaskEditInput($event)"
-                  (save)="confirmEditTask(task)"
-                  (cancel)="cancelEditTask()"
-                  (heightChange)="onEditHeightChange()"
-                ></app-inline-edit>
+             <ng-template #completedTaskEditor>
+               <div class="task-edit">
+                 <app-inline-edit
+                   variant="task"
+                   label="Editar tarea"
+                   [fieldName]="'edit-task-' + task.id"
+                   [value]="taskTextDraft"
+                   [saveDisabled]="!taskTextDraft.trim()"
+                   (valueChange)="onTaskEditInput($event)"
+                   (save)="confirmEditTask(list, task)"
+                   (cancel)="cancelEditTask()"
+                   (heightChange)="onEditHeightChange()"
+                 ></app-inline-edit>
               </div>
             </ng-template>
             <button
@@ -1051,7 +1051,7 @@
               [value]="taskTextDraft"
               [saveDisabled]="!taskTextDraft.trim()"
               (valueChange)="onTaskEditInput($event)"
-              (save)="confirmEditTask(task)"
+              (save)="confirmEditTask(focus, task)"
               (cancel)="cancelEditTask()"
             ></app-inline-edit>
           </div>
@@ -1098,7 +1098,7 @@
               [value]="taskTextDraft"
               [saveDisabled]="!taskTextDraft.trim()"
               (valueChange)="onTaskEditInput($event)"
-              (save)="confirmEditTask(task)"
+              (save)="confirmEditTask(focus, task)"
               (cancel)="cancelEditTask()"
             ></app-inline-edit>
           </div>
@@ -1145,6 +1145,31 @@
       </button>
     </div>
     <footer class="focus-list-footer">
+      <!-- Fecha de la última modificación de la lista. El envoltorio corta la propagación de su
+           propio toque para que el tooltip no se cierre al abrirlo en pantallas táctiles. -->
+      <div *ngIf="focusListUpdatedAt as iso" class="focus-list-updated-wrap" (pointerdown)="$event.stopPropagation()">
+        <time
+          #updatedAtLabel
+          class="focus-list-updated"
+          [class.split]="focusListMobilePresentation"
+          tabindex="0"
+          [attr.datetime]="iso"
+          [attr.aria-describedby]="focusUpdatedAtTooltipId"
+          (focus)="onUpdatedAtLabelFocus()"
+          (blur)="onUpdatedAtLabelBlur()"
+          (pointerdown)="onUpdatedAtLabelPointer($event)"
+        >
+          <!-- En móvil los dos renglones van apilados para que quepen junto al botón. -->
+          <span class="focus-list-updated-caption">{{ focusUpdatedAtParts(iso).etiqueta }}</span>
+          <span class="focus-list-updated-date">{{ focusUpdatedAtParts(iso).fecha }}</span>
+        </time>
+        <span
+          [id]="focusUpdatedAtTooltipId"
+          class="focus-list-updated-tooltip"
+          role="tooltip"
+          [class.open]="focusUpdatedAtTooltipOpen"
+        >{{ focusUpdatedAtTimeZone(iso) }}</span>
+      </div>
       <button type="button" class="new-list-submit ion-activatable" (click)="finishFocusModal()">Listo<ion-ripple-effect></ion-ripple-effect></button>
     </footer>
   </section>

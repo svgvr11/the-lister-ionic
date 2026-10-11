@@ -1,5 +1,17 @@
 import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
 
+/**
+ * Árbitro de la fusión de adiciones.
+ *
+ * REGLA DEL `updatedAt`: la fecha de última modificación de una lista viaja en `board_data`,
+ * así que cada dispositivo la escribe con SU reloj en cada acción. Si se comparara como un
+ * campo más, dos dispositivos que añaden tareas distintas a la misma lista parecerían haber
+ * «editado» la lista y la fusión sería un conflicto inventado. Por eso:
+ *
+ *  - El `updatedAt` NO entra en la comparación de listas existentes (se descarta antes).
+ *  - Al fusionar, la fecha que queda es la MÁS RECIENTE de las dos: la lista se modificó en
+ *    el instante posterior de los dos dispositivos.
+ */
 export class BoardMergeConflictError extends Error {
   constructor(message: string) {
     super(message);
@@ -13,7 +25,7 @@ export function mergeBoardAdditions(
   remote: ChecklistBoard
 ): ChecklistBoard {
   assertBoardMetadataUnchanged(base, local, 'local');
-  assertAdditionOnly(base.lists, local.lists, 'listas locales', withoutTasks);
+  assertAdditionOnly(base.lists, local.lists, 'listas locales', withoutTasksOrUpdatedAt);
 
   const baseLists = indexById(base.lists, 'listas base');
   const localLists = indexById(local.lists, 'listas locales');
@@ -34,13 +46,17 @@ export function mergeBoardAdditions(
       const baseList = baseLists.get(remoteList.id)!;
       mergedLists.push({
         ...structuredClone(remoteList),
-        tasks: mergeAddedEntities(baseList.tasks, localList.tasks, remoteList.tasks, `tareas de ${remoteList.id}`)
+        tasks: mergeAddedEntities(baseList.tasks, localList.tasks, remoteList.tasks, `tareas de ${remoteList.id}`),
+        updatedAt: mostRecentUpdatedAt(remoteList.updatedAt, localList.updatedAt)
       });
       continue;
     }
 
     const sameIdLocalAddition = localLists.get(remoteList.id);
-    if (sameIdLocalAddition && !deepEqual(sameIdLocalAddition, remoteList)) {
+    if (sameIdLocalAddition && !deepEqual(
+      withoutTasksOrUpdatedAt(sameIdLocalAddition),
+      withoutTasksOrUpdatedAt(remoteList)
+    )) {
       throw new BoardMergeConflictError(`La lista nueva ${remoteList.id} difiere entre dispositivos.`);
     }
     mergedLists.push(structuredClone(remoteList));
@@ -113,9 +129,26 @@ function indexById<T extends { id: string }>(items: T[], label: string): Map<str
   return result;
 }
 
-function withoutTasks(list: ChecklistList): Omit<ChecklistList, 'tasks'> {
-  const { tasks: _tasks, ...metadata } = list;
+function withoutTasksOrUpdatedAt(list: ChecklistList): Omit<ChecklistList, 'tasks' | 'updatedAt'> {
+  const { tasks: _tasks, updatedAt: _updatedAt, ...metadata } = list;
   return metadata;
+}
+
+/**
+ * La fecha más reciente entre las candidatas, o `undefined` si ninguna es legible. Se usa para
+ * decidir qué `updatedAt` sobrevive a la fusión: gana el instante posterior.
+ */
+function mostRecentUpdatedAt(...candidates: (string | undefined)[]): string | undefined {
+  let best: string | undefined;
+  let bestTime = Number.NEGATIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !Number.isFinite(Date.parse(candidate))) continue;
+    const time = Date.parse(candidate);
+    if (time <= bestTime) continue;
+    best = candidate;
+    bestTime = time;
+  }
+  return best;
 }
 
 function assertGloballyUniqueTaskIds(lists: ChecklistList[]): void {

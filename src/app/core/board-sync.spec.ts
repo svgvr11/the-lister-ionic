@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OwnBoardSnapshots } from './board-sync';
+import { canonicalBoardContentKey, OwnBoardSnapshots } from './board-sync';
 import { mergeBoardAdditions } from './board-merge';
 import type { ChecklistBoard } from '../models/board.models';
 
@@ -135,5 +135,56 @@ describe('board-merge: ediciones divergentes', () => {
     local.lists[0].tasks[0].text = 'Local task edit';
     remote.lists[0].tasks[0].text = 'Remote task edit';
     expect(() => mergeBoardAdditions(base, local, remote)).toThrow(/editadas/i);
+  });
+});
+
+/**
+ * El `updatedAt` de la lista es metadato de sincronización, no contenido: la clave canónica lo
+ * descarta (es un campo de servidor). Si no lo fuera, el eco de un guardado propio dejaría de
+ * reconocerse cada vez que el merge escribe `max(local, remoto)` y aparecerían conflictos
+ * inventados. Estos casos fijan que las diferencias de `updatedAt` no se ven como cambio ajeno.
+ */
+describe('board-sync: updatedAt y el eco propio', () => {
+  it('dos tableros cuyas listas solo difieren en updatedAt son el mismo contenido', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    remote.lists[0].updatedAt = '2026-01-04T09:00:00.000Z';
+
+    expect(canonicalBoardContentKey(remote)).toBe(canonicalBoardContentKey(local));
+  });
+
+  it('el eco de un guardado con updatedAt se reconoce aunque traiga otra fecha', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const saved = structuredClone(base);
+    saved.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    const token = snapshots.begin(saved);
+    snapshots.complete(token, true);
+
+    // Lo que devuelve el canal de realtime tras una fusión: el mismo contenido, otra fecha.
+    const echoed = structuredClone(base);
+    echoed.lists[0].updatedAt = '2026-01-06T08:00:00.000Z';
+
+    expect(snapshots.has(echoed)).toBe(true);
+  });
+
+  it('un cambio remoto de verdad en la misma lista sigue sin ser eco propio', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const saved = structuredClone(base);
+    saved.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    const token = snapshots.begin(saved);
+    snapshots.complete(token, true);
+
+    const remote = structuredClone(saved);
+    remote.lists[0].tasks.push({
+      id: 'task-2',
+      listId: 'list-1',
+      text: 'Desde otro dispositivo',
+      completed: false,
+      position: 1,
+      createdAt: '2026-01-06T08:00:00.000Z'
+    });
+
+    expect(snapshots.has(remote)).toBe(false);
   });
 });

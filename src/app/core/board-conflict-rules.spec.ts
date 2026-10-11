@@ -452,6 +452,24 @@ describe('board-conflict-rules: canonicalBoardContentKey y BUG-11', () => {
       canonicalBoardContentKey(base)
     );
   });
+
+  /**
+   * El `updatedAt` de la lista es metadato de sincronización: NO puede entrar en la clave
+   * canónica. Si entrara, el eco de un guardado propio dejaría de reconocerse en cuanto el
+   * merge escribe `max(local, remoto)` (que no coincide con ninguno de los dos) y se abrirían
+   * conflictos inventados tras cada fusión.
+   */
+  it('el updatedAt de las listas no cuenta como contenido', () => {
+    const otraFecha = structuredClone(base);
+    otraFecha.lists = base.lists.map((list) => ({ ...list, updatedAt: '2026-06-01T12:00:00.000Z' }));
+    expect(canonicalBoardContentKey(otraFecha)).toBe(canonicalBoardContentKey(base));
+
+    // Y por tanto el guardia de eco propio se lo traga.
+    const snapshots = new OwnBoardSnapshots();
+    const token = snapshots.begin(base);
+    snapshots.complete(token, true);
+    expect(snapshots.has(otraFecha)).toBe(true);
+  });
 });
 
 /** Mismo tablero con las claves en otro orden (como llega del servidor). */

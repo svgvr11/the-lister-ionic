@@ -1,6 +1,7 @@
 import type { ChecklistBoard, ChecklistList } from '../models/board.models';
 import { MAX_BOARD_LISTS, archiveList } from './list-retention';
 import { normalizeListTitle } from './limits';
+import { touchList } from './list-updated-at';
 
 /**
  * Reglas de las listas dentro del tablero.
@@ -15,6 +16,11 @@ import { normalizeListTitle } from './limits';
  * modifican el objeto recibido y devuelven `true` si cambiaron algo. Es lo mismo que
  * hacía la página, y así quien llama sabe si tiene que guardar. Las de lectura
  * (`completedTaskCount`, `listProgressPercent`, …) no modifican nada.
+ *
+ * De esas acciones, crear una lista (`addListToBoard`) y editar su título (`editListTitle`)
+ * son modificaciones de la lista afectada, así que fijan su `updatedAt` con `touchList`.
+ * Las demás no: fijar o desfijar, renumerar posiciones, mover al basurero o al archivo y
+ * las normalizaciones no cambian la fecha de última actualización.
  *
  * El reloj y los identificadores se inyectan donde hacen falta, para que las pruebas
  * puedan fijarlos y el resultado sea determinista.
@@ -94,6 +100,9 @@ export function listLimitLabel(board: ChecklistBoard): string {
  * Añade una lista al tablero y deja el orden estable (`position`) numerado sin huecos.
  * Devuelve si se añadió: un título que se queda vacío tras normalizarlo (solo espacios,
  * saltos de línea…) o un tablero en el límite no crean nada.
+ *
+ * Crear una lista es una modificación de esa lista: arranca con `updatedAt` igual a su
+ * `createdAt`. El resto de las listas solo se renumeran, así que no se tocan sus fechas.
  */
 export function addListToBoard(
   board: ChecklistBoard,
@@ -106,6 +115,8 @@ export function addListToBoard(
   const nuevoId = opciones.nuevoId ?? (() => crypto.randomUUID());
   const ahora = opciones.ahora ?? (() => new Date().toISOString());
   const orderedLists = [...board.lists].sort((a, b) => a.position - b.position);
+  // Una sola fecha por acción: la del alta de la lista.
+  const creada = ahora();
 
   const newList: ChecklistList = {
     id: nuevoId(),
@@ -113,7 +124,8 @@ export function addListToBoard(
     title,
     visualColor: opciones.colorVisual,
     position: opciones.alInicio ? 0 : orderedLists.length,
-    createdAt: ahora(),
+    createdAt: creada,
+    updatedAt: creada,
     tasks: []
   };
 
@@ -123,6 +135,23 @@ export function addListToBoard(
   board.lists = orderedLists;
   // Una lista creada "al inicio del tablero" también arranca pinneada.
   if (opciones.alInicio) board.pinnedListId = newList.id;
+  return true;
+}
+
+/**
+ * Aplica el título editado de una lista y fija su fecha de última modificación.
+ * Devuelve `false` si el título se queda vacío tras normalizarlo (entonces no hay nada que
+ * guardar y quien llama cancela la edición).
+ */
+export function editListTitle(
+  list: ChecklistList,
+  titulo: string,
+  ahora: string = new Date().toISOString()
+): boolean {
+  const title = normalizeListTitle(titulo);
+  if (!title) return false;
+  list.title = title;
+  touchList(list, ahora);
   return true;
 }
 

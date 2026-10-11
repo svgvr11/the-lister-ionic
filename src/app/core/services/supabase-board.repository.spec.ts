@@ -278,6 +278,60 @@ describe('SupabaseBoardRepository', () => {
       ]);
     });
 
+    /**
+     * Dos dispositivos añaden tareas distintas a la MISMA lista. La lista local lleva su
+     * `updatedAt` recién escrito: eso no puede convertir la fusión en un conflicto.
+     */
+    it('dos dispositivos con tareas distintas en la misma lista fusionan aunque el local tenga updatedAt', async () => {
+      const remoto = tableroRemoto();
+      const s = fakeSupabase({
+        fila: fila(remoto, VERSION_ANTERIOR),
+        filaActualizada: (numero) => (numero === 0 ? null : { updated_at: VERSION_POSTERIOR })
+      });
+      const { repo } = montar(s);
+      await repo.initializeForUser(USUARIO);
+
+      const local = structuredClone(remoto);
+      local.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+      local.lists[0].tasks.push({
+        id: 'tarea-nueva',
+        listId: 'lista-1',
+        text: 'Pan',
+        completed: false,
+        position: 1,
+        createdAt: AHORA_ISO
+      });
+
+      const remotoMasNuevo = structuredClone(remoto);
+      remotoMasNuevo.lists[0].updatedAt = '2026-01-04T09:00:00.000Z';
+      remotoMasNuevo.lists[0].tasks.push({
+        id: 'tarea-remota',
+        listId: 'lista-1',
+        text: 'Huevos',
+        completed: false,
+        position: 1,
+        createdAt: AHORA_ISO
+      });
+      s.opciones.fila = fila(remotoMasNuevo, VERSION_POSTERIOR);
+
+      const conflictos: unknown[] = [];
+      repo.conflict$.subscribe((c) => {
+        if (c) conflictos.push(c);
+      });
+      await repo.saveBoard(local);
+
+      // Sin conflicto: el merge entra y gana la fecha más reciente de las dos.
+      expect(conflictos).toEqual([]);
+      expect(s.llamadas.filter((l) => l === 'boards.update').length).toBe(2);
+      const datos = s.actualizado!['board_data'] as ChecklistBoard;
+      expect(datos.lists[0].tasks.map((t) => t.id)).toEqual([
+        'tarea-1',
+        'tarea-remota',
+        'tarea-nueva'
+      ]);
+      expect(datos.lists[0].updatedAt).toBe('2026-01-05T10:00:00.000Z');
+    });
+
     it('si las adiciones no se pueden fusionar, publica conflicto y lanza', async () => {
       const remoto = tableroRemoto();
       const s = fakeSupabase({ fila: fila(remoto, VERSION_ANTERIOR), filaActualizada: null });

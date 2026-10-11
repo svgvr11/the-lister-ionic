@@ -106,6 +106,23 @@ describe('board-task-rules: añadir tareas', () => {
 
     expect(l.tasks.map((t) => t.position)).toEqual([5, 2, 6]);
   });
+
+  it('añadir una tarea fija el updatedAt de la lista', () => {
+    const l = lista('l1');
+
+    const creada = addTaskToList(l, 'Pan', { nuevoId: idFijo, ahora: relojFijo });
+
+    expect(creada?.createdAt).toBe(AHORA);
+    // La fecha de la tarea nueva y la de la lista son la misma: una sola por acción.
+    expect(l.updatedAt).toBe(AHORA);
+  });
+
+  it('un borrador vacío no crea tarea ni toca la fecha de la lista', () => {
+    const l = lista('l1', [tarea('a', { position: 0 })]);
+
+    expect(addTaskToList(l, '   ', { nuevoId: idFijo, ahora: relojFijo })).toBeNull();
+    expect(l.updatedAt).toBeUndefined();
+  });
 });
 
 describe('board-task-rules: marcar y desmarcar', () => {
@@ -148,6 +165,22 @@ describe('board-task-rules: marcar y desmarcar', () => {
     expect(toggleTask(l, 'no-existe')).toBe(false);
     expect(l.tasks.length).toBe(1);
   });
+
+  it('marcar y desmarcar son modificaciones de la lista: fijan su updatedAt', () => {
+    const l = lista('l1', [tarea('a', { position: 0 })]);
+
+    expect(toggleTask(l, 'a', AHORA)).toBe(true);
+    expect(l.updatedAt).toBe(AHORA);
+
+    expect(toggleTask(l, 'a', AHORA)).toBe(true);
+    expect(l.updatedAt).toBe(AHORA);
+  });
+
+  it('marcar una tarea que no existe no toca la fecha de la lista', () => {
+    const l = lista('l1', [tarea('a', { position: 0 })]);
+    toggleTask(l, 'no-existe', AHORA);
+    expect(l.updatedAt).toBeUndefined();
+  });
 });
 
 describe('board-task-rules: borrar tareas', () => {
@@ -181,6 +214,19 @@ describe('board-task-rules: borrar tareas', () => {
     const l = lista('l1', [tarea('a', { position: 0 })]);
     expect(deleteTask(l, 'no-existe')).toBe(false);
     expect(l.tasks.map((t) => t.id)).toEqual(['a']);
+  });
+
+  it('borrar una tarea es una modificación de la lista: fija su updatedAt', () => {
+    const l = lista('l1', [tarea('a', { position: 0 }), tarea('b', { position: 1 })]);
+
+    expect(deleteTask(l, 'b', AHORA)).toBe(true);
+    expect(l.updatedAt).toBe(AHORA);
+  });
+
+  it('borrar una tarea que no existe no toca la fecha de la lista', () => {
+    const l = lista('l1', [tarea('a', { position: 0 })]);
+    deleteTask(l, 'no-existe', AHORA);
+    expect(l.updatedAt).toBeUndefined();
   });
 });
 
@@ -224,36 +270,56 @@ describe('board-task-rules: reordenar', () => {
 
 describe('board-task-rules: editar el texto de una tarea', () => {
   it('aplica el texto recortado', () => {
+    const l = lista('l1');
     const t = tarea('a', { text: 'Viejo' });
 
-    expect(editTaskText(t, '  Nuevo texto  ')).toBe(true);
+    expect(editTaskText(l, t, '  Nuevo texto  ')).toBe(true);
     expect(t.text).toBe('Nuevo texto');
   });
 
   it('un texto que se queda vacío no se aplica (hay que cancelar)', () => {
+    const l = lista('l1');
     const t = tarea('a', { text: 'Viejo' });
 
-    expect(editTaskText(t, '   ')).toBe(false);
+    expect(editTaskText(l, t, '   ')).toBe(false);
     expect(t.text).toBe('Viejo');
   });
 
   it('a diferencia del título de lista, NO colapsa los espacios internos', () => {
     // `normalizeListTitle` colapsa y recorta; el texto de tarea solo se recorta por los
     // bordes. Aquí se fija esa asimetría tal y como se comporta hoy.
+    const l = lista('l1');
     const t = tarea('a', { text: 'Viejo' });
 
-    editTaskText(t, '  hola   mundo  ');
+    editTaskText(l, t, '  hola   mundo  ');
 
     expect(t.text).toBe('hola   mundo');
   });
 
   it('no recorta a 90 caracteres', () => {
+    const l = lista('l1');
     const t = tarea('a');
     const largo = 'x'.repeat(200);
 
-    editTaskText(t, largo);
+    editTaskText(l, t, largo);
 
     expect(t.text).toBe(largo);
+  });
+
+  it('editar el texto es una modificación de la lista: fija su updatedAt', () => {
+    const l = lista('l1');
+    const t = tarea('a', { text: 'Viejo' });
+
+    expect(editTaskText(l, t, 'Nuevo', AHORA)).toBe(true);
+    expect(l.updatedAt).toBe(AHORA);
+  });
+
+  it('un texto vacío no toca la fecha de la lista', () => {
+    const l = lista('l1');
+    const t = tarea('a', { text: 'Viejo' });
+
+    expect(editTaskText(l, t, '   ', AHORA)).toBe(false);
+    expect(l.updatedAt).toBeUndefined();
   });
 });
 
@@ -385,8 +451,49 @@ describe('board-task-rules: arrastrar tareas', () => {
   });
 
   /**
+   * Reordenar dentro de la lista es una modificación de esa lista.
+   */
+  it('reordenar dentro de la misma lista fija su updatedAt', () => {
+    const board = tableroDe({ l1: [tarea('a', { position: 0 }), tarea('b', { position: 1 })] });
+
+    expect(dropTask(board, { listId: 'l1', taskId: 'a' }, 'l1', 'b', AHORA)).toBe(true);
+    expect(board.lists[0].updatedAt).toBe(AHORA);
+  });
+
+  it('soltar en la misma lista (al final) también es una modificación', () => {
+    const board = tableroDe({ l1: [tarea('a', { position: 0 }), tarea('b', { position: 1 })] });
+
+    expect(dropTaskInList(board, { listId: 'l1', taskId: 'a' }, 'l1', AHORA)).toBe(true);
+    expect(board.lists[0].updatedAt).toBe(AHORA);
+  });
+
+  /**
+   * Mover una tarea entre listas modifica las dos: origen y destino comparten la MISMA fecha
+   * (se crea una sola vez por acción).
+   */
+  it('mover una tarea a otra lista fija la misma fecha en origen y destino', () => {
+    const board = tableroDe({
+      l1: [tarea('a', { position: 0 }), tarea('b', { position: 1 })],
+      l2: [tarea('x', { position: 0 })]
+    });
+
+    expect(dropTaskInList(board, { listId: 'l1', taskId: 'b' }, 'l2', AHORA)).toBe(true);
+
+    expect(board.lists[0].updatedAt).toBe(AHORA);
+    expect(board.lists[1].updatedAt).toBe(AHORA);
+  });
+
+  it('un arrastre que no mueve nada no toca ninguna fecha', () => {
+    const board = tableroDe({ l1: [tarea('a', { position: 0 })] });
+
+    expect(dropTask(board, { listId: 'l1', taskId: 'a' }, 'l1', 'a', AHORA)).toBe(false);
+    expect(dropTask(board, { listId: 'desaparecida', taskId: 'a' }, 'l1', 'a', AHORA)).toBe(false);
+    expect(board.lists[0].updatedAt).toBeUndefined();
+  });
+
+  /**
    * BUG-08: al insertar en el índice crudo de destino, una tarea completada soltada
-   * entre pendientes queda DELANTE en el array. Lo comprueba este caso.
+   * entre pendientes queda DELANTE en el arreglo. Lo comprueba este caso.
    */
   it('una completada soltada sobre pendientes queda delante en el array (BUG-08)', () => {
     const board = tableroDe({
