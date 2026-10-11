@@ -49,6 +49,7 @@ import {
 import {
   addListToBoard,
   completedTaskCount,
+  editListTitle,
   isAtListLimit,
   isPinned,
   listLimitLabel,
@@ -80,6 +81,10 @@ import {
 } from '../../core/board-task-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
+import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list-updated-at';
+
+/** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
+const TOOLTIP_TACTIL_MS = 4000;
 
 @Component({
   selector: 'app-board',
@@ -236,11 +241,19 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   focusListId: string | null = null;
   focusTaskDraft = '';
   focusNotice = '';
+  /** Tooltip de la etiqueta «Última actualización» abierto (foco de teclado o toque). */
+  focusUpdatedAtTooltipOpen = false;
+  private focusUpdatedAtTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   private focusInitialTitleFocusPending = false;
   private focusOpener: HTMLElement | null = null;
   private focusRemovalCause: FocusListRemovalCause | null = null;
   private focusRemovalListId: string | null = null;
   private focusNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Zona horaria del dispositivo. Se lee del dispositivo al abrir el modal de enfoque: en
+   * producción NUNCA se fija una zona (las fijas son solo para los tests).
+   */
+  private dispositivoZonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   get listProgress(): string {
     return listProgress(this.board);
@@ -396,6 +409,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private focusListTasks?: ElementRef<HTMLElement>;
   @ViewChild('focusDialog', { read: ElementRef })
   private focusDialog?: ElementRef<HTMLElement>;
+  /** Etiqueta «Última actualización» del pie del modal. Solo existe con el modal abierto. */
+  @ViewChild('updatedAtLabel', { read: ElementRef })
+  private updatedAtLabel?: ElementRef<HTMLElement>;
   @ViewChild('deleteAccountInput', { read: ElementRef })
   private set deleteAccountInput(input: ElementRef<HTMLInputElement> | undefined) {
     if (input) requestAnimationFrame(() => input.nativeElement.focus());
@@ -568,6 +584,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }
     this.focusTaskDraft = '';
     this.focusListMobilePresentation = this.isMobilePresentation;
+    // La zona horaria se lee del dispositivo cada vez que se abre el modal.
+    this.dispositivoZonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    this.closeFocusUpdatedAtTooltip();
     this.focusInitialTitleFocusPending = true;
     this.focusListId = list.id;
     this.focusRemovalCause = null;
@@ -647,6 +666,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     const listId = this.focusListId;
     if (this.editingListId === listId) this.cancelEditList();
     if (this.editingTaskId) this.cancelEditTask();
+    this.closeFocusUpdatedAtTooltip();
     this.focusListId = null;
     this.focusInitialTitleFocusPending = false;
     this.focusTaskDraft = '';
@@ -666,6 +686,103 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       return;
     }
     this.releasePendingRemoteBoard();
+  }
+
+  // ── «Última actualización» ────────────────────────────────────────────────
+
+  /**
+   * Fecha que muestra la etiqueta del pie del modal, o `null` si la lista no tiene ninguna
+   * fecha legible (entonces la etiqueta no se pinta).
+   */
+  get focusListUpdatedAt(): string | null {
+    return this.focusList ? resolveListUpdatedAt(this.focusList) : null;
+  }
+
+  /** Etiqueta ya formateada, con la zona horaria del dispositivo. */
+  focusUpdatedAtLabel(iso: string): string {
+    return formatLastUpdated(iso, { locale: 'es-CL', timeZone: this.dispositivoZonaHoraria });
+  }
+
+  /**
+   * La etiqueta partida en sus dos renglones. En pantallas estrechas se pintan uno sobre otro
+   * para que la fecha quepa al lado del botón «Listo», en la misma fila.
+   */
+  focusUpdatedAtParts(iso: string): { etiqueta: string; fecha: string } {
+    return splitLastUpdated(this.focusUpdatedAtLabel(iso));
+  }
+
+  /** Texto del tooltip: zona horaria del dispositivo y su desfase en ese instante. */
+  focusUpdatedAtTimeZone(iso: string): string {
+    return describeDeviceTimeZone(iso, { locale: 'es-CL', timeZone: this.dispositivoZonaHoraria });
+  }
+
+  /** Id del tooltip al que apunta el `aria-describedby` de la etiqueta. */
+  get focusUpdatedAtTooltipId(): string {
+    return this.focusListId ? `focus-list-timezone-${this.focusListId}` : 'focus-list-timezone';
+  }
+
+  /** Foco de teclado sobre la etiqueta: muestra el tooltip. */
+  onUpdatedAtLabelFocus(): void {
+    // Con ratón ya se basta el `:hover`; `matches` no existe en un elemento desmontado.
+    if (this.updatedAtLabel?.nativeElement.matches(':focus-visible')) this.openFocusUpdatedAtTooltip();
+  }
+
+  /** El foco se va de la etiqueta: el tooltip se va con él. */
+  onUpdatedAtLabelBlur(): void {
+    this.closeFocusUpdatedAtTooltip();
+  }
+
+  /** Toque sobre la etiqueta (pantallas táctiles): abre o cierra el tooltip. */
+  onUpdatedAtLabelPointer(event: PointerEvent): void {
+    if (event.pointerType !== 'touch') return;
+    if (this.focusUpdatedAtTooltipOpen) this.closeFocusUpdatedAtTooltip();
+    else this.openFocusUpdatedAtTooltip();
+  }
+
+  /**
+   * Abre el tooltip y arma el cierre automático: ~4 s en pantalla y cualquier toque fuera de
+   * la etiqueta. Con el foco de teclado se cierra solo, al perder el foco o con Escape.
+   */
+  private openFocusUpdatedAtTooltip(): void {
+    this.clearFocusUpdatedAtTooltipTimer();
+    this.focusUpdatedAtTooltipOpen = true;
+    document.addEventListener('pointerdown', this.onOutsideUpdatedAtPointer);
+    this.focusUpdatedAtTooltipTimer = setTimeout(() => {
+      this.focusUpdatedAtTooltipTimer = null;
+      this.closeFocusUpdatedAtTooltip();
+    }, TOOLTIP_TACTIL_MS);
+  }
+
+  private closeFocusUpdatedAtTooltip(): void {
+    this.clearFocusUpdatedAtTooltipTimer();
+    this.focusUpdatedAtTooltipOpen = false;
+    document.removeEventListener('pointerdown', this.onOutsideUpdatedAtPointer);
+  }
+
+  /**
+   * Toque fuera de la etiqueta: cierra el tooltip. El envoltorio corta la propagación de su
+   * propio toque, así que aquí solo llegan los de fuera.
+   */
+  private readonly onOutsideUpdatedAtPointer = (event: PointerEvent): void => {
+    if (event.pointerType !== 'touch') return;
+    this.closeFocusUpdatedAtTooltip();
+  };
+
+  private clearFocusUpdatedAtTooltipTimer(): void {
+    if (this.focusUpdatedAtTooltipTimer !== null) {
+      clearTimeout(this.focusUpdatedAtTooltipTimer);
+      this.focusUpdatedAtTooltipTimer = null;
+    }
+  }
+
+  /**
+   * Escape con el tooltip abierto se lo lleva por delante SIN cerrar el modal. Devuelve si
+   * había tooltip que ocultar, para que el Escape no siga su camino.
+   */
+  private hideUpdatedAtTooltipOnEscape(): boolean {
+    if (!this.focusUpdatedAtTooltipOpen) return false;
+    this.closeFocusUpdatedAtTooltip();
+    return true;
   }
 
   private showFocusNotice(message: string): void {
@@ -1256,6 +1373,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.cancelActiveEdit();
       return;
     }
+    // El tooltip de zona horaria se come el primer Escape: el modal sigue abierto.
+    if (this.hideUpdatedAtTooltipOnEscape()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (this.listToRemove) {
       event.preventDefault();
       this.cancelDeleteList();
@@ -1325,6 +1448,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
     if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
+    this.clearFocusUpdatedAtTooltipTimer();
     this.clearNewListInputFocusWork();
     this.feedbackOpen = false;
   }
@@ -1373,12 +1497,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   async confirmEditList(list: ChecklistList): Promise<void> {
-    const title = normalizeListTitle(this.listTitleDraft);
-    if (!title) {
+    // Un título que se queda vacío no es una edición: se cancela sin guardar.
+    if (!editListTitle(list, this.listTitleDraft)) {
       this.cancelEditList();
       return;
     }
-    list.title = title;
     this.cancelEditList();
     await this.persist();
   }
@@ -1455,9 +1578,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.scheduleMasonryLayout();
   }
 
-  async confirmEditTask(task: ChecklistTask): Promise<void> {
+  async confirmEditTask(list: ChecklistList, task: ChecklistTask): Promise<void> {
     // El texto vacío se cancela en lugar de guardarse.
-    if (!editTaskText(task, this.taskTextDraft)) {
+    if (!editTaskText(list, task, this.taskTextDraft)) {
       this.cancelEditTask();
       return;
     }

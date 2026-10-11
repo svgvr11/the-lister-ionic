@@ -14,6 +14,12 @@ export interface ChecklistList {
   visualColor?: string;
   position: number;
   createdAt: string;
+  /**
+   * Fecha de la última modificación de la lista (ISO 8601). Opcional a propósito: los tableros
+   * ya guardados no la tienen, y para ellos la etiqueta del modal de enfoque usa como respaldo
+   * el `createdAt` más reciente entre la lista y sus tareas (`resolveListUpdatedAt`).
+   */
+  updatedAt?: string;
   tasks: ChecklistTask[];
 }
 

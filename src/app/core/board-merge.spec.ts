@@ -106,3 +106,90 @@ describe('board-merge', () => {
     expect(result.lists[1].id).toBe('local-list');
   });
 });
+
+/**
+ * El `updatedAt` de la lista viaja dentro de `board_data`, y cada dispositivo escribe la fecha
+ * de SU reloj en cada acción. Si se comparara como un campo más, dos dispositivos que añaden
+ * tareas distintas a la misma lista parecerían haber editado la lista y la fusión seria un
+ * conflicto inventado. Estos casos fijan esa regla.
+ */
+describe('board-merge: updatedAt de las listas', () => {
+  it('tareas distintas en la misma lista no son un conflicto y gana la fecha mayor', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    remote.lists[0].updatedAt = '2026-01-04T09:00:00.000Z';
+    local.lists[0].tasks.push(newTask('local-task'));
+    remote.lists[0].tasks.push(newTask('remote-task'));
+
+    const result = mergeBoardAdditions(base, local, remote);
+
+    expect(result.lists[0].tasks.map((task) => task.id)).toEqual([
+      'task-1',
+      'remote-task',
+      'local-task'
+    ]);
+    expect(result.lists[0].updatedAt).toBe('2026-01-05T10:00:00.000Z');
+  });
+
+  it('la fecha más reciente puede ser la del remoto', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.lists[0].updatedAt = '2026-01-03T10:00:00.000Z';
+    remote.lists[0].updatedAt = '2026-01-04T09:00:00.000Z';
+    local.lists[0].tasks.push(newTask('local-task'));
+    remote.lists[0].tasks.push(newTask('remote-task'));
+
+    const result = mergeBoardAdditions(base, local, remote);
+
+    expect(result.lists[0].updatedAt).toBe('2026-01-04T09:00:00.000Z');
+  });
+
+  it('si un lado no tiene updatedAt, sobrevive el del otro', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    // El remoto se guardó antes de que existiera el campo.
+    remote.lists[0].updatedAt = undefined;
+    local.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    local.lists[0].tasks.push(newTask('local-task'));
+    remote.lists[0].tasks.push(newTask('remote-task'));
+
+    const result = mergeBoardAdditions(base, local, remote);
+
+    expect(result.lists[0].updatedAt).toBe('2026-01-05T10:00:00.000Z');
+  });
+
+  it('si ningún lado tiene updatedAt, la lista fusionada no gana el campo', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    delete base.lists[0].updatedAt;
+    local.lists[0].tasks.push(newTask('local-task'));
+    remote.lists[0].tasks.push(newTask('remote-task'));
+
+    const result = mergeBoardAdditions(base, local, remote);
+
+    expect(result.lists[0].updatedAt).toBeUndefined();
+  });
+
+  it('la lista que solo tocó el local conserva su fecha', () => {
+    // El local añadió una lista completa: viaja tal cual, con su fecha.
+    const local = structuredClone(base);
+    local.lists[0].tasks.push(newTask('local-task'));
+    local.lists.push(newList('local-list'));
+    local.lists[1].updatedAt = '2026-01-05T10:00:00.000Z';
+
+    const result = mergeBoardAdditions(base, local, structuredClone(base));
+
+    expect(result.lists[1].id).toBe('local-list');
+    expect(result.lists[1].updatedAt).toBe('2026-01-05T10:00:00.000Z');
+  });
+
+  it('una lista existente editada de verdad en local sigue siendo un conflicto', () => {
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.lists[0].updatedAt = '2026-01-05T10:00:00.000Z';
+    local.lists[0].title = 'Local edit';
+    remote.lists[0].title = 'Remote edit';
+    expect(() => mergeBoardAdditions(base, local, remote)).toThrow(/editadas/i);
+  });
+});

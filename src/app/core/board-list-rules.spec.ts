@@ -3,6 +3,7 @@ import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/boa
 import {
   addListToBoard,
   completedTaskCount,
+  editListTitle,
   isAtListLimit,
   isPinned,
   listLimitLabel,
@@ -16,6 +17,7 @@ import {
   syncPinnedList,
   taskCounterLabel
 } from './board-list-rules';
+import { purgeExpiredLists, restoreListToBoard } from './list-retention';
 
 /**
  * Pruebas de las reglas de las listas del tablero.
@@ -227,6 +229,28 @@ describe('board-list-rules: crear listas', () => {
 
     expect(Array.from(board.lists[1].title).length).toBe(90);
   });
+
+  it('crear una lista arranca con updatedAt igual a su createdAt', () => {
+    const board = tablero([lista('a', 0)]);
+
+    addListToBoard(board, 'Nueva', { nuevoId: idFijo, ahora: AHORA_FIJA });
+
+    expect(board.lists[1].updatedAt).toBe(AHORA);
+    expect(board.lists[1].updatedAt).toBe(board.lists[1].createdAt);
+  });
+
+  it('crear una lista «al inicio» no toca el updatedAt de las demás', () => {
+    // Renumerar posiciones no es una modificación de la lista.
+    const conFecha = lista('a', 0);
+    conFecha.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([conFecha, lista('b', 1)]);
+
+    addListToBoard(board, 'Urgente', { alInicio: true, nuevoId: idFijo, ahora: AHORA_FIJA });
+
+    expect(board.lists.map((l) => l.id)).toEqual(['id-1', 'a', 'b']);
+    expect(board.lists[1].updatedAt).toBe('2026-01-05T00:00:00.000Z');
+    expect(board.lists[2].updatedAt).toBeUndefined();
+  });
 });
 
 describe('board-list-rules: reordenar posiciones', () => {
@@ -251,6 +275,91 @@ describe('board-list-rules: reordenar posiciones', () => {
     const board = tablero([]);
     expect(() => reorderLists(board)).not.toThrow();
     expect(board.lists).toEqual([]);
+  });
+
+  it('renumerar posiciones no toca el updatedAt de ninguna lista', () => {
+    const a = lista('a', 0);
+    a.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([a, lista('b', 7)]);
+
+    reorderLists(board);
+
+    expect(board.lists[0].updatedAt).toBe('2026-01-05T00:00:00.000Z');
+    expect(board.lists[1].updatedAt).toBeUndefined();
+  });
+});
+
+describe('board-list-rules: editar el título de una lista', () => {
+  it('aplica el título normalizado y fija el updatedAt', () => {
+    const l = lista('a', 0);
+
+    expect(editListTitle(l, '  Compra   semanal  ', AHORA)).toBe(true);
+
+    expect(l.title).toBe('Compra semanal');
+    expect(l.updatedAt).toBe(AHORA);
+  });
+
+  it('un título que se queda vacío no se aplica ni toca la fecha', () => {
+    const l = lista('a', 0);
+
+    expect(editListTitle(l, '   ', AHORA)).toBe(false);
+    expect(l.title).toBe('Lista a');
+    expect(l.updatedAt).toBeUndefined();
+  });
+});
+
+describe('board-list-rules: lo que NO es una modificación de la lista', () => {
+  it('fijar o desfijar no toca el updatedAt', () => {
+    const a = lista('a', 0);
+    a.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([a, lista('b', 1)]);
+
+    expect(pinList(board, 'b')).toBe(true);
+    expect(pinList(board, 'a')).toBe(true);
+    expect(syncPinnedList(board)).toBe(false);
+
+    expect(a.updatedAt).toBe('2026-01-05T00:00:00.000Z');
+    expect(board.lists[1].updatedAt).toBeUndefined();
+  });
+
+  it('mover al basurero o al archivo no toca el updatedAt', () => {
+    const conFecha = lista('b', 1, [tarea('t1', true)]);
+    conFecha.updatedAt = '2026-01-05T00:00:00.000Z';
+    const papelera = tablero([lista('a', 0), conFecha]);
+    const archivo = tablero([lista('a', 0), lista('b', 1, [tarea('t1', true)])]);
+
+    moveListToTrash(papelera, 'b', AHORA);
+    moveListToArchive(archivo, 'b', AHORA);
+
+    expect(papelera.trashedLists![0].list.updatedAt).toBe('2026-01-05T00:00:00.000Z');
+    expect(archivo.archivedLists![0].list.updatedAt).toBeUndefined();
+  });
+
+  it('restaurar desde el basurero no toca el updatedAt', () => {
+    const conFecha = lista('a', 0);
+    conFecha.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([]);
+    board.trashedLists = [{ list: conFecha, deletedAt: AHORA }];
+
+    expect(restoreListToBoard(board, conFecha)).toBe(true);
+
+    expect(board.lists[0].updatedAt).toBe('2026-01-05T00:00:00.000Z');
+  });
+
+  it('purgar lo vencido no toca el updatedAt', () => {
+    const viva = lista('b', 1);
+    viva.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([lista('a', 0), viva], null);
+    // Una entrada del basurero ya vencida (hace más de 7 días) y otra vivita.
+    board.trashedLists = [
+      { list: lista('vieja', 9), deletedAt: '2025-01-01T00:00:00.000Z' },
+      { list: lista('reciente', 10), deletedAt: AHORA }
+    ];
+
+    expect(purgeExpiredLists(board, new Date(AHORA))).toBe(true);
+
+    expect(board.trashedLists!.map((entry) => entry.list.id)).toEqual(['reciente']);
+    expect(viva.updatedAt).toBe('2026-01-05T00:00:00.000Z');
   });
 });
 

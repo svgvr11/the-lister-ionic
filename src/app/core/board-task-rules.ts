@@ -1,4 +1,5 @@
 import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import { touchList } from './list-updated-at';
 
 /**
  * Reglas de las tareas dentro de una lista.
@@ -10,6 +11,11 @@ import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/boa
  * `toggleTask`, `deleteTask`, `moveTask…`, `reorderTasks`) modifican el objeto recibido y
  * devuelven `true` si cambiaron algo. Las de lectura (`pendingTasks`, `completedTasks`,
  * `getHighlightedSegments`) no modifican nada.
+ *
+ * Cada una de esas acciones de usuario fija además la fecha de última modificación de la lista
+ * (`updatedAt`) con `touchList`. El reloj se inyecta donde hace falta —igual que en las reglas
+ * de listas— y las que mueven una tarea entre dos listas reciben la fecha ya creada por quien
+ * llama, para que origen y destino compartan el mismo instante.
  *
  * El reloj y los identificadores se inyectan donde hacen falta, igual que en las reglas
  * de listas.
@@ -68,6 +74,9 @@ export function shouldShowCompletedToggle(
  * Añade una tarea al final de la lista y devuelve la creada, o `null` si el texto se
  * queda vacío (tras recortar espacios en los bordes). La posición es la siguiente a la
  * más alta que haya, así que poner una a mano no descuadra el orden.
+ *
+ * Añadir una tarea es una modificación de la lista: la fecha que se crea para la tarea
+ * es la que queda también como `updatedAt` de la lista.
  */
 export function addTaskToList(
   list: ChecklistList,
@@ -80,6 +89,8 @@ export function addTaskToList(
   const nuevoId = opciones.nuevoId ?? (() => crypto.randomUUID());
   const ahora = opciones.ahora ?? (() => new Date().toISOString());
   const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
+  // Una sola fecha por acción: la de la tarea nueva y la de la lista son la misma.
+  const creada = ahora();
 
   const task: ChecklistTask = {
     id: nuevoId(),
@@ -87,9 +98,10 @@ export function addTaskToList(
     text,
     completed: false,
     position: maxPosition + 1,
-    createdAt: ahora()
+    createdAt: creada
   };
   list.tasks.push(task);
+  touchList(list, creada);
   return task;
 }
 
@@ -97,22 +109,24 @@ export function addTaskToList(
  * Marca o desmarca una tarea y reordena la lista para que las completadas queden al
  * final. Devuelve si la tarea estaba en la lista.
  */
-export function toggleTask(list: ChecklistList, taskId: string): boolean {
+export function toggleTask(list: ChecklistList, taskId: string, ahora?: string): boolean {
   const task = list.tasks.find((item) => item.id === taskId);
   if (!task) return false;
   task.completed = !task.completed;
   reorderTasks(list);
+  touchList(list, ahora ?? new Date().toISOString());
   return true;
 }
 
 /**
  * Borra una tarea y reordena. Devuelve si la tarea estaba en la lista.
  */
-export function deleteTask(list: ChecklistList, taskId: string): boolean {
+export function deleteTask(list: ChecklistList, taskId: string, ahora?: string): boolean {
   const antes = list.tasks.length;
   list.tasks = list.tasks.filter((task) => task.id !== taskId);
   const borrada = list.tasks.length !== antes;
   reorderTasks(list);
+  if (borrada) touchList(list, ahora ?? new Date().toISOString());
   return borrada;
 }
 
@@ -134,11 +148,15 @@ export function setTaskPositions(list: ChecklistList): void {
  * título de una lista, aquí no se colapsan los espacios internos ni se recorta la
  * longitud, y así se ha comportado siempre. Devuelve si se aplicó (`false` si el texto
  * queda vacío, que es el caso en el que hay que cancelar la edición).
+ *
+ * Editar el texto es una modificación de la lista que contiene la tarea, así que la lista
+ * va como primer argumento y es la que recibe el `updatedAt`.
  */
-export function editTaskText(task: ChecklistTask, texto: string): boolean {
+export function editTaskText(list: ChecklistList, task: ChecklistTask, texto: string, ahora?: string): boolean {
   const text = texto.trim();
   if (!text) return false;
   task.text = text;
+  touchList(list, ahora ?? new Date().toISOString());
   return true;
 }
 
@@ -172,12 +190,17 @@ function sacarTareaArrastrada(sourceList: ChecklistList, taskId: string): Checkl
 /**
  * Suelta una tarea sobre otra tarea concreta: se inserta justo antes que esa. Devuelve
  * si se movió. Suelta la tarea sobre sí misma es un no-op.
+ *
+ * Tanto reordenar dentro de una lista como mover la tarea a otra lista son modificaciones:
+ * el `updatedAt` se fija en el origen y, si es otra lista, también en el destino, con la
+ * misma fecha en los dos.
  */
 export function dropTask(
   board: ChecklistBoard,
   arrastrada: TareaArrastrada,
   listIdDestino: string,
-  taskIdDestino: string
+  taskIdDestino: string,
+  ahora?: string
 ): boolean {
   if (arrastrada.taskId === taskIdDestino) return false;
   const sourceList = listaPorId(board, arrastrada.listId);
@@ -195,6 +218,10 @@ export function dropTask(
 
   setTaskPositions(sourceList);
   if (sourceList !== targetList) setTaskPositions(targetList);
+  // La fecha se crea UNA sola vez por acción, aunque acabe en dos listas.
+  const modificada = ahora ?? new Date().toISOString();
+  touchList(sourceList, modificada);
+  if (sourceList !== targetList) touchList(targetList, modificada);
   return true;
 }
 
@@ -205,7 +232,8 @@ export function dropTask(
 export function dropTaskInList(
   board: ChecklistBoard,
   arrastrada: TareaArrastrada,
-  listIdDestino: string
+  listIdDestino: string,
+  ahora?: string
 ): boolean {
   const sourceList = listaPorId(board, arrastrada.listId);
   const targetList = listaPorId(board, listIdDestino);
@@ -219,6 +247,10 @@ export function dropTaskInList(
   targetList.tasks.push(moved);
   setTaskPositions(sourceList);
   if (sourceList !== targetList) setTaskPositions(targetList);
+  // La fecha se crea UNA sola vez por acción, aunque acabe en dos listas.
+  const modificada = ahora ?? new Date().toISOString();
+  touchList(sourceList, modificada);
+  if (sourceList !== targetList) touchList(targetList, modificada);
   return true;
 }
 
