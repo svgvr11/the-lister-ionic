@@ -169,7 +169,7 @@ en las aserciones.
 
 ## 6. Estado actual de la cobertura
 
-**En Vitest (`npm test`, 403 casos):**
+**En Vitest (`npm test`, 470 casos):**
 
 Lógica pura del core (`src/app/core/`):
 
@@ -194,6 +194,10 @@ Lógica pura del core (`src/app/core/`):
 | `board-list-rules.spec.ts` | 36 |
 | `board-task-rules.spec.ts` | 38 |
 | `board-conflict-rules.spec.ts` | 30 |
+| `board-retention-page-rules.spec.ts` | 24 |
+| `login-rules.spec.ts` | 16 |
+| `feedback-messages.spec.ts` | 12 |
+| `feedback-modal-state.spec.ts` | 14 |
 | `focus-notice.spec.ts` | 3 |
 | `google-auth.spec.ts` | 2 |
 

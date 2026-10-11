@@ -16,6 +16,15 @@ import {
 } from '../../core/services/feedback-images';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import {
+  avisoSinConexion,
+  decidirCierre,
+  decidirDescarte,
+  estadoTrasEnviar,
+  limpiezaAlCerrar,
+  mensajeDemasiadoCorto,
+  tieneContenido
+} from '../../core/feedback-modal-state';
+import {
   FEEDBACK_TYPE_CHIPS,
   FeedbackType,
   MAX_IMAGES,
@@ -104,9 +113,14 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
   }
 
   get messageTooShort(): boolean {
-    return this.draft.message.trim().length > 0 && this.draft.message.trim().length < this.minLength;
+    return mensajeDemasiadoCorto(this.draft.message, this.minLength);
   }
 
+  /**
+   * `puedeEnviar` (en feedback-modal-state.ts) añadiría además `!sent`, que deshabilitaría
+   * el botón tras un envío correcto. Eso cambia lo que se ve, así que de momento se queda
+   * con la comprobación de siempre: `submit()` ya impide el doble envío por su cuenta.
+   */
   get canSend(): boolean {
     return this.feedback.canSend(this.draft, this.images.length, this.online(), this.busy);
   }
@@ -117,7 +131,7 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
 
   /** Hay algo que perder: texto escrito o imágenes adjuntas. */
   get hasDraftContent(): boolean {
-    return this.draft.message.trim().length > 0 || this.images.length > 0;
+    return tieneContenido(this.draft.message, this.images.length);
   }
 
 // ── Formulario ────────────────────────────────────────────────────────────
@@ -223,7 +237,9 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
   async submit(): Promise<void> {
     if (this.busy || this.sent) return;
     if (!this.canSend) {
-      if (this.offlineBlocked) this.errorMessage = 'Sin conexión: no se puede enviar ahora.';
+      // Solo cuando el bloqueo es la conexión: si el formulario no es válido, el mensaje
+      // de error previo se deja como estaba.
+      if (this.offlineBlocked) this.errorMessage = avisoSinConexion(this.online());
       return;
     }
 
@@ -231,14 +247,7 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
     this.errorMessage = '';
     try {
       const resultado = await this.feedback.send(this.draft, this.images);
-      if (resultado.ok) {
-        this.sent = true;
-        this.diagnosticsPreview = '';
-      } else {
-        this.errorMessage = resultado.message;
-        // Foco al mensaje de error para que un lector de pantalla lo anuncie de inmediato.
-        setTimeout(() => this.dialog?.nativeElement.querySelector<HTMLElement>('.feedback-error')?.focus(), 0);
-      }
+      this.aplicarResultado(resultado);
     } finally {
       this.busy = false;
     }
@@ -257,14 +266,33 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
    * dentro del diálogo de confirmación.
    */
   requestClose(): void {
-    if (this.confirmingDiscard) return;
-    if (this.hasDraftContent && !this.sent) {
+    const decision = decidirCierre({
+      enviado: this.sent,
+      ocupado: this.busy,
+      confirmandoDescarte: this.confirmingDiscard,
+      tieneContenido: this.hasDraftContent
+    });
+    if (decision === 'nada') return;
+    if (decision === 'preguntar') {
       this.confirmingDiscard = true;
       this.errorMessage = '';
       setTimeout(() => this.primary?.nativeElement.focus(), 0);
       return;
     }
     this.close();
+  }
+
+  /** Aplica el resultado del envío: vista de confirmación o mensaje de error. */
+  private aplicarResultado(resultado: { ok: true } | { ok: false; message: string }): void {
+    const estado = estadoTrasEnviar(resultado);
+    if (estado.tipo === 'enviado') {
+      this.sent = true;
+      this.diagnosticsPreview = '';
+      return;
+    }
+    this.errorMessage = estado.mensaje;
+    // Foco al mensaje de error para que un lector de pantalla lo anuncie de inmediato.
+    setTimeout(() => this.dialog?.nativeElement.querySelector<HTMLElement>('.feedback-error')?.focus(), 0);
   }
 
   /** Cierre intencional (X o "Cancelar"): se conserva el borrador de esta sesión. */
@@ -275,9 +303,10 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
 
   /** Cierra y borra el borrador guardado: es lo que hace "Descartar". */
   confirmDiscard(): void {
-    this.releaseImages();
-    this.resetForm();
-    this.feedback.clearDraft();
+    const descarte = decidirDescarte();
+    if (descarte.soltarImagenes) this.releaseImages();
+    if (descarte.resetearFormulario) this.resetForm();
+    if (descarte.borrarBorrador) this.feedback.clearDraft();
     this.close();
   }
 
@@ -292,11 +321,12 @@ export class FeedbackModalComponent implements AfterViewInit, OnDestroy {
    * El tablero es quien devuelve el foco al botón que lo abrió, así que aquí solo se avisa.
    */
   close(): void {
-    if (this.sent) {
+    const limpieza = limpiezaAlCerrar({ enviado: this.sent });
+    if (limpieza.resetearFormulario) {
       this.releaseImages();
       this.resetForm();
-      this.feedback.clearDraft();
     }
+    if (limpieza.borrarBorrador) this.feedback.clearDraft();
     this.confirmingDiscard = false;
     this.showDiagnostics = false;
     this.diagnosticsPreview = '';
