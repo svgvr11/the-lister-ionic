@@ -19,7 +19,7 @@ import { AppFooterComponent } from '../../shared/app-footer/app-footer.component
 import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
 import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
 import { BoardConflict } from '../../core/services/board.repository';
-import { BoardMergeConflictError, mergeBoardAdditions } from '../../core/board-merge';
+import { BoardMergeConflictError } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
 import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
@@ -37,6 +37,15 @@ import { FeedbackService } from '../../core/services/feedback.service';
 import { SessionGuardService } from '../../core/services/session-guard.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
 import { OwnBoardSnapshots } from '../../core/board-sync';
+import {
+  boardsEqual,
+  decideIncomingBoard,
+  decidePendingAfterSave,
+  decidePendingBeforeSave,
+  pideDobleConfirmacion,
+  tableroRemotoParaResolver,
+  type EstadoTrasGuardar
+} from '../../core/board-conflict-rules';
 import {
   addListToBoard,
   completedTaskCount,
@@ -750,8 +759,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private receiveBoard(board: ChecklistBoard): void {
-    if (this.ownBoardSnapshots.has(board)) return;
-    if (this.hasActiveInteraction() || this.activeConflict) {
+    const decision = decideIncomingBoard({
+      esEcoPropio: this.ownBoardSnapshots.has(board),
+      interaccionActiva: this.hasActiveInteraction(),
+      hayConflicto: Boolean(this.activeConflict)
+    });
+    if (decision === 'ignore') return;
+    if (decision === 'defer') {
+      // Solo se queda el más reciente: si llegan dos seguidos, el primero se descarta.
       this.pendingRemoteBoard = structuredClone(board);
       return;
     }
@@ -793,65 +808,77 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private releasePendingRemoteBoard(saveSucceeded = false): boolean {
-    if (!this.pendingRemoteBoard || this.hasActiveInteraction() || this.activeConflict) return false;
+    const estado: EstadoTrasGuardar = {
+      local: this.board,
+      ultimoAplicado: this.lastAppliedBoard,
+      pendienteRemoto: this.pendingRemoteBoard,
+      guardadoOk: saveSucceeded,
+      interaccionActiva: this.hasActiveInteraction(),
+      hayConflicto: Boolean(this.activeConflict)
+    };
+    const decision = decidePendingAfterSave(estado);
+    if (decision.tipo === 'nada') return false;
 
-    const remoteBoard = this.pendingRemoteBoard;
     this.pendingRemoteBoard = null;
-    if (!saveSucceeded && this.lastAppliedBoard && !this.boardsEqual(this.board, this.lastAppliedBoard)) {
-      this.activeConflict = {
-        localBoard: structuredClone(this.board),
-        remoteBoard: structuredClone(remoteBoard),
-        remoteUpdatedAt: '',
-        reason: 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
-      };
-      this.conflictFromRepository = false;
-      this.conflictDialogOpen = false;
-      this.conflictDialogDeferred = true;
-      this.confirmingLocalConflict = false;
-      this.saveError = '';
-      this.presentDeferredConflict();
+    if (decision.tipo === 'conflicto') {
+      this.publicarConflictoLocal(structuredClone(this.board), structuredClone(decision.board), decision.razon);
       return false;
     }
 
-    this.applyBoard(structuredClone(remoteBoard));
+    this.applyBoard(structuredClone(decision.board));
     return true;
   }
 
   private boardsEqual(left: ChecklistBoard, right: ChecklistBoard): boolean {
-    return JSON.stringify(left) === JSON.stringify(right);
+    return boardsEqual(left, right);
   }
 
   private preparePendingRemoteBeforeSave(): boolean {
     if (!this.pendingRemoteBoard || this.hasActiveInteraction() || this.activeConflict) return false;
 
-    const remoteBoard = this.pendingRemoteBoard;
+    const decision = decidePendingBeforeSave({
+      local: this.board,
+      ultimoAplicado: this.lastAppliedBoard,
+      pendienteRemoto: this.pendingRemoteBoard
+    });
+    // El pendiente se consume en cuanto se decide qué hacer con él.
     this.pendingRemoteBoard = null;
-    if (this.lastAppliedBoard && this.boardsEqual(this.board, this.lastAppliedBoard)) {
-      this.applyBoard(structuredClone(remoteBoard));
-      return true;
-    }
 
-    try {
-      const mergedBoard = mergeBoardAdditions(this.lastAppliedBoard ?? this.board, this.board, remoteBoard);
-      this.applyBoard(mergedBoard, false);
-      return false;
-    } catch (error) {
-      this.activeConflict = {
-        localBoard: structuredClone(this.board),
-        remoteBoard: structuredClone(remoteBoard),
-        remoteUpdatedAt: '',
-        reason: error instanceof Error
-          ? `No se pueden combinar estos cambios: ${error.message}`
-          : 'Llegaron cambios desde otro dispositivo mientras editabas. Elige qué versión conservar.'
-      };
-      this.conflictFromRepository = false;
-      this.conflictDialogOpen = false;
-      this.conflictDialogDeferred = true;
-      this.confirmingLocalConflict = false;
-      this.saveError = '';
-      this.presentDeferredConflict();
-      return true;
+    switch (decision.tipo) {
+      case 'adopt':
+        // El local no tenía cambios: se adopta el remoto y no hace falta guardar.
+        this.applyBoard(structuredClone(decision.board));
+        return true;
+      case 'merge':
+        // La fusión ya viene hecha: se aplica y se sigue adelante con el guardado.
+        this.applyBoard(decision.board, false);
+        return false;
+      case 'conflicto':
+        this.publicarConflictoLocal(structuredClone(this.board), structuredClone(decision.board), decision.razon);
+        return true;
+      default:
+        // Sin pendiente no se llega hasta aquí (la guarda inicial ya retornó).
+        return false;
     }
+  }
+
+  /**
+   * Publica un conflicto surgido en la propia página (no en el repositorio): misma forma
+   * que el del repositorio, para que el diálogo se muestre igual.
+   */
+  private publicarConflictoLocal(localBoard: ChecklistBoard, remoteBoard: ChecklistBoard, reason: string): void {
+    this.activeConflict = {
+      localBoard,
+      remoteBoard,
+      remoteUpdatedAt: '',
+      reason
+    };
+    this.conflictFromRepository = false;
+    this.conflictDialogOpen = false;
+    this.conflictDialogDeferred = true;
+    this.confirmingLocalConflict = false;
+    this.saveError = '';
+    this.presentDeferredConflict();
   }
 
   async refreshBoard(event: CustomEvent): Promise<void> {
@@ -893,7 +920,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   async resolveActiveConflict(resolution: 'remote' | 'local'): Promise<void> {
     const conflict = this.activeConflict;
     if (!conflict) return;
-    if (resolution === 'local' && !this.confirmingLocalConflict) {
+    // Resolver con el tablero local pide una confirmación aparte.
+    if (pideDobleConfirmacion({ resolution, confirmandoLocal: this.confirmingLocalConflict })) {
       this.confirmingLocalConflict = true;
       return;
     }
@@ -908,7 +936,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       }
 
       if (resolution === 'remote') {
-        const remoteBoard = this.pendingRemoteBoard ?? conflict.remoteBoard;
+        const remoteBoard = tableroRemotoParaResolver(conflict, this.pendingRemoteBoard);
         this.pendingRemoteBoard = null;
         this.activeConflict = null;
         this.conflictDialogDeferred = false;
