@@ -52,6 +52,23 @@ import {
   syncPinnedList,
   taskCounterLabel
 } from '../../core/board-list-rules';
+import {
+  COMPLETED_PREVIEW_LIMIT,
+  addTaskToList,
+  completedTasks,
+  deleteTask,
+  dropTask,
+  dropTaskInList,
+  editTaskText,
+  getHighlightedSegments,
+  hiddenCompletedCount,
+  pendingTasks,
+  reorderTasks,
+  setTaskPositions,
+  shouldShowCompletedToggle,
+  toggleTask,
+  visibleCompletedTasks
+} from '../../core/board-task-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
 
@@ -399,7 +416,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private layoutFrame: number | null = null;
 
   private readonly GAP = 22;
-  private readonly COMPLETED_PREVIEW_LIMIT = 2;
+  private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
   constructor() {
     addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline});
@@ -1411,12 +1428,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   async confirmEditTask(task: ChecklistTask): Promise<void> {
-    const text = this.taskTextDraft.trim();
-    if (!text) {
+    // El texto vacío se cancela en lugar de guardarse.
+    if (!editTaskText(task, this.taskTextDraft)) {
       this.cancelEditTask();
       return;
     }
-    task.text = text;
     this.cancelEditTask();
     await this.persist();
   }
@@ -1584,27 +1600,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   getHighlightedSegments(title: string): { text: string; highlight: boolean }[] {
-    if (!this.searchQuery.trim()) return [{ text: title, highlight: false }];
-    const query = this.searchQuery.toLowerCase();
-    const lower = title.toLowerCase();
-    const segments: { text: string; highlight: boolean }[] = [];
-    let lastIdx = 0;
-    let idx = lower.indexOf(query, lastIdx);
-    while (idx !== -1) {
-      if (idx > lastIdx) {
-        segments.push({ text: title.slice(lastIdx, idx), highlight: false });
-      }
-      segments.push({
-        text: title.slice(idx, idx + this.searchQuery.length),
-        highlight: true
-      });
-      lastIdx = idx + this.searchQuery.length;
-      idx = lower.indexOf(query, lastIdx);
-    }
-    if (lastIdx < title.length) {
-      segments.push({ text: title.slice(lastIdx), highlight: false });
-    }
-    return segments;
+    return getHighlightedSegments(title, this.searchQuery);
   }
 
   /**
@@ -1650,11 +1646,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   pendingTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => !task.completed).sort((a, b) => a.position - b.position);
+    return pendingTasks(list);
   }
 
   completedTasks(list: ChecklistList): ChecklistTask[] {
-    return list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
+    return completedTasks(list);
   }
 
   isCompletedExpanded(listId: string): boolean {
@@ -1662,19 +1658,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   visibleCompletedTasks(list: ChecklistList): ChecklistTask[] {
-    const completed = this.completedTasks(list);
-    if (this.isCompletedExpanded(list.id) || completed.length <= this.COMPLETED_PREVIEW_LIMIT) {
-      return completed;
-    }
-    return completed.slice(0, this.COMPLETED_PREVIEW_LIMIT);
+    return visibleCompletedTasks(list, this.isCompletedExpanded(list.id));
   }
 
   hiddenCompletedCount(list: ChecklistList): number {
-    return Math.max(0, this.completedTasks(list).length - this.COMPLETED_PREVIEW_LIMIT);
+    return hiddenCompletedCount(list);
   }
 
   shouldShowCompletedToggle(list: ChecklistList): boolean {
-    return this.completedTasks(list).length > this.COMPLETED_PREVIEW_LIMIT;
+    return shouldShowCompletedToggle(list);
   }
 
   toggleCompletedTasks(list: ChecklistList, event?: Event): void {
@@ -1721,13 +1713,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   async addTask(list: ChecklistList, input?: IonInput): Promise<void> {
-    const text = (this.taskDrafts[list.id] ?? '').trim();
-    if (!text) return;
-    const maxPosition = list.tasks.reduce((max, task) => Math.max(max, task.position), -1);
-    list.tasks.push({
-      id: crypto.randomUUID(), listId: list.id, text, completed: false,
-      position: maxPosition + 1, createdAt: new Date().toISOString()
-    });
+    const creada = addTaskToList(list, this.taskDrafts[list.id] ?? '');
+    if (!creada) return;
     this.taskDrafts[list.id] = '';
     // Mantener el foco en el input para poder añadir varias tareas seguidas.
     input?.setFocus();
@@ -1735,14 +1722,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   async toggleTask(list: ChecklistList, task: ChecklistTask): Promise<void> {
-    task.completed = !task.completed;
-    this.reorderTasks(list);
+    if (!toggleTask(list, task.id)) return;
     await this.persist();
   }
 
   async deleteTask(list: ChecklistList, taskId: string): Promise<void> {
-    list.tasks = list.tasks.filter((task) => task.id !== taskId);
-    this.reorderTasks(list);
+    if (!deleteTask(list, taskId)) return;
     await this.persist();
   }
 
@@ -1986,20 +1971,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   async dropTask(targetList: ChecklistList, targetTaskId: string, event: DragEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
-    if (!this.draggedTask || this.draggedTask.taskId === targetTaskId) return;
-    const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
-    if (!sourceList) return;
-    sourceList.tasks = [...this.pendingTasks(sourceList), ...this.completedTasks(sourceList)];
-    if (sourceList !== targetList) {
-      targetList.tasks = [...this.pendingTasks(targetList), ...this.completedTasks(targetList)];
-    }
-    const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
-    if (sourceIndex < 0) return;
-    const [moved] = sourceList.tasks.splice(sourceIndex, 1);
-    const targetIndex = targetList.tasks.findIndex((task) => task.id === targetTaskId);
-    targetList.tasks.splice(Math.max(0, targetIndex), 0, moved);
-    this.setTaskPositions(sourceList);
-    if (sourceList !== targetList) this.setTaskPositions(targetList);
+    if (!this.draggedTask) return;
+    if (!dropTask(this.board, this.draggedTask, targetList.id, targetTaskId)) return;
     this.draggedTask = null;
     await this.persist();
   }
@@ -2007,18 +1980,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   async dropTaskInList(targetList: ChecklistList, event: DragEvent): Promise<void> {
     event.preventDefault();
     if (!this.draggedTask) return;
-    const sourceList = this.board.lists.find((list) => list.id === this.draggedTask?.listId);
-    if (!sourceList) return;
-    sourceList.tasks = [...this.pendingTasks(sourceList), ...this.completedTasks(sourceList)];
-    if (sourceList !== targetList) {
-      targetList.tasks = [...this.pendingTasks(targetList), ...this.completedTasks(targetList)];
-    }
-    const sourceIndex = sourceList.tasks.findIndex((task) => task.id === this.draggedTask?.taskId);
-    if (sourceIndex < 0) return;
-    const [moved] = sourceList.tasks.splice(sourceIndex, 1);
-    targetList.tasks.push(moved);
-    this.setTaskPositions(sourceList);
-    if (sourceList !== targetList) this.setTaskPositions(targetList);
+    if (!dropTaskInList(this.board, this.draggedTask, targetList.id)) return;
     this.draggedTask = null;
     await this.persist();
   }
@@ -2054,13 +2016,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private reorderTasks(list: ChecklistList): void {
-    const pending = list.tasks.filter((task) => !task.completed).sort((a, b) => a.position - b.position);
-    const completed = list.tasks.filter((task) => task.completed).sort((a, b) => a.position - b.position);
-    [...pending, ...completed].forEach((task, index) => task.position = index);
+    reorderTasks(list);
   }
 
   private setTaskPositions(list: ChecklistList): void {
-    list.tasks.forEach((task, index) => task.position = index);
+    setTaskPositions(list);
   }
 
   private async persist(): Promise<void> {
