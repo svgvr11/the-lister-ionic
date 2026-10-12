@@ -2,9 +2,25 @@
 
 ## Versión (obligatorio)
 
-Versionado (formato `MAYOR.FEATURE.BUILD-a`, p. ej. `v1.9.5-a`). Al comienzo de cada petición del usuario que vaya a modificar código, ejecuta `npm run version:bump` UNA vez, antes de editar nada; el script decide solo según el estado del árbol (limpio: sube FEATURE y pone BUILD en 0; con cambios: sube BUILD). No lo ejecutes para preguntas, revisiones ni tareas que no cambien archivos, ni más de una vez por petición. MAYOR solo sube si el usuario lo pide explícitamente: `npm run version:bump -- --major`. La versión se lee siempre de `src/app/core/app-version.ts`; nunca se escribe a mano en plantillas ni en otros archivos, y nunca se edita a mano salvo para migraciones pedidas por el usuario.
+Versionado (formato `MAYOR.FEATURE.BUILD-a`, p. ej. `v1.9.5-a`). Al comienzo de cada petición del usuario que vaya a modificar código, ANTES de editar nada, pregunta al usuario qué tipo de subida de versión desea para esa tarea (usa la herramienta de preguntas con opciones cerradas):
 
-Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)", `--major` sube MAYOR (deja FEATURE y BUILD en 0). Pruebas: `npm run test:version`.
+- **Mayor**: sube MAYOR y deja FEATURE y BUILD en 0.
+- **Feature**: sube FEATURE y deja BUILD en 0.
+- **Build**: sube BUILD.
+- **Ninguna**: no se sube la versión en esta tarea.
+
+Nunca elijas el tipo por tu cuenta ni lo deduzcas del estado del árbol de cambios (limpio o con cambios): la decisión es siempre del usuario, tarea por tarea. Una respuesta anterior no se reutiliza para tareas posteriores; pregunta de nuevo en cada petición nueva.
+
+Con la respuesta del usuario, ejecuta UNA sola vez, antes de editar nada, el comando correspondiente:
+
+- Mayor: `npm run version:bump -- --major`
+- Feature: `npm run version:bump -- --feature`
+- Build: `npm run version:bump -- --build`
+- Ninguna: no ejecutes el script.
+
+No preguntes ni ejecutes el script para preguntas, revisiones ni tareas que no cambien archivos, ni más de una vez por petición. La versión se lee siempre de `src/app/core/app-version.ts`; nunca se escribe a mano en plantillas ni en otros archivos, y nunca se edita a mano salvo para migraciones pedidas por el usuario.
+
+Opciones del script: `--dry-run` solo muestra "vieja → nueva (motivo)"; `--major`, `--feature` y `--build` indican explícitamente el tipo de subida (el script ya no lo decide solo según el árbol). Pruebas: `npm run test:version`.
 
 ## Otras fuentes de versión (derivadas automáticamente)
 
