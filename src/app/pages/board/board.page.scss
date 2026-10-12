@@ -803,8 +803,8 @@ ion-header {
 }
 
 /* Guía de bienvenida: enlace discreto FUERA de la rejilla de acciones, a ancho completo,
-   con el acento del tema (mismo tratamiento que el botón flotante de comentarios). Solo
-   se pinta en escritorio: el recorrido no se abre en nativo ni en pantallas estrechas. */
+   con el acento del tema (mismo tratamiento que el botón flotante de comentarios). Se
+   muestra en todas las plataformas: el recorrido se abre en sus dos variantes. */
 .welcome-guide-link {
   position: relative;
   overflow: hidden;

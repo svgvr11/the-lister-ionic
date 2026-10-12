@@ -83,11 +83,12 @@ import {
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
 import {
-  WELCOME_DESKTOP_MIN_WIDTH,
   isMacOsBrowser,
   markWelcomeSeen,
   readWelcomeSeen,
-  shouldShowWelcome
+  shouldShowWelcome,
+  welcomeVariant,
+  type WelcomeVariant
 } from '../../core/welcome-tour';
 import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list-updated-at';
 
@@ -338,8 +339,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   feedbackOpen = false;
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
   private feedbackOpener: HTMLElement | null = null;
-  /** Recorrido de bienvenida abierto (modal de 4 páginas, solo escritorio). */
+  /** Recorrido de bienvenida abierto (modal de 4 páginas en escritorio, 3 en móvil). */
   welcomeTourOpen = false;
+  /**
+   * Variante con la que se abrió el recorrido: se decide al abrir (app nativa o pantalla
+   * de 700px o menos → móvil) y no se recalcula mientras el modal está abierto.
+   */
+  welcomeTourVariant: WelcomeVariant = 'desktop';
   /** Pendiente de abrirse: al cargar el tablero había otro overlay abierto y hay que esperar. */
   private welcomeTourDeferred = false;
   /** Elemento que tenía el foco al abrirse el recorrido, para devolvérselo al cerrar. */
@@ -1403,15 +1409,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   /**
-   * Las cinco reglas de aparición, resueltas contra el estado actual: solo escritorio
-   * web (ni nativo ni ≤700px), una vez por dispositivo y usuario, con sesión iniciada y
-   * con la pila de overlays vacía. Si el almacenamiento local falla, la marca se lee como
-   * `error` y el recorrido no se muestra: nunca entra en bucle.
+   * Las reglas de aparición, resueltas contra el estado actual: marca ausente (una sola
+   * por dispositivo y usuario, valida para las dos variantes), sin otro overlay y con
+   * sesión iniciada. Si el almacenamiento local falla, la marca se lee como `error` y el
+   * recorrido no se muestra: nunca entra en bucle.
    */
   private welcomeTourDues(): boolean {
     return shouldShowWelcome({
-      isNative: this.isNative,
-      width: window.innerWidth,
       seen: readWelcomeSeen(this.auth.session?.user.id ?? null),
       hasOverlay: this.overlayStack.topId !== null || this.sessionGuard.blocked() !== null,
       hasSession: Boolean(this.auth.session)
@@ -1430,13 +1434,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /**
    * Abre el recorrido. Desde el menú de perfil se entra por aquí igual: la bandera de
    * «una vez por dispositivo» solo se escribe al cerrarlo (`closeWelcomeTour`), así que
-   * volver a verlo a demanda no la consume.
+   * volver a verlo a demanda no la consume. La variante se decide aquí, al abrir.
    */
   private openWelcomeTour(): void {
     this.welcomeTourDeferred = false;
     if (this.welcomeTourOpen) return;
     this.closeAccountMenu(true, false);
     this.closeSearch();
+    this.welcomeTourVariant = welcomeVariant({ isNative: this.isNative, width: window.innerWidth });
     const previous = document.activeElement;
     this.welcomeTourOpener = previous instanceof HTMLElement
       ? previous

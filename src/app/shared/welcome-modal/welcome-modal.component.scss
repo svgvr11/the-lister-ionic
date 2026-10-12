@@ -1,12 +1,11 @@
 /*
-  Modal de bienvenida (4 páginas).
+  Modal de bienvenida (escritorio, 4 páginas; móvil, 3 slides).
 
   Mismo patrón que el modal de comentarios y el diálogo de ayuda del archivo: fondo a
   media opacidad con desenfoque, tarjeta blanca centrada con radio grande, sombra suave
   y una animación de entrada corta. CERO hex nuevos: los colores salen de `--accent` y
   `--on-accent` del tema activo (el tablero los expone) y de la misma escala de grises
-  que ya usan los diálogos. El alto del cuerpo es estable entre páginas para que el
-  modal no dé saltos al cambiar de sección.
+  que ya usan los diálogos. El alto de la tarjeta se adapta al contenido de cada página.
 */
 :host {
   display: contents;
@@ -27,12 +26,13 @@
 }
 
 .welcome-dialog {
-  --welcome-card-min-height: 132px;
+  --welcome-card-min-height: 120px;
   --welcome-cards-gap: 12px;
+  --welcome-footer-height: 38px;
   position: relative;
   display: flex;
   flex-direction: column;
-  /* Ancho de escritorio: el modal no se abre en pantallas estrechas. */
+  /* Ancho de escritorio: la variante móvil lo baja más abajo. */
   width: min(100%, 720px);
   min-height: 0;
   max-height: calc(100dvh - 40px);
@@ -46,9 +46,85 @@
   animation: welcomeDialogEnter 0.16s ease-out;
 }
 
+/* ── Variante móvil ────────────────────────────────────────────────────────── */
+
+/*
+  App nativa o pantalla de 700px o menos: tarjeta estrecha centrada, respeto de las
+  safe areas, áreas táctiles de 44px y tarjetas apiladas de una en una.
+*/
+.welcome-overlay--mobile {
+  padding-block: max(16px, var(--app-safe-area-top)) max(16px, var(--app-safe-area-bottom));
+  padding-inline: 16px;
+}
+
+.welcome-dialog--mobile {
+  --welcome-card-min-height: 96px;
+  --welcome-cards-gap: 10px;
+  --welcome-footer-height: 44px;
+  width: min(92vw, 420px);
+  padding: 16px 12px 14px;
+  max-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
+}
+
 @supports not (height: 100dvh) {
   .welcome-dialog { max-height: calc(100vh - 40px); }
 }
+
+/* Sin marca a la izquierda: la cabecera queda solo con el contador y la X. */
+.welcome-header--mobile {
+  padding: 0;
+}
+
+/* Badge de versión: SOLO en la variante móvil, a la izquierda de la fila de la cabecera.
+   El contador y la X se quedan a la derecha (`.welcome-header-side` ya lleva
+   `margin-left: auto`). Usa el acento del tema activo con el token de contraste, igual
+   que los demás badges del modal. */
+.welcome-version {
+  padding: 3px 8px;
+  color: var(--on-accent, #fff);
+  background: var(--accent, #8870ad);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.welcome-header-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* La X: área táctil de 44px, como los demás controles del móvil. */
+.welcome-close {
+  position: relative;
+  overflow: hidden;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #5c6372;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.welcome-close:hover {
+  color: #172236;
+  background: #f2f4f9;
+}
+
+.welcome-close:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.welcome-close ion-icon { font-size: 19px; }
 
 @keyframes welcomeDialogEnter {
   from { opacity: 0; transform: translateY(5px) scale(0.98); }
@@ -143,18 +219,25 @@
 /* ── Cuerpo ───────────────────────────────────────────────────────────────── */
 
 /*
-  min-height fijo e igual para todas las páginas: la página 2 lleva cuatro tarjetas
-  (dos filas) y las demás tres (una fila), así que el cuerpo reserva siempre el alto
-  de la más alta y el modal no salta al cambiar de sección. Si el contenido no cabe
-  (pantalla baja), scrollea dentro sin mover el pie.
+  El cuerpo mide lo que mide su página: el modal se adapta al alto del contenido en lugar de
+  reservar el de la página más alta (eso dejaba un hueco blanco grande bajo la última tarjeta
+  en las páginas con menos contenido). Si el contenido no cabe en la pantalla, scrollea dentro
+  sin mover el pie.
 */
 .welcome-body {
   flex: 1 1 auto;
   min-height: 0;
-  min-height: calc(var(--welcome-card-min-height) * 2 + var(--welcome-cards-gap));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-block: 18px 6px;
+}
+
+/*
+  En móvil las tarjetas se apilan de una en una con el texto debajo del título; el alto es el
+  del contenido de cada slide, como en el escritorio.
+*/
+.welcome-body--mobile {
+  padding-block: 14px 4px;
 }
 
 .welcome-page {
@@ -212,6 +295,25 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Móvil: una tarjeta por fila. La descripción va DEBAJO del título (mismo layout en columna
+   que el escritorio): fila de ícono + título y el texto debajo, a todo el ancho. */
+.welcome-cards--mobile {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 14px;
+}
+
+.welcome-cards--mobile .welcome-card {
+  gap: 8px;
+  padding: 11px 12px;
+}
+
+.welcome-cards--mobile .welcome-card-icon {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 10px;
+}
+
 .welcome-card {
   display: flex;
   flex-direction: column;
@@ -221,6 +323,7 @@
   background: #f7f9fc;
   border: 1px solid #e9edf5;
   border-radius: 12px;
+  justify-content: center
 }
 
 .welcome-card-head {
@@ -268,6 +371,57 @@
   font-weight: 700;
 }
 
+/* Tarjeta central del cierre del recorrido móvil: ícono en círculo tintado con el
+   acento y dos líneas centradas. */
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 22px 16px;
+  text-align: center;
+  background: #f7f9fc;
+  border: 1px solid #e9edf5;
+  border-radius: 14px;
+}
+
+.welcome-hero-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: grid;
+  place-items: center;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, #fff);
+  border-radius: 50%;
+}
+
+.welcome-hero-icon ion-icon { font-size: 24px; }
+
+.welcome-hero-title {
+  margin: 4px 0 0;
+  color: #172236;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.welcome-hero-text {
+  margin: 0;
+  color: #5f6878;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Pie del móvil: el mismo texto del pie real del tablero. */
+.welcome-legal {
+  margin: 12px 0 0;
+  color: #8b93a3;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* ── Pie: Anterior · puntos · Siguiente ───────────────────────────────────── */
 
 .welcome-footer {
@@ -286,7 +440,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: var(--welcome-footer-height, 38px);
   padding: 0 14px;
   border-radius: 10px;
   font-size: 12.5px;
@@ -332,6 +486,33 @@
   margin: 0 auto;
 }
 
+/* Pie móvil: los tres controles SIEMPRE en la misma fila (Anterior · puntos · Siguiente).
+   Tamaños ajustados para que quepan incluso a 320px, con el área táctil de 44px de alto. */
+.welcome-footer--mobile {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.welcome-footer--mobile .welcome-prev,
+.welcome-footer--mobile .welcome-primary {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.welcome-footer--mobile .welcome-primary {
+  /* Nunca se estira: comparte fila con «Anterior» y los puntos. */
+  flex: 0 0 auto;
+}
+
+.welcome-footer--mobile .welcome-dots { gap: 5px; }
+
+.welcome-footer--mobile .welcome-dot {
+  width: 6px;
+  height: 6px;
+}
+
 .welcome-dot {
   width: 7px;
   height: 7px;
@@ -345,6 +526,8 @@
   width: 20px;
   background: var(--accent, #8870ad);
 }
+
+.welcome-footer--mobile .welcome-dot.active { width: 16px; }
 
 /* ── Región viva (solo lectores de pantalla) ──────────────────────────────── */
 
@@ -368,6 +551,7 @@
 
   .welcome-dot,
   .welcome-skip,
+  .welcome-close,
   .welcome-prev,
   .welcome-primary { transition: none; }
 }

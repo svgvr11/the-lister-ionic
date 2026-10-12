@@ -3,11 +3,14 @@ import { Capacitor } from '@capacitor/core';
 /**
  * RECORRIDO DE BIENVENIDA (lógica pura).
  *
- * Reglas de aparición decididas para el modal de 4 páginas:
- *  - Solo ESCRITORIO web: nunca en nativo ni en pantallas de 700px o menos.
+ * Reglas de aparición decididas para el modal de bienvenida:
+ *  - Dos variantes del MISMO recorrido: escritorio (web, 4 páginas) y móvil (app nativa
+ *    o cualquier pantalla de 700px o menos, 3 slides). La variante se decide al abrir y
+ *    ya no cambia mientras el modal está abierto.
  *  - Una vez por dispositivo Y usuario: la marca se guarda en una clave propia de
  *    localStorage que lleva el userId dentro, con el mismo patrón (y el mismo
- *    try/catch) que el tablero local y el tema.
+ *    try/catch) que el tablero local y el tema. Ver el recorrido en cualquiera de las
+ *    dos variantes deja la misma marca.
  *  - Solo con sesión iniciada, con el tablero ya cargado y sin ningún otro overlay
  *    abierto: si hay otro, el tablero espera (él marca `welcomeTourDeferred`).
  *  - Si el almacenamiento falla, NO se muestra: nunca entra en un bucle de avisos.
@@ -15,8 +18,14 @@ import { Capacitor } from '@capacitor/core';
  * Nada de esto toca el tablero ni se sincroniza: la marca es local.
  */
 
-/** Número de páginas del recorrido. */
+/** Variante del recorrido. */
+export type WelcomeVariant = 'mobile' | 'desktop';
+
+/** Número de páginas de la variante de escritorio. */
 export const WELCOME_TOUR_PAGE_COUNT = 4;
+
+/** Número de páginas de la variante móvil. */
+export const WELCOME_TOUR_MOBILE_PAGE_COUNT = 3;
 
 /** Ancho mínimo EXCLUSIVO para considerarse escritorio (≤700px no lo es). */
 export const WELCOME_DESKTOP_MIN_WIDTH = 700;
@@ -83,12 +92,8 @@ export function markWelcomeSeen(userId: string | null, storage?: WelcomeStorage 
   }
 }
 
-/** Las cinco condiciones que deciden si el recorrido aparece al cargar el tablero. */
+/** Las tres condiciones que deciden si el recorrido aparece al cargar el tablero. */
 export interface WelcomeVisibility {
-  /** App nativa (APK): nunca se muestra. */
-  isNative: boolean;
-  /** Ancho del viewport en px; 700 o menos no es escritorio. */
-  width: number;
   /** Estado de la marca de este usuario (`error` tampoco muestra). */
   seen: WelcomeSeenState;
   /** Hay otro overlay abierto (o el tablero aún no ha podido comprobarlo). */
@@ -98,16 +103,27 @@ export interface WelcomeVisibility {
 }
 
 /**
- * true solo si se cumplen las cinco condiciones: escritorio web, marca ausente,
- * sin otro overlay y con sesión. Pura y sin DOM.
+ * true solo si la marca está ausente, no hay otro overlay abierto y hay sesión. La
+ * variante (escritorio o móvil) no condiciona la aparición: se muestra en ambas.
  */
 export function shouldShowWelcome(conditions: WelcomeVisibility): boolean {
-  if (conditions.isNative) return false;
-  if (!(conditions.width > WELCOME_DESKTOP_MIN_WIDTH)) return false;
   if (conditions.seen !== 'unseen') return false;
   if (conditions.hasOverlay) return false;
   if (!conditions.hasSession) return false;
   return true;
+}
+
+/**
+ * Variante que corresponde al dispositivo: la app nativa y cualquier pantalla de 700px
+ * o menos usan la móvil; la web más ancha, la de escritorio. Se decide al abrir.
+ */
+export function welcomeVariant(device: { isNative: boolean; width: number }): WelcomeVariant {
+  return device.isNative || !(device.width > WELCOME_DESKTOP_MIN_WIDTH) ? 'mobile' : 'desktop';
+}
+
+/** Número de páginas de la variante. */
+export function welcomePageCount(variant: WelcomeVariant): number {
+  return variant === 'mobile' ? WELCOME_TOUR_MOBILE_PAGE_COUNT : WELCOME_TOUR_PAGE_COUNT;
 }
 
 /** Avanza una página sin pasarse de la última. */
@@ -132,10 +148,16 @@ export function isWelcomeLastPage(current: number, total: number = WELCOME_TOUR_
 
 /**
  * Texto del botón principal: «Siguiente» en todas las páginas menos en la última,
- * donde cierra el recorrido.
+ * donde cierra el recorrido. En móvil la última frase se acorta para que quepa a 320px
+ * sin cambiar su significado.
  */
-export function welcomePrimaryLabel(current: number, total: number = WELCOME_TOUR_PAGE_COUNT): string {
-  return isWelcomeLastPage(current, total) ? '¡Empezar a organizar!' : 'Siguiente';
+export function welcomePrimaryLabel(
+  current: number,
+  total: number = WELCOME_TOUR_PAGE_COUNT,
+  variant: WelcomeVariant = 'desktop'
+): string {
+  if (!isWelcomeLastPage(current, total)) return 'Siguiente';
+  return variant === 'mobile' ? '¡Empezar!' : '¡Empezar a organizar!';
 }
 
 /** Contador de la cabecera: «1 de 4». */

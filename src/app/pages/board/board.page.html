@@ -195,14 +195,14 @@
     <span class="donation-label">{{ donationMessage }}</span>
     <ion-ripple-effect></ion-ripple-effect>
   </a>
-  <!-- Guía de bienvenida: solo escritorio (el recorrido no se abre en nativo ni en
-       pantallas estrechas). Va fuera de la rejilla de acciones, a ancho completo, y
-       abre el recorrido a demanda sin consumir la marca de "una vez por dispositivo". -->
+  <!-- Guía de bienvenida: abre el recorrido (3 slides en móvil/nativo, 4 en escritorio)
+       sin consumir la marca de "una vez por dispositivo". Va fuera de la rejilla de
+       acciones, a ancho completo, para que quepa igual en el diálogo de escritorio y en
+       el bottom sheet del móvil sin dejar huecos. -->
   <button
-    *ngIf="!isNative && !isMobilePresentation"
     class="welcome-guide-link ion-activatable"
     type="button"
-    role="menuitem"
+    [attr.role]="accountMenuMobilePresentation ? null : 'menuitem'"
     (click)="openWelcomeTourFromMenu()"
   >
     <ion-icon name="school-outline" aria-hidden="true"></ion-icon>
@@ -1200,5 +1200,6 @@
      y fuera de <ion-content>, para que flote sobre el tablero sin scroller propio. -->
 <app-welcome-modal
   *ngIf="welcomeTourOpen"
+  [variant]="welcomeTourVariant"
   (closed)="closeWelcomeTour()"
 ></app-welcome-modal>
