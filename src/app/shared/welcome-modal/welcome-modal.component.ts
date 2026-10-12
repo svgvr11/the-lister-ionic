@@ -1,35 +1,39 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, ViewChild, output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild, input, output } from '@angular/core';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   archiveOutline,
   checkmark,
+  checkmarkDoneOutline,
   chevronBack,
   chevronForward,
+  chatbubbleEllipsesOutline,
+  close,
   cloudDoneOutline,
   cloudOutline,
   colorPaletteOutline,
   contractOutline,
   expandOutline,
   gridOutline,
-  checkmarkDoneOutline,
+  handLeftOutline,
   lockClosedOutline,
-  chatbubbleEllipsesOutline,
+  pinOutline,
   pulseOutline,
+  rocketOutline,
+  searchOutline,
   shieldCheckmarkOutline,
   shieldOutline,
   sparklesOutline,
   trashOutline,
-  trendingUpOutline,
-  pinOutline,
-  searchOutline
+  trendingUpOutline
 } from 'ionicons/icons';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { BOARD_THEMES } from '../../core/board-themes';
+import { APP_VERSION_LABEL } from '../../core/app-version';
 import {
-  WELCOME_TOUR_PAGE_COUNT,
+  type WelcomeVariant,
   isMacOsBrowser,
   isWelcomeFirstPage,
   isWelcomeLastPage,
@@ -38,6 +42,7 @@ import {
   unifiedSearchCardText,
   welcomePageAnnouncement,
   welcomePageCounter,
+  welcomePageCount,
   welcomePrimaryLabel
 } from '../../core/welcome-tour';
 
@@ -50,23 +55,42 @@ interface WelcomeCard {
   badge?: string;
 }
 
-/** Contenido de una página del recorrido. */
-interface WelcomePageContent {
-  chip: string;
-  chipIcon: string;
+/** Tarjeta única y centrada del cierre del recorrido móvil. */
+interface WelcomeHero {
+  icon: string;
   title: string;
-  subtitle: string;
-  description: string;
-  cards: WelcomeCard[];
+  text: string;
 }
 
+/** Contenido de una página del recorrido. */
+interface WelcomePageContent {
+  /** Chip de sección: solo en la variante de escritorio. */
+  chip?: string;
+  chipIcon?: string;
+  title: string;
+  subtitle: string;
+  /** Párrafo de encuadre: solo en la variante de escritorio. */
+  description?: string;
+  cards: WelcomeCard[];
+  /** Tarjeta central de la última página: solo en la variante móvil. */
+  hero?: WelcomeHero;
+}
+
+/** Umbral en px para que un swipe cuente como cambio de página. */
+const SWIPE_THRESHOLD_PX = 50;
+
 /**
- * MODAL DE BIENVENIDA (4 páginas, solo escritorio).
+ * MODAL DE BIENVENIDA.
  *
- * Se abre una vez por dispositivo y usuario desde el tablero, y a demanda desde el
- * menú de perfil. No muestra ni cambia ningún dato del tablero: solo avisa al tablero
- * de que se cerró (por donde se cierre) para que marque la bandera y devuelva el foco
- * al elemento que lo abrió.
+ * El mismo recorrido en dos variantes del mismo componente: escritorio (web ancha,
+ * 4 páginas, con logo, chip y párrafo) y móvil (app nativa o pantalla estrecha, 3 slides,
+ * con X en lugar de «Saltar» y deslizamiento horizontal). La variante la decide el
+ * tablero al abrir (`input variant`) y no cambia mientras el modal está abierto.
+ *
+ * Se abre una vez por dispositivo y usuario desde el tablero, y a demanda desde el menú
+ * de perfil. No muestra ni cambia ningún dato del tablero: solo avisa al tablero de que
+ * se cerró (por donde se cierre) para que marque la bandera y devuelva el foco al
+ * elemento que lo abrió.
  *
  * El estilo (fondo a media opacidad, tarjeta centrada, radio, sombra y animación) y
  * el comportamiento de accesibilidad (rol, foco atrapado, foco inicial en el botón
@@ -84,7 +108,12 @@ export class WelcomeModalComponent implements AfterViewInit {
   /** El tablero desmonta el modal y marca la bandera de «visto». */
   readonly closed = output<void>();
 
-  readonly pageCount = WELCOME_TOUR_PAGE_COUNT;
+  /**
+   * Variante que abre el tablero: la app nativa y las pantallas de 700px o menos usan
+   * la móvil. Se decide al abrir, así que un redimensionado no cambia el modal a mitad.
+   */
+  readonly variant = input<WelcomeVariant>('desktop');
+
   currentPage = 0;
 
   /** Plazos leídos de las constantes compartidas: nunca escritos a mano. */
@@ -94,8 +123,13 @@ export class WelcomeModalComponent implements AfterViewInit {
   readonly themeCount = BOARD_THEMES.length;
   /** El atajo ⌘K solo existe en el navegador de un Mac. */
   readonly showSearchShortcut = isMacOsBrowser();
+  /** Año del pie, igual que el pie real del tablero. */
+  readonly legalYear = new Date().getFullYear();
+  /** Versión de la app, leída del único archivo donde está definida. */
+  readonly versionLabel = APP_VERSION_LABEL;
 
-  readonly pages: WelcomePageContent[] = [
+  /** Páginas de la variante de escritorio (4). */
+  private readonly desktopPages: WelcomePageContent[] = [
     {
       chip: 'Primeros pasos',
       chipIcon: 'sparkles-outline',
@@ -183,7 +217,8 @@ export class WelcomeModalComponent implements AfterViewInit {
       chipIcon: 'cloud-outline',
       title: 'En la Nube y Privacidad Real',
       subtitle: 'Tus datos seguros, donde vayas',
-      description: '',
+      description:
+        'Tu productividad te acompaña siempre con los más altos estándares de privacidad.',
       cards: [
         {
           icon: 'cloud-done-outline',
@@ -204,9 +239,78 @@ export class WelcomeModalComponent implements AfterViewInit {
     }
   ];
 
+  /**
+   * Páginas de la variante móvil (3 slides): mismas ideas con menos texto, sin chip ni
+   * párrafo, con la X en lugar de «Saltar» y con una tarjeta central de cierre.
+   * Cada afirmación se ha comprobado contra la app real (ver el informe de entrega).
+   */
+  private readonly mobilePages: WelcomePageContent[] = [
+    {
+      title: 'Bienvenido a The Lister',
+      subtitle: 'Una app de listas de tareas simple, ordenada y sin distracciones.',
+      cards: [
+        {
+          icon: 'grid-outline',
+          title: 'Tablero con tarjetas',
+          text: 'Organiza tus tareas en listas visuales, fluidas y claras.'
+        },
+        {
+          icon: 'checkmark-done-outline',
+          title: 'Progreso de un vistazo',
+          text: 'Marca tareas hechas con barra de avance y badge 100%.'
+        },
+        {
+          icon: 'pin-outline',
+          title: 'Fija listas clave',
+          text: 'Mantén tu lista más prioritaria fija al principio del flujo.'
+        }
+      ]
+    },
+    {
+      title: 'Control y Organización',
+      subtitle: 'Flexibilidad total para gestionar tus listas a tu ritmo.',
+      cards: [
+        {
+          icon: 'contract-outline',
+          title: 'Listas plegables',
+          text: 'En la vista de lista, colapsa las listas para mantener tu espacio despejado.'
+        },
+        {
+          icon: 'hand-left-outline',
+          title: 'Gestiona a un toque',
+          text: 'Abre una lista para marcar sus tareas, fijarla, renombrarla o archivarla sin salir del flujo.'
+        }
+      ]
+    },
+    {
+      title: 'Tu espacio está preparado',
+      subtitle: 'Todo listo para organizar tus tareas con claridad y serenidad.',
+      cards: [],
+      hero: {
+        icon: 'rocket-outline',
+        title: '¡Todo listo!',
+        text: 'Comienza renombrando el tablero y creando tu primera lista.'
+      }
+    }
+  ];
+
+  /** La variante abierta decide cuántas páginas y cuáles se muestran. */
+  get isMobile(): boolean {
+    return this.variant() === 'mobile';
+  }
+
+  get pages(): WelcomePageContent[] {
+    return this.isMobile ? this.mobilePages : this.desktopPages;
+  }
+
   /** Página visible. */
   get page(): WelcomePageContent {
     return this.pages[this.currentPage];
+  }
+
+  /** Número de páginas de la variante abierta. */
+  get pageCount(): number {
+    return welcomePageCount(this.variant());
   }
 
   get isFirstPage(): boolean {
@@ -218,7 +322,7 @@ export class WelcomeModalComponent implements AfterViewInit {
   }
 
   get primaryLabel(): string {
-    return welcomePrimaryLabel(this.currentPage, this.pageCount);
+    return welcomePrimaryLabel(this.currentPage, this.pageCount, this.variant());
   }
 
   get counterLabel(): string {
@@ -232,23 +336,29 @@ export class WelcomeModalComponent implements AfterViewInit {
 
   @ViewChild('dialog', { read: ElementRef }) private dialog?: ElementRef<HTMLElement>;
   @ViewChild('nextButton', { read: ElementRef }) private primary?: ElementRef<HTMLButtonElement>;
+  /** Punto de partida del arrastre, para reconocer el swipe sin romper el scroll. */
+  private swipeStart: { x: number; y: number } | null = null;
 
   constructor() {
     addIcons({
       archiveOutline,
       checkmark,
+      checkmarkDoneOutline,
       chevronBack,
       chevronForward,
       chatbubbleEllipsesOutline,
+      close,
       cloudDoneOutline,
       cloudOutline,
       colorPaletteOutline,
       contractOutline,
       expandOutline,
       gridOutline,
+      handLeftOutline,
       lockClosedOutline,
       pinOutline,
       pulseOutline,
+      rocketOutline,
       searchOutline,
       shieldCheckmarkOutline,
       shieldOutline,
@@ -284,15 +394,41 @@ export class WelcomeModalComponent implements AfterViewInit {
     this.currentPage = previousWelcomePage(this.currentPage);
   }
 
-  /** «Saltar»: cierra desde cualquier página. */
+  /** «Saltar» y la X: cierran desde cualquier página. */
   skip(): void {
     this.closed.emit();
   }
 
-  /** Clic en el fondo: cierra igual que «Saltar» (no hay nada que perder). */
+  /** Clic en el fondo: cierra igual que «Saltar» o la X (no hay nada que perder). */
   onBackdropClick(event: MouseEvent): void {
     if (event.target !== event.currentTarget) return;
     this.closed.emit();
+  }
+
+  /**
+   * Inicio del arrastre horizontal. Se guarda el punto sin frenar nada: el scroll
+   * vertical tiene que seguir funcionando.
+   */
+  onBodyTouchStart(event: TouchEvent): void {
+    const touch = event.changedTouches[0];
+    this.swipeStart = { x: touch.clientX, y: touch.clientY };
+  }
+
+  /**
+   * Fin del arrastre: si el dedo se movió más en horizontal que en vertical y pasó el
+   * umbral, se cambia de slide. El movimiento corto o vertical se ignora, así que un
+   * scroll normal no cambia de página sin querer.
+   */
+  onBodyTouchEnd(event: TouchEvent): void {
+    const start = this.swipeStart;
+    this.swipeStart = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    if (dx < 0) this.advance();
+    else this.prev();
   }
 
   /**
