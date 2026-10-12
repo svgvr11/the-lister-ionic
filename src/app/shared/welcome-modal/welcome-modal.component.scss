@@ -77,15 +77,15 @@
 
 /* Badge de versión: SOLO en la variante móvil, a la izquierda de la fila de la cabecera.
    El contador y la X se quedan a la derecha (`.welcome-header-side` ya lleva
-   `margin-left: auto`). Sale de la misma escala de grises que el resto del modal. */
+   `margin-left: auto`). Usa el acento del tema activo con el token de contraste, igual
+   que los demás badges del modal. */
 .welcome-version {
   padding: 3px 8px;
-  color: #5c6372;
-  background: #f7f9fc;
-  border: 1px solid #e9edf5;
+  color: var(--on-accent, #fff);
+  background: var(--accent, #8870ad);
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
