@@ -9,7 +9,7 @@ import { addIcons } from 'ionicons';
 import {
   add, archiveOutline, checkmark, chevronDown, chevronForward, close, logOut,
   megaphoneOutline, trash, trashBinOutline, personCircle, personRemoveOutline, layersOutline, search, pencil,
-  checkmarkCircle, returnDownBack, reorderThree
+  checkmarkCircle, returnDownBack, reorderThree, schoolOutline
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Subscription } from 'rxjs';
@@ -18,6 +18,7 @@ import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board
 import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
 import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
 import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
+import { WelcomeModalComponent } from '../../shared/welcome-modal/welcome-modal.component';
 import { BoardConflict } from '../../core/services/board.repository';
 import { BoardMergeConflictError } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
@@ -81,6 +82,13 @@ import {
 } from '../../core/board-task-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
+import {
+  WELCOME_DESKTOP_MIN_WIDTH,
+  isMacOsBrowser,
+  markWelcomeSeen,
+  readWelcomeSeen,
+  shouldShowWelcome
+} from '../../core/welcome-tour';
 import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list-updated-at';
 
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
@@ -92,7 +100,7 @@ const TOOLTIP_TACTIL_MS = 4000;
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
-    FeedbackModalComponent, InlineEditComponent
+    FeedbackModalComponent, InlineEditComponent, WelcomeModalComponent
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -145,7 +153,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * El keycap ⌘K y su atajo solo tienen sentido en el navegador de un Mac. En la app nativa
    * (APK) no se registra ningún atajo, y en Windows/Linux tampoco aparece.
    */
-  readonly showSearchShortcut = detectMacOsBrowser();
+  readonly showSearchShortcut = isMacOsBrowser();
   /**
    * El color es de este dispositivo: se lee del almacenamiento local al construir la
    * pantalla, antes del primer pintado, así no sale el color equivocado un instante.
@@ -330,6 +338,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   feedbackOpen = false;
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
   private feedbackOpener: HTMLElement | null = null;
+  /** Recorrido de bienvenida abierto (modal de 4 páginas, solo escritorio). */
+  welcomeTourOpen = false;
+  /** Pendiente de abrirse: al cargar el tablero había otro overlay abierto y hay que esperar. */
+  private welcomeTourDeferred = false;
+  /** Elemento que tenía el foco al abrirse el recorrido, para devolvérselo al cerrar. */
+  private welcomeTourOpener: HTMLElement | null = null;
   private deleteDialogOpener: HTMLElement | null = null;
   private conflictDialogOpener: HTMLElement | null = null;
 
@@ -348,6 +362,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || this.conflictDialogOpen
       || this.deleteDialogOpen
       || this.feedbackOpen
+      || this.welcomeTourOpen
       || this.sessionGuard.blocked() !== null;
   }
 
@@ -365,6 +380,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || this.conflictDialogOpen
       || this.deleteDialogOpen
       || this.feedbackOpen
+      || this.welcomeTourOpen
       || this.sessionGuard.blocked() !== null;
   }
 
@@ -444,7 +460,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
   constructor() {
-    addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline});
+    addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline,schoolOutline});
   }
 
   ngOnInit(): void {
@@ -476,6 +492,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.showFocusNotice(focusListRemovalMessage(cause));
     }
     this.presentDeferredConflict();
+    // El recorrido de bienvenida espera a que no quede ningún overlay abierto.
+    if (this.welcomeTourDeferred && this.canOpenWelcomeTour()) this.openWelcomeTour();
     if (this.pageActive) this.syncOverlayStack();
   }
 
@@ -486,6 +504,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       && !this.listToRemove
       && !this.deleteDialogOpen
       && !this.feedbackOpen
+      && !this.welcomeTourOpen
       && !this.sessionGuard.blocked();
   }
 
@@ -523,6 +542,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.feedbackOpen) {
       overlays.push({ id: 'board:feedback', close: () => this.requestFeedbackCloseFromBack() });
     }
+    if (this.welcomeTourOpen) {
+      overlays.push({ id: 'board:welcome-tour', close: () => this.closeWelcomeTour() });
+    }
     // Edición activa: ÚLTIMA para que Escape/Atrás (closeTop) la cancelen
     // primero sin cerrar el foco. NO es modal: sin foco atrapado, sin inert,
     // sin atenuar ni bloquear el feedback (getters la excluyen).
@@ -547,6 +569,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (!this.deleteBusy) this.cancelDeleteDialog(false);
     this.feedbackOpen = false;
     this.feedbackOpener = null;
+    // Salir de la página con el recorrido abierto también cuenta como «visto».
+    if (this.welcomeTourOpen) this.closeWelcomeTour();
+    else {
+      this.welcomeTourDeferred = false;
+      this.welcomeTourOpener = null;
+    }
     this.focusNotice = '';
     if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
     this.focusNoticeTimer = null;
@@ -841,6 +869,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.boardError = 'No se pudo cargar el tablero desde la nube. Comprueba la conexión y la configuración de Supabase.';
     } finally {
       this.loadingBoard = false;
+      // El recorrido de bienvenida se ofrece al entrar con el tablero ya cargado.
+      this.scheduleWelcomeTour();
     }
   }
 
@@ -1358,6 +1388,85 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     setTimeout(() => opener?.focus?.(), 0);
   }
 
+  // ── Recorrido de bienvenida ────────────────────────────────────────────────
+
+  /**
+   * Se llama en cuanto el tablero termina de cargar. Si ya se cumple todo, se abre; si
+   * queda cualquier otro overlay por delante, queda pendiente y `ngDoCheck` lo abre
+   * cuando la pila se vacíe. Nunca se muestran dos overlays a la vez.
+   */
+  private scheduleWelcomeTour(): void {
+    this.welcomeTourDeferred = false;
+    if (!this.welcomeTourDues()) return;
+    if (this.canOpenWelcomeTour()) this.openWelcomeTour();
+    else this.welcomeTourDeferred = true;
+  }
+
+  /**
+   * Las cinco reglas de aparición, resueltas contra el estado actual: solo escritorio
+   * web (ni nativo ni ≤700px), una vez por dispositivo y usuario, con sesión iniciada y
+   * con la pila de overlays vacía. Si el almacenamiento local falla, la marca se lee como
+   * `error` y el recorrido no se muestra: nunca entra en bucle.
+   */
+  private welcomeTourDues(): boolean {
+    return shouldShowWelcome({
+      isNative: this.isNative,
+      width: window.innerWidth,
+      seen: readWelcomeSeen(this.auth.session?.user.id ?? null),
+      hasOverlay: this.overlayStack.topId !== null || this.sessionGuard.blocked() !== null,
+      hasSession: Boolean(this.auth.session)
+    });
+  }
+
+  /** Además de las reglas: el tablero tiene que estar cargado, sin error y activo. */
+  private canOpenWelcomeTour(): boolean {
+    return !this.welcomeTourOpen
+      && !this.loadingBoard
+      && !this.boardError
+      && this.pageActive
+      && this.welcomeTourDues();
+  }
+
+  /**
+   * Abre el recorrido. Desde el menú de perfil se entra por aquí igual: la bandera de
+   * «una vez por dispositivo» solo se escribe al cerrarlo (`closeWelcomeTour`), así que
+   * volver a verlo a demanda no la consume.
+   */
+  private openWelcomeTour(): void {
+    this.welcomeTourDeferred = false;
+    if (this.welcomeTourOpen) return;
+    this.closeAccountMenu(true, false);
+    this.closeSearch();
+    const previous = document.activeElement;
+    this.welcomeTourOpener = previous instanceof HTMLElement
+      ? previous
+      : this.accountButton?.nativeElement ?? null;
+    this.welcomeTourOpen = true;
+  }
+
+  /** «Guía de bienvenida» del menú de perfil (solo escritorio). */
+  openWelcomeTourFromMenu(): void {
+    this.openWelcomeTour();
+  }
+
+  /**
+   * Cierra el recorrido desde cualquiera de sus salidas («Saltar», Escape, el fondo o
+   * el botón de la última página) y marca la bandera de «visto» de este usuario: una vez
+   * por dispositivo y cuenta. El foco vuelve al elemento que estaba antes de abrirse.
+   */
+  closeWelcomeTour(): void {
+    if (!this.welcomeTourOpen) return;
+    this.welcomeTourOpen = false;
+    this.welcomeTourDeferred = false;
+    markWelcomeSeen(this.auth.session?.user.id ?? null);
+    const opener = this.welcomeTourOpener;
+    this.welcomeTourOpener = null;
+    // El nodo que tenía el foco se desmonta en este mismo cambio, así que se devuelve después.
+    setTimeout(() => {
+      if (opener?.isConnected) opener.focus();
+    }, 0);
+  }
+
   /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
   @HostListener('document:keydown.escape', ['$event'])
   closeOverlaysOnEscape(event: KeyboardEvent): void {
@@ -1365,6 +1474,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
+    // El recorrido de bienvenida, cuando está abierto, es la única capa: se cierra y marca.
+    if (this.welcomeTourOpen) {
+      event.preventDefault();
+      this.closeWelcomeTour();
+      return;
+    }
     // La edición activa es la capa superior: Escape la cancela sin cerrar el foco.
     // (El textarea también emite cancel; este es el respaldo para foco en botones.)
     if (this.editingTaskId || this.editingListId) {
@@ -1703,6 +1818,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   onSearchShortcut(event: KeyboardEvent): void {
     if (!this.pageActive) return;
     if (!this.showSearchShortcut) return;
+    // Con el recorrido de bienvenida abierto el tablero queda inerte: el atajo no roba el foco.
+    if (this.welcomeTourOpen) return;
     if (!event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key.toLowerCase() !== 'k') return;
     event.preventDefault();
@@ -2195,15 +2312,4 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.releasePendingRemoteBoard(saved);
     }
   }
-}
-
-/**
- * Detecta el navegador de macOS. `userAgentData` es la API moderna y da la plataforma
- * real ("macOS"); `navigator.platform` es la respaldo para navegadores antiguos. En la
- * app nativa no se registra ningún atajo de teclado, así que devuelve false.
- */
-function detectMacOsBrowser(): boolean {
-  if (typeof navigator === 'undefined' || Capacitor.isNativePlatform()) return false;
-  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform;
-  return /mac/i.test(platform ?? navigator.platform ?? '');
 }

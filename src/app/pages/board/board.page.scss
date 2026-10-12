@@ -802,6 +802,44 @@ ion-header {
   background: #fdecec;
 }
 
+/* Guía de bienvenida: enlace discreto FUERA de la rejilla de acciones, a ancho completo,
+   con el acento del tema (mismo tratamiento que el botón flotante de comentarios). Solo
+   se pinta en escritorio: el recorrido no se abre en nativo ni en pantallas estrechas. */
+.welcome-guide-link {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 28%, #fff);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.welcome-guide-link:hover {
+  background: color-mix(in srgb, var(--accent, #8870ad) 20%, #fff);
+}
+
+.welcome-guide-link:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.welcome-guide-link ion-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
 /* Eliminar cuenta: enlace discreto de peligro FUERA de la rejilla de acciones, para no
    romperla. Debajo de la fila, a ancho completo, en rojo tenue sobre fondo claro. */
 .account-danger-link {

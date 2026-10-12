@@ -1,0 +1,95 @@
+<!--
+  Modal de bienvenida (4 páginas). Sobrevive fuera de <ion-content> a nivel de página,
+  igual que el modal de comentarios: dentro de un contenedor con scroll se convertiría en
+  su containing block y se pegaría al lienzo en lugar de flotar.
+
+  El cierre SIEMPRE pasa por `closed`: el tablero marca la bandera de «visto» y devuelve
+  el foco al elemento que abrió el modal.
+-->
+<div class="welcome-overlay" (click)="onBackdropClick($event)">
+  <section
+    #dialog
+    class="welcome-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="welcome-tour-title"
+    aria-describedby="welcome-tour-description"
+    (click)="$event.stopPropagation()"
+    (keydown)="onDialogKeydown($event)"
+    tabindex="-1"
+  >
+    <header class="welcome-header">
+      <div class="welcome-brand">
+        <img class="welcome-logo" src="assets/app-icon.svg" alt="" width="34" height="34" />
+        <span class="welcome-brand-name">The Lister</span>
+        <span class="welcome-badge">Guía de Bienvenida</span>
+      </div>
+      <div class="welcome-header-side">
+        <span class="welcome-counter" aria-live="polite">{{ counterLabel }}</span>
+        <button type="button" class="welcome-skip ion-activatable" (click)="skip()">
+          Saltar
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+      </div>
+    </header>
+
+    <!-- Cada página es una sección nueva: así la animación de entrada se repite en cada
+         cambio sin depender del API de animaciones de Angular. -->
+    <div class="welcome-body">
+      <ng-container *ngFor="let item of pages; let i = index">
+        <section *ngIf="i === currentPage" class="welcome-page">
+          <p class="welcome-chip">
+            <ion-icon [name]="item.chipIcon" aria-hidden="true"></ion-icon>
+            <span>{{ item.chip }}</span>
+          </p>
+          <h2 class="welcome-title" id="welcome-tour-title">{{ item.title }}</h2>
+          <p class="welcome-subtitle">{{ item.subtitle }}</p>
+          <p class="welcome-description" id="welcome-tour-description">{{ item.description }}</p>
+          <div class="welcome-cards" [class.welcome-cards--pair]="item.cards.length > 3">
+            <div *ngFor="let card of item.cards" class="welcome-card">
+              <div class="welcome-card-head">
+                <span class="welcome-card-icon" aria-hidden="true">
+                  <ion-icon [name]="card.icon"></ion-icon>
+                </span>
+                <h3 class="welcome-card-title">{{ card.title }}</h3>
+              </div>
+              <p class="welcome-card-text">{{ card.text }}</p>
+              <p *ngIf="card.badge" class="welcome-card-badge">{{ card.badge }}</p>
+            </div>
+          </div>
+        </section>
+      </ng-container>
+    </div>
+
+    <!-- Región viva: anuncia el título de la página nueva al cambiar. -->
+    <p class="welcome-live" aria-live="polite">{{ pageAnnouncement }}</p>
+
+    <footer class="welcome-footer">
+      <button
+        #prevButton
+        type="button"
+        class="welcome-prev ion-activatable"
+        [disabled]="isFirstPage"
+        (click)="prev()"
+      >
+        <ion-icon name="chevron-back" aria-hidden="true"></ion-icon>
+        <span>Anterior</span>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+
+      <div class="welcome-dots" aria-hidden="true">
+        <span
+          *ngFor="let item of pages; let i = index"
+          class="welcome-dot"
+          [class.active]="i === currentPage"
+        ></span>
+      </div>
+
+      <button #nextButton type="button" class="welcome-primary ion-activatable" (click)="advance()">
+        <span>{{ primaryLabel }}</span>
+        <ion-icon [name]="isLastPage ? 'checkmark' : 'chevron-forward'" aria-hidden="true"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+    </footer>
+  </section>
+</div>
