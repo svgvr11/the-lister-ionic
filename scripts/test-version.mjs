@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { FORMATO, aplicarVersion, motivo, nextVersion } from './bump-version.mjs';
+import { FORMATO, aplicarVersion, leerArgumentos, motivo, nextVersion } from './bump-version.mjs';
 
 const raiz = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -13,65 +13,63 @@ const check = (label, fn) => {
   console.log(`  ok  ${label}`);
 };
 
-// 1. Árbol limpio: sube FEATURE y pone BUILD en 0.
-check('árbol limpio sube FEATURE y pone BUILD en 0', () => {
-  assert.equal(nextVersion('1.9.3-a', true, false), '1.10.0-a');
-  assert.deepEqual(nextVersion('1.9.3-a', true, false).split('-')[0].split('.'), ['1', '10', '0']);
-  // FEATURE normalito y BUILD que se reinicia aunque tuviera valor.
-  assert.equal(nextVersion('1.8.7-a', true, false), '1.9.0-a');
-  assert.equal(nextVersion('1.8.0-a', true, false), '1.9.0-a');
-  assert.equal(nextVersion('1.12.9-a', true, false), '1.13.0-a');
-  assert.equal(nextVersion('1.12.9-a', true, false).split('-')[0].split('.')[2], '0');
+// 1. --feature: sube FEATURE y pone BUILD en 0.
+check('feature sube FEATURE y pone BUILD en 0', () => {
+  assert.equal(nextVersion('1.9.3-a', 'feature'), '1.10.0-a');
+  assert.deepEqual(nextVersion('1.9.3-a', 'feature').split('-')[0].split('.'), ['1', '10', '0']);
+  // BUILD se reinicia aunque tuviera valor.
+  assert.equal(nextVersion('1.8.7-a', 'feature'), '1.9.0-a');
+  assert.equal(nextVersion('1.8.0-a', 'feature'), '1.9.0-a');
+  assert.equal(nextVersion('1.12.9-a', 'feature'), '1.13.0-a');
+  assert.equal(nextVersion('1.12.9-a', 'feature').split('-')[0].split('.')[2], '0');
 });
 
-// 2. Árbol con cambios: sube solo BUILD; MAYOR y FEATURE se quedan igual.
-check('con cambios sube BUILD y no toca MAYOR ni FEATURE', () => {
-  // El ejemplo del enunciado: 1.9.3-a (con cambios) → 1.9.4-a.
-  assert.equal(nextVersion('1.9.3-a', false, false), '1.9.4-a');
-  assert.equal(nextVersion('1.12.0-a', false, false), '1.12.1-a');
-  // MAYOR y FEATURE se conservan: en 1.9.3-a el 9 es FEATURE y el 3 es BUILD.
-  const [mayor, feature] = nextVersion('1.9.3-a', false, false).split('-')[0].split('.');
+// 2. --build: sube solo BUILD; MAYOR y FEATURE se quedan igual.
+check('build sube BUILD y no toca MAYOR ni FEATURE', () => {
+  assert.equal(nextVersion('1.9.3-a', 'build'), '1.9.4-a');
+  assert.equal(nextVersion('1.12.0-a', 'build'), '1.12.1-a');
+  // En 1.9.3-a el 9 es FEATURE y el 3 es BUILD.
+  const [mayor, feature] = nextVersion('1.9.3-a', 'build').split('-')[0].split('.');
   assert.deepEqual([mayor, feature], ['1', '9']);
-  // Con cambios y limpio dan resultados distintos: la regla depende del árbol.
-  assert.notEqual(nextVersion('1.9.3-a', false, false), nextVersion('1.9.3-a', true, false));
+  // Cada tipo da un resultado distinto: la regla depende solo del tipo elegido.
+  assert.notEqual(nextVersion('1.9.3-a', 'build'), nextVersion('1.9.3-a', 'feature'));
 });
 
-// 3. --major manda sobre el estado del árbol: MAYOR +1, FEATURE = 0, BUILD = 0.
-check('major sube MAYOR y pone FEATURE y BUILD en 0, esté el árbol como esté', () => {
-  for (const treeIsClean of [true, false]) {
-    assert.equal(nextVersion('1.10.2-a', treeIsClean, true), '2.0.0-a');
-    assert.equal(nextVersion('1.9.4-a', treeIsClean, true), '2.0.0-a');
-    assert.deepEqual(nextVersion('1.10.2-a', treeIsClean, true).split('-')[0].split('.'), ['2', '0', '0']);
-  }
+// 3. --major: MAYOR +1, FEATURE = 0, BUILD = 0.
+check('major sube MAYOR y pone FEATURE y BUILD en 0', () => {
+  assert.equal(nextVersion('1.10.2-a', 'major'), '2.0.0-a');
+  assert.equal(nextVersion('1.9.4-a', 'major'), '2.0.0-a');
+  assert.deepEqual(nextVersion('1.10.2-a', 'major').split('-')[0].split('.'), ['2', '0', '0']);
 });
 
-// 4. El ejemplo del enunciado: 1.9.4-a con árbol limpio → 1.10.0-a.
-check('1.9.4-a con árbol limpio da 1.10.0-a', () => {
-  assert.equal(nextVersion('1.9.4-a', true, false), '1.10.0-a');
-  assert.deepEqual(nextVersion('1.9.4-a', true, false).split('-')[0].split('.'), ['1', '10', '0']);
+// 4. El resultado depende solo de la versión y del tipo (no del estado del árbol).
+check('el resultado es determinista: mismo tipo, misma versión', () => {
+  assert.equal(nextVersion('1.9.4-a', 'feature'), nextVersion('1.9.4-a', 'feature'));
+  assert.equal(nextVersion('1.9.4-a', 'build'), '1.9.5-a');
+  assert.equal(nextVersion('1.9.4-a', 'feature'), '1.10.0-a');
+  assert.equal(nextVersion('1.9.4-a', 'major'), '2.0.0-a');
 });
 
 // 5. Los números suben como enteros, no como texto: 1.9.9-a → 1.9.10-a.
 check('los tres números suben como enteros, no como texto', () => {
   // BUILD 9 + 1 = 10 (con texto, "9" + 1 daría "91").
-  assert.equal(nextVersion('1.9.9-a', false, false), '1.9.10-a');
+  assert.equal(nextVersion('1.9.9-a', 'build'), '1.9.10-a');
   // FEATURE 9 + 1 = 10.
-  assert.equal(nextVersion('1.9.9-a', true, false), '1.10.0-a');
+  assert.equal(nextVersion('1.9.9-a', 'feature'), '1.10.0-a');
   // Dos subidas encadenadas no se rompen.
-  assert.equal(nextVersion(nextVersion('1.9.9-a', false, false), false, false), '1.9.11-a');
-  assert.equal(nextVersion('1.99.99-a', true, false), '1.100.0-a');
+  assert.equal(nextVersion(nextVersion('1.9.9-a', 'build'), 'build'), '1.9.11-a');
+  assert.equal(nextVersion('1.99.99-a', 'feature'), '1.100.0-a');
+  assert.equal(nextVersion('9.9.9-a', 'major'), '10.0.0-a');
 });
+
 // 6. El sufijo se conserva siempre al subir.
 check('el sufijo existente se conserva al subir', () => {
-  for (const treeIsClean of [true, false]) {
-    const siguiente = nextVersion('2.3.4-beta', treeIsClean, false);
-    assert.equal(siguiente, treeIsClean ? '2.4.0-beta' : '2.3.5-beta');
-    assert.equal(nextVersion('2.3.4-beta', treeIsClean, true), '3.0.0-beta');
+  assert.equal(nextVersion('2.3.4-beta', 'feature'), '2.4.0-beta');
+  assert.equal(nextVersion('2.3.4-beta', 'build'), '2.3.5-beta');
+  assert.equal(nextVersion('2.3.4-beta', 'major'), '3.0.0-beta');
+  for (const tipo of ['major', 'feature', 'build']) {
+    assert.ok(nextVersion('2.3.4-a', tipo).endsWith('-a'));
   }
-  // Ni se cambia el sufijo ni se inventa uno cuando la versión no lo trae
-  // (el formato exige sufijo: -a, -beta, -rc...).
-  assert.ok(nextVersion('2.3.4-a', true, false).endsWith('-a'));
-  assert.ok(nextVersion('2.3.4-a', false, false).endsWith('-a'));
 });
 
 // 7. Formatos inválidos fallan con mensaje claro, sin escribir nada.
@@ -89,30 +87,57 @@ check('un formato inválido falla en vez de adivinar', () => {
     ''
   ];
   for (const version of invalidos) {
-    for (const [treeIsClean, major] of [[true, false], [false, false], [false, true]]) {
-      assert.throws(() => nextVersion(version, treeIsClean, major), /No se ha escrito nada/,
+    for (const tipo of ['major', 'feature', 'build']) {
+      assert.throws(() => nextVersion(version, tipo), /No se ha escrito nada/,
         `debería rechazar "${version}"`);
     }
   }
-  // El formato antiguo se dice explícitamente en el mensaje, para no perder tiempo.
-  assert.throws(() => nextVersion('1.12-alpha', true, false), /MAYOR\.FEATURE\.BUILD/);
+  // El mensaje dice el formato esperado, para no perder tiempo.
+  assert.throws(() => nextVersion('1.12-alpha', 'feature'), /MAYOR\.FEATURE\.BUILD/);
   // Los formatos válidos sí pasan el filtro.
   for (const version of ['0.0.0-a', '1.9.5-a', '12.34.56-beta', '2.0.0-rc']) {
     assert.ok(FORMATO.test(version), `"${version}" debería ser válido`);
   }
 });
 
-// 8. El motivo acompaña a cada regla.
-check('el motivo dice qué regla se aplicó', () => {
-  assert.match(motivo(true, false), /árbol limpio/);
-  assert.match(motivo(false, false), /con cambios/);
-  assert.match(motivo(true, true), /major/);
-  assert.match(motivo(false, true), /major/);
-  // El motivo de --major no depende del árbol: manda sobre él.
-  assert.doesNotMatch(motivo(true, true), /árbol limpio/);
+// 8. Un tipo de subida desconocido falla.
+check('un tipo de subida desconocido falla', () => {
+  for (const tipo of [undefined, null, '', 'minor', 'patch', 'MAJOR', true, false]) {
+    assert.throws(() => nextVersion('1.9.4-a', tipo), /No se ha escrito nada/,
+      `debería rechazar el tipo ${String(tipo)}`);
+  }
 });
 
-// 9. Solo se reescribe la línea de APP_VERSION; el resto del archivo no se toca.
+// 9. El motivo acompaña a cada tipo.
+check('el motivo dice qué tipo se aplicó', () => {
+  assert.match(motivo('major'), /major/);
+  assert.match(motivo('feature'), /feature/);
+  assert.match(motivo('build'), /build/);
+  assert.notEqual(motivo('feature'), motivo('build'));
+  assert.throws(() => motivo('minor'), /No se ha escrito nada/);
+});
+
+// 10. Argumentos: exactamente un tipo; --dry-run es opcional.
+check('leerArgumentos exige exactamente un tipo de subida', () => {
+  assert.deepEqual(leerArgumentos(['--major']), { dryRun: false, tipo: 'major' });
+  assert.deepEqual(leerArgumentos(['--feature']), { dryRun: false, tipo: 'feature' });
+  assert.deepEqual(leerArgumentos(['--build']), { dryRun: false, tipo: 'build' });
+  // --dry-run en cualquier posición.
+  assert.deepEqual(leerArgumentos(['--build', '--dry-run']), { dryRun: true, tipo: 'build' });
+  assert.deepEqual(leerArgumentos(['--dry-run', '--feature']), { dryRun: true, tipo: 'feature' });
+  // Sin tipo: el script no decide solo.
+  assert.throws(() => leerArgumentos([]), /Falta el tipo de subida/);
+  assert.throws(() => leerArgumentos(['--dry-run']), /Falta el tipo de subida/);
+  // Más de un tipo: incompatibles.
+  assert.throws(() => leerArgumentos(['--major', '--build']), /incompatibles/);
+  assert.throws(() => leerArgumentos(['--feature', '--build']), /incompatibles/);
+  assert.throws(() => leerArgumentos(['--major', '--feature', '--build']), /incompatibles/);
+  // Opciones desconocidas.
+  assert.throws(() => leerArgumentos(['--minor']), /Opción desconocida/);
+  assert.throws(() => leerArgumentos(['--build', '--force']), /Opción desconocida/);
+});
+
+// 11. Solo se reescribe la línea de APP_VERSION; el resto del archivo no se toca.
 check('se reescribe solo la línea de APP_VERSION', () => {
   const original = [
     '/**',
@@ -135,7 +160,7 @@ check('se reescribe solo la línea de APP_VERSION', () => {
   assert.throws(() => aplicarVersion('export const OTRA = 1;\n', '1.10.0-a'), /No se ha escrito nada/);
 });
 
-// 10. El archivo real de la app está en el formato nuevo y es la única fuente.
+// 12. El archivo real de la app está en el formato nuevo y es la única fuente.
 check('src/app/core/app-version.ts está en el formato nuevo', () => {
   const contenido = readFileSync(join(raiz, 'src', 'app', 'core', 'app-version.ts'), 'utf8');
   const coincidencia = /^export const APP_VERSION = '([^']*)';$/m.exec(contenido);
