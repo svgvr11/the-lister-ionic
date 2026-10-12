@@ -195,6 +195,20 @@
     <span class="donation-label">{{ donationMessage }}</span>
     <ion-ripple-effect></ion-ripple-effect>
   </a>
+  <!-- Guía de bienvenida: solo escritorio (el recorrido no se abre en nativo ni en
+       pantallas estrechas). Va fuera de la rejilla de acciones, a ancho completo, y
+       abre el recorrido a demanda sin consumir la marca de "una vez por dispositivo". -->
+  <button
+    *ngIf="!isNative && !isMobilePresentation"
+    class="welcome-guide-link ion-activatable"
+    type="button"
+    role="menuitem"
+    (click)="openWelcomeTourFromMenu()"
+  >
+    <ion-icon name="school-outline" aria-hidden="true"></ion-icon>
+    <span>Guía de bienvenida</span>
+    <ion-ripple-effect></ion-ripple-effect>
+  </button>
   <!-- Acciones de la cuenta: basurero a la izquierda y cierre de sesión a la derecha.
        Se quita "Enviar comentarios" (ahora solo el botón flotante). El menú no tiene huecos
        porque la rejilla se adapta con flex-wrap. -->
@@ -1182,3 +1196,9 @@
   *ngIf="feedbackOpen"
   (closed)="closeFeedback()"
 ></app-feedback-modal>
+<!-- Recorrido de bienvenida: mismo sitio que el modal de comentarios, a nivel de página
+     y fuera de <ion-content>, para que flote sobre el tablero sin scroller propio. -->
+<app-welcome-modal
+  *ngIf="welcomeTourOpen"
+  (closed)="closeWelcomeTour()"
+></app-welcome-modal>

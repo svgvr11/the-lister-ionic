@@ -1,0 +1,373 @@
+/*
+  Modal de bienvenida (4 páginas).
+
+  Mismo patrón que el modal de comentarios y el diálogo de ayuda del archivo: fondo a
+  media opacidad con desenfoque, tarjeta blanca centrada con radio grande, sombra suave
+  y una animación de entrada corta. CERO hex nuevos: los colores salen de `--accent` y
+  `--on-accent` del tema activo (el tablero los expone) y de la misma escala de grises
+  que ya usan los diálogos. El alto del cuerpo es estable entre páginas para que el
+  modal no dé saltos al cambiar de sección.
+*/
+:host {
+  display: contents;
+}
+
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-page-overlay, 1000);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  /* El overlay scrollea si la tarjeta no cabe (pantallas bajas); el cuerpo scrollea
+     dentro cuando sobra altura. */
+  overflow-y: auto;
+  background: var(--overlay-backdrop-color);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+}
+
+.welcome-dialog {
+  --welcome-card-min-height: 132px;
+  --welcome-cards-gap: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Ancho de escritorio: el modal no se abre en pantallas estrechas. */
+  width: min(100%, 720px);
+  min-height: 0;
+  max-height: calc(100dvh - 40px);
+  padding: 22px;
+  color: #172236;
+  background: var(--card-surface, #fff);
+  border: 1px solid #e9ecf2;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  text-align: left;
+  animation: welcomeDialogEnter 0.16s ease-out;
+}
+
+@supports not (height: 100dvh) {
+  .welcome-dialog { max-height: calc(100vh - 40px); }
+}
+
+@keyframes welcomeDialogEnter {
+  from { opacity: 0; transform: translateY(5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes welcomePageEnter {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.welcome-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.welcome-logo {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: block;
+  border-radius: 9px;
+}
+
+.welcome-brand-name {
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+.welcome-badge {
+  padding: 3px 9px;
+  color: var(--on-accent, #fff);
+  background: var(--accent, #8870ad);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.welcome-header-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.welcome-counter {
+  color: #737d8e;
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.welcome-skip {
+  position: relative;
+  overflow: hidden;
+  min-height: 28px;
+  padding: 0 10px;
+  color: #5c6372;
+  background: transparent;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.welcome-skip:hover {
+  color: #172236;
+  border-color: color-mix(in srgb, var(--accent, #8870ad) 40%, #e1e5ed);
+}
+
+.welcome-skip:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────────── */
+
+/*
+  min-height fijo e igual para todas las páginas: la página 2 lleva cuatro tarjetas
+  (dos filas) y las demás tres (una fila), así que el cuerpo reserva siempre el alto
+  de la más alta y el modal no salta al cambiar de sección. Si el contenido no cabe
+  (pantalla baja), scrollea dentro sin mover el pie.
+*/
+.welcome-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-height: calc(var(--welcome-card-min-height) * 2 + var(--welcome-cards-gap));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 18px 6px;
+}
+
+.welcome-page {
+  animation: welcomePageEnter 0.18s ease-out;
+}
+
+.welcome-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 4px 10px;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, #fff);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.welcome-chip ion-icon { font-size: 13px; }
+
+.welcome-title {
+  margin: 0;
+  color: #172236;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+}
+
+.welcome-subtitle {
+  margin: 3px 0 0;
+  color: var(--accent, #8870ad);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.welcome-description {
+  margin: 8px 0 0;
+  color: #5f6878;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* ── Tarjetas de contenido ────────────────────────────────────────────────── */
+
+.welcome-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--welcome-cards-gap);
+  margin-top: 16px;
+}
+
+/* Cuatro tarjetas van en dos filas de dos, como en el prototipo. */
+.welcome-cards--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: var(--welcome-card-min-height);
+  padding: 13px;
+  background: #f7f9fc;
+  border: 1px solid #e9edf5;
+  border-radius: 12px;
+}
+
+.welcome-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.welcome-card-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 12%, #fff);
+  border-radius: 9px;
+}
+
+.welcome-card-icon ion-icon { font-size: 15px; }
+
+.welcome-card-title {
+  margin: 0;
+  color: #172236;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.welcome-card-text {
+  margin: 0;
+  color: #5f6878;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.welcome-card-badge {
+  align-self: flex-start;
+  margin: auto 0 0;
+  padding: 2px 8px;
+  color: var(--on-accent, #fff);
+  background: var(--accent, #8870ad);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+/* ── Pie: Anterior · puntos · Siguiente ───────────────────────────────────── */
+
+.welcome-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  margin-top: 14px;
+}
+
+.welcome-prev,
+.welcome-primary {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.welcome-prev {
+  color: #303b4e;
+  background: #fff;
+  border: 1px solid #e1e5ed;
+}
+
+.welcome-prev:hover:not(:disabled) { background: #f6f7fa; }
+
+.welcome-prev:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.welcome-primary {
+  color: var(--on-accent, #fff);
+  background: var(--accent, #8870ad);
+  border: 1px solid var(--accent, #8870ad);
+  white-space: nowrap;
+}
+
+.welcome-primary:hover { background: color-mix(in srgb, var(--accent, #8870ad) 86%, #000); }
+
+.welcome-prev:focus-visible,
+.welcome-primary:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.welcome-primary ion-icon { font-size: 15px; }
+
+.welcome-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+}
+
+.welcome-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #d7dce5;
+  transition: width 0.18s ease, background 0.18s ease;
+}
+
+.welcome-dot.active {
+  /* El punto activo es más ancho, como en el prototipo. */
+  width: 20px;
+  background: var(--accent, #8870ad);
+}
+
+/* ── Región viva (solo lectores de pantalla) ──────────────────────────────── */
+
+.welcome-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Movimiento reducido ──────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-dialog,
+  .welcome-page { animation: none; }
+
+  .welcome-dot,
+  .welcome-skip,
+  .welcome-prev,
+  .welcome-primary { transition: none; }
+}
