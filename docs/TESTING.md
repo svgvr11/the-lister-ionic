@@ -169,7 +169,7 @@ en las aserciones.
 
 ## 6. Estado actual de la cobertura
 
-**En Vitest (`npm test`, 470 casos):**
+**En Vitest (`npm test`, 578 casos):**
 
 Lógica pura del core (`src/app/core/`):
 
@@ -179,37 +179,38 @@ Lógica pura del core (`src/app/core/`):
 | `edit-contrast.spec.ts` | 37 |
 | `limits.spec.ts` | 13 |
 | `board-themes.spec.ts` | 10 |
-| `session-order.spec.ts` | 9 |
 | `session-guard.spec.ts` | 9 |
 | `inline-edit.spec.ts` | 8 |
 | `trash.spec.ts` | 7 |
 | `masonry-layout.spec.ts` | 7 |
-| `board-merge.spec.ts` | 6 |
+| `board-merge.spec.ts` | 15 |
 | `board-view.spec.ts` | 6 |
+| `board-list-drag.spec.ts` | 12 |
 | `archive.spec.ts` | 5 |
-| `board-sync.spec.ts` | 5 |
+| `board-sync.spec.ts` | 10 |
 | `overlay-stack.spec.ts` | 5 |
 | `delete-account.spec.ts` | 5 |
 | `board-serialization.spec.ts` | 19 |
-| `board-list-rules.spec.ts` | 36 |
-| `board-task-rules.spec.ts` | 38 |
-| `board-conflict-rules.spec.ts` | 30 |
+| `board-list-rules.spec.ts` | 67 |
+| `board-task-rules.spec.ts` | 50 |
+| `board-conflict-rules.spec.ts` | 31 |
 | `board-retention-page-rules.spec.ts` | 24 |
-| `login-rules.spec.ts` | 16 |
+| `login-rules.spec.ts` | 14 |
 | `feedback-messages.spec.ts` | 12 |
-| `feedback-modal-state.spec.ts` | 14 |
+| `feedback-modal-state.spec.ts` | 17 |
 | `focus-notice.spec.ts` | 3 |
+| `list-updated-at.spec.ts` | 28 |
+| `welcome-modal.component.spec.ts` | 9 |
 | `google-auth.spec.ts` | 2 |
 
 Servicios (`src/app/core/services/`):
 
 | Archivo | Casos |
 |---|---|
-| `supabase-board.repository.spec.ts` | 30 |
+| `supabase-board.repository.spec.ts` | 33 |
 | `auth.service.spec.ts` | 26 |
 | `local-board.repository.spec.ts` | 19 |
 | `session-guard.service.spec.ts` | 18 |
-| `board-order.service.spec.ts` | 14 |
 | `board-session.service.spec.ts` | 12 |
 | `auth.guard.spec.ts` | 3 |
 

@@ -5,7 +5,8 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 ## Funciones
 
 - Crear listas de checklist.
-- Las listas ya no se reordenan arrastrándolas: cada una tiene un **pin** con el color del tema elegido. La lista fijada se dibuja siempre en la primera posición del tablero (arriba a la izquierda) y su pin queda siempre visible; en las demás el pin aparece al pasar el mouse (o al navegar con el teclado) y al pulsarlo reemplaza a la lista fijada. Una lista creada con **Ubicar al inicio del tablero** también arranca fijada.
+- Cada lista tiene un **pin** con el color del tema elegido. La lista fijada se dibuja siempre en la primera posición del tablero (arriba a la izquierda) y su pin queda siempre visible; en las demás el pin aparece al pasar el mouse (o al navegar con el teclado) y al pulsarlo reemplaza a la lista fijada. Una lista creada con **Ubicar al inicio del tablero** también arranca fijada.
+- **Reordenar las listas arrastrándolas**, solo en la vista de lista de escritorio web (>700px, no nativo): al pasar el mouse por una tarjeta, el badge de tareas (p. ej. 3/7) se convierte en un handle de arrastre. Se arrastra desde ese handle (la tarjeta entera es la imagen de arrastre) y se suelta delante de la tarjeta de destino, o al final si se suelta en el espacio vacío del tablero. Con el teclado: handle enfocado y **Alt + flecha** arriba/abajo (o izquierda/derecha) mueve la lista una posición; **Escape** cancela un arrastre en curso. La lista fijada no se arrastra ni se puede pasar, y nada se coloca delante de ella. El reorden se guarda en `position`, así que es el mismo orden en todos los dispositivos.
 - Crear tareas dentro de cada lista.
 - Marcar/desmarcar tareas.
 - Las tareas completadas se tachan y pasan al final.

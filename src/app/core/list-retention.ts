@@ -9,8 +9,8 @@ import type { ChecklistBoard, ChecklistList } from '../models/board.models';
  * una `RetentionPolicy`, y `core/trash.ts` y `core/archive.ts` son solo las especializaciones
  * de cada uno con sus constantes.
  *
- * Este módulo no importa nada en tiempo de ejecución (solo tipos), igual que
- * `core/session-order.ts`, para que los scripts de prueba puedan cargarlo con Node.
+ * Este módulo no importa nada en tiempo de ejecución (solo tipos), para que los scripts
+ * de prueba puedan cargarlo con Node.
  */
 
 const MS_PER_DAY = 86_400_000;
@@ -187,8 +187,8 @@ export function archiveList(board: ChecklistBoard, list: ChecklistList, now: Dat
 
 /**
  * Devuelve una lista al final del tablero conservando sus tareas y su estado.
- * No cambia el orden de sesión: al volver a entrar en el tablero, `reconcileSessionOrder`
- * deja la lista fuera de la sesión y la vuelve a añadir al final.
+ * «Al final» es la última posición del orden de dibujo: `position` es el orden estable
+ * guardado, así que la restauración entra detrás de todas en cualquier dispositivo.
  *
  * Devuelve false si el tablero ya tiene el máximo de listas; en ese caso el tablero no se
  * toca y la lista se queda donde estaba, para que no se pierda.

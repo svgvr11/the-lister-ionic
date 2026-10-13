@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalBoardContentKey, OwnBoardSnapshots } from './board-sync';
 import { mergeBoardAdditions } from './board-merge';
+import { moveListBefore } from './board-list-rules';
 import type { ChecklistBoard } from '../models/board.models';
 
 /**
@@ -186,5 +187,77 @@ describe('board-sync: updatedAt y el eco propio', () => {
     });
 
     expect(snapshots.has(remote)).toBe(false);
+  });
+});
+
+/**
+ * Un reorden de listas cambia `position` y recoloca el array. La clave canónica incluye las
+ * listas tal cual (sin los metadatos de servidor), así que el eco de un guardado recién
+ * reordenado se reconoce igual que antes: si no, cada reorden se vería como un cambio de
+ * otro dispositivo y el tablero entraría en bucle de guardados.
+ */
+describe('board-sync: el eco propio tras reordenar', () => {
+  /** Mismo tablero con las dos listas cruzadas: «Casa» delante de «Compra». */
+  const reordenado = (): ChecklistBoard => {
+    const board: ChecklistBoard = {
+      ...structuredClone(base),
+      lists: [
+        {
+          id: 'list-1',
+          boardId: 'board-1',
+          title: 'Compra',
+          position: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          tasks: []
+        },
+        {
+          id: 'list-2',
+          boardId: 'board-1',
+          title: 'Casa',
+          position: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          tasks: []
+        }
+      ]
+    };
+    moveListBefore(board, 'list-2', 'list-1');
+    return board;
+  };
+
+  it('el eco del tablero reordenado se reconoce como propio', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const token = snapshots.begin(reordenado());
+    snapshots.complete(token, true);
+
+    expect(snapshots.has(reordenado())).toBe(true);
+  });
+
+  it('un reorden que ha hecho otro dispositivo no es eco propio', () => {
+    const snapshots = new OwnBoardSnapshots();
+    const guardado: ChecklistBoard = {
+      ...structuredClone(base),
+      lists: [
+        {
+          id: 'list-1',
+          boardId: 'board-1',
+          title: 'Compra',
+          position: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          tasks: []
+        },
+        {
+          id: 'list-2',
+          boardId: 'board-1',
+          title: 'Casa',
+          position: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          tasks: []
+        }
+      ]
+    };
+    const token = snapshots.begin(guardado);
+    snapshots.complete(token, true);
+
+    expect(snapshots.has(reordenado())).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { BoardMergeConflictError } from '../board-merge';
+import { moveListBefore, moveListByOffset } from '../board-list-rules';
 import { setSessionBlockedFlag } from '../session-guard';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { AuthService } from './auth.service';
@@ -229,6 +230,95 @@ describe('SupabaseBoardRepository', () => {
       expect(historial.at(-1)!.lists[0].title).toBe('Compra semanal');
       // Sin conflicto: el merge no entra.
       expect(s.llamadas.filter((l) => l === 'boards.update').length).toBe(1);
+    });
+
+    /**
+     * Reordenar las listas escribe `position` (y recoloca el array), pero no es una edición
+     * de contenido: si nadie más ha tocado el tablero, el guardado optimista casa y el
+     * merge no llega a entrar. Sin esto cualquier reorden parecería un cambio divergente.
+     */
+    it('un reorden de listas guarda directo, sin fusionar', async () => {
+      const remoto = tableroRemoto();
+      remoto.lists.push({
+        id: 'lista-2',
+        boardId: 'board-remoto',
+        title: 'Casa',
+        position: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        tasks: []
+      });
+      const s = fakeSupabase({
+        fila: fila(remoto, VERSION_ANTERIOR),
+        filaActualizada: { updated_at: AHORA_ISO }
+      });
+      const { repo } = montar(s);
+      await repo.initializeForUser(USUARIO);
+
+      const local = structuredClone(remoto);
+      // «Casa» pasa delante de «Compra»: se reescriben las dos posiciones.
+      moveListBefore(local, 'lista-2', 'lista-1');
+      const conflictos: unknown[] = [];
+      repo.conflict$.subscribe((c) => {
+        if (c) conflictos.push(c);
+      });
+      await repo.saveBoard(local);
+
+      expect(conflictos).toEqual([]);
+      // Un solo update: el merge no entra.
+      expect(s.llamadas.filter((l) => l === 'boards.update').length).toBe(1);
+      const datos = s.actualizado!['board_data'] as ChecklistBoard;
+      expect(datos.lists.map((l) => l.id)).toEqual(['lista-2', 'lista-1']);
+      expect(datos.lists.map((l) => l.position)).toEqual([0, 1]);
+    });
+
+    /**
+     * Con la versión remota movida sí se intenta fusionar, y un reorden NO es una adición:
+     * sale el conflicto de siempre para que el usuario elija. Es el comportamiento aceptado
+     * cuando dos dispositivos reordenan sobre copias distintas.
+     */
+    it('un reorden sobre una copia remota distinta publica conflicto', async () => {
+      const remoto = tableroRemoto();
+      remoto.lists.push({
+        id: 'lista-2',
+        boardId: 'board-remoto',
+        title: 'Casa',
+        position: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        tasks: []
+      });
+      const s = fakeSupabase({
+        fila: fila(remoto, VERSION_ANTERIOR),
+        filaActualizada: null
+      });
+      const { repo } = montar(s);
+      await repo.initializeForUser(USUARIO);
+
+      // Local: reordena (aquí con el teclado: una posición arriba). Remoto: ha añadido una
+      // tarea, así que la versión se movió y el merge entra.
+      const local = structuredClone(remoto);
+      moveListByOffset(local, 'lista-2', -1);
+      const remotoMasNuevo = structuredClone(remoto);
+      remotoMasNuevo.lists[0].tasks.push({
+        id: 'tarea-remota',
+        listId: 'lista-1',
+        text: 'Huevos',
+        completed: false,
+        position: 1,
+        createdAt: '2026-01-01T00:00:00.000Z'
+      });
+      s.opciones.fila = fila(remotoMasNuevo, VERSION_POSTERIOR);
+
+      const conflictos: { reason: string }[] = [];
+      repo.conflict$.subscribe((c) => {
+        if (c) conflictos.push(c);
+      });
+      await expect(repo.saveBoard(local)).rejects.toThrow(BoardMergeConflictError);
+
+      expect(conflictos.length).toBe(1);
+      expect(conflictos[0].reason).toMatch(/editadas|reordenadas/i);
+      // El tablero local reordenado es el que se ofrece en el diálogo.
+      const conflicto = conflictos[0] as unknown as { localBoard: ChecklistBoard };
+      expect(conflicto.localBoard.lists.map((l) => l.id)).toEqual(['lista-2', 'lista-1']);
     });
 
     it('si la versión no coincide, fusiona adiciones y reintenta', async () => {
