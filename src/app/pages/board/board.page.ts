@@ -9,7 +9,7 @@ import { addIcons } from 'ionicons';
 import {
   add, archiveOutline, checkmark, chevronDown, chevronForward, close, logOut,
   megaphoneOutline, trash, trashBinOutline, personCircle, personRemoveOutline, layersOutline, search, pencil,
-  checkmarkCircle, returnDownBack, reorderThree, schoolOutline
+  checkmarkCircle, returnDownBack, reorderThree, reorderTwo, schoolOutline
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Subscription } from 'rxjs';
@@ -32,12 +32,18 @@ import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
-import { BoardOrderService } from '../../core/services/board-order.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { FeedbackService } from '../../core/services/feedback.service';
 import { SessionGuardService } from '../../core/services/session-guard.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
 import { OwnBoardSnapshots } from '../../core/board-sync';
+import {
+  listDragKeyOffset,
+  listMoveAnnouncement,
+  listMoveBlockedAnnouncement,
+  readListDragPayload,
+  setListDragPayload
+} from '../../core/board-list-drag';
 import {
   boardsEqual,
   decideIncomingBoard,
@@ -56,8 +62,11 @@ import {
   listLimitLabel,
   listProgress,
   listProgressPercent,
+  moveListBefore,
+  moveListByOffset,
   moveListToArchive,
   moveListToTrash,
+  orderedLists,
   pinList,
   reorderLists,
   syncPinnedList,
@@ -109,7 +118,6 @@ const TOOLTIP_TACTIL_MS = 4000;
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
-  private readonly boardOrder = inject(BoardOrderService);
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
   private readonly sessionGuard = inject(SessionGuardService);
@@ -335,6 +343,16 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   private draggedTask: { listId: string; taskId: string } | null = null;
 
+  /** Lista que se está arrastrando con el handle de su cabecera (null si no hay ninguna). */
+  private draggedListId: string | null = null;
+  /** Tarjeta sobre la que caería la lista arrastrada: pinta el indicador de destino. */
+  listDropTargetId: string | null = null;
+  /** Último mensaje anunciado en la región `aria-live` (movimientos con el teclado). */
+  listAnnouncement = '';
+  /** Escuchas de documento del arrastre de listas: solo existen con una lista en vuelo. */
+  private readonly onListDragOverDocument = (event: DragEvent): void => this.onListDragOver(event);
+  private readonly onListDropDocument = (event: DragEvent): void => void this.onListDrop(event);
+
   /** Modal de comentarios abierto. Ambos puntos de entrada (FAB y menú de perfil) lo abren. */
   feedbackOpen = false;
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
@@ -466,7 +484,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
   constructor() {
-    addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline,schoolOutline});
+    addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,reorderTwo,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline,schoolOutline});
   }
 
   ngOnInit(): void {
@@ -570,6 +588,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.editingTaskId) this.cancelEditTask();
     for (const listId of Object.keys(this.taskDrafts)) this.taskDrafts[listId] = '';
     this.draggedTask = null;
+    this.cancelListDrag();
     this.closeConflictDialog(false);
     this.conflictDialogDeferred = Boolean(this.activeConflict);
     if (!this.deleteBusy) this.cancelDeleteDialog(false);
@@ -705,6 +724,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.focusInitialTitleFocusPending = false;
     this.focusTaskDraft = '';
     this.draggedTask = null;
+    this.cancelListDrag();
     this.finishClosingFocus();
     if (restoreFocus) {
       const opener = this.focusOpener;
@@ -890,9 +910,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.board = board;
     // Un tablero sin pin (guardado antes de esta función) recibe la primera lista.
     const pinnedChanged = this.syncPinnedList();
-    // El orden aleatorio solo se baraja al llegar el primer tablero con listas; a partir
-    // de ahí únicamente se retiran las listas que ya no están y se añaden las nuevas al final.
-    this.syncSessionOrder();
+    // El orden de dibujo sale de `position` (la fijada primera), así que no hay nada que
+    // reconciliar al llegar un tablero nuevo: las listas se pintan según su orden guardado.
     // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
     // hay que observar y maquetar en cuanto se pinta la rejilla.
     this.observeBoardGrid();
@@ -900,15 +919,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
     if (persistNormalization && (purged || purgedArchive || pinnedChanged)) void this.persist();
-  }
-
-  /**
-   * Pasa las listas del tablero al servicio de orden. Se llama en cada punto donde se
-   * publica un tablero nuevo para que las altas y las bajas se reflejen sin esperar al
-   * próximo guardado (el orden no se guarda: ni se toca `position` ni se escribe nada).
-   */
-  private syncSessionOrder(): void {
-    if (this.boardOrder.sync(this.board.lists, this.board.pinnedListId)) this.scheduleMasonryLayout();
   }
 
   private receiveBoard(board: ChecklistBoard): void {
@@ -957,7 +967,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || this.editingTaskId !== null
       || this.addingList
       || Object.values(this.taskDrafts).some((draft) => Boolean(draft?.trim()))
-      || this.draggedTask !== null;
+      || this.draggedTask !== null
+      // Un arrastre de lista en curso también es interacción activa: lo que llegue de otro
+      // dispositivo se queda esperando hasta que se suelte, igual que con las tareas.
+      || this.draggedListId !== null;
   }
 
   private releasePendingRemoteBoard(saveSucceeded = false): boolean {
@@ -1100,7 +1113,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       } else {
         this.board = structuredClone(conflict.localBoard);
         this.lastAppliedBoard = structuredClone(this.board);
-        this.syncSessionOrder();
         this.pendingRemoteBoard = null;
         this.activeConflict = null;
         this.conflictDialogDeferred = false;
@@ -1476,6 +1488,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   @HostListener('document:keydown.escape', ['$event'])
   closeOverlaysOnEscape(event: KeyboardEvent): void {
     if (!this.pageActive) return;
+    // Un arrastre de lista en curso se cancela antes que nada: el navegador además lo
+    // interrumpe por su cuenta, y `dragend` recoge el resto.
+    if (this.draggedListId) {
+      event.preventDefault();
+      this.cancelListDrag();
+      return;
+    }
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
@@ -1560,6 +1579,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   ngOnDestroy(): void {
     this.pageActive = false;
+    this.cancelListDrag();
     this.overlayStack.unregisterOwner('board');
     this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
     this.mobilePresentationQuery = null;
@@ -1877,16 +1897,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   /**
-   * Listas en el orden en que se dibujan: la pinneada primero y el resto en el orden
-   * aleatorio de esta sesión (`position` solo es el orden estable guardado, no se usa
-   * para mostrar). La búsqueda filtra sobre ese mismo orden, así que no lo altera.
+   * Listas en el orden en que se dibujan: la fijada primero y el resto por `position`, el
+   * orden estable guardado. Es el mismo orden en todos los dispositivos y no cambia al
+   * recargar. La búsqueda filtra sobre ese mismo orden, así que no lo altera.
    */
   get visibleLists(): ChecklistList[] {
-    const listsById = new Map(this.board.lists.map((list) => [list.id, list]));
-    const ordered = this.boardOrder
-      .displayOrder(this.board.lists, this.board.pinnedListId)
-      .map((id) => listsById.get(id))
-      .filter((list): list is ChecklistList => Boolean(list));
+    const ordered = orderedLists(this.board);
     if (this.searching && this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
       return ordered.filter((l) => l.title.toLowerCase().includes(q));
@@ -1900,9 +1916,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   /** Fija una lista al inicio del tablero, reemplazando a la que estaba pinneada. */
   async pinList(list: ChecklistList): Promise<void> {
+    // La fijada se dibuja primera por `orderedLists`, sin tocar `position`: el pin no
+    // reordena el tablero, solo cambia qué lista va delante.
     if (!pinList(this.board, list.id)) return;
-    // La nueva sube al primer lugar y la anterior conserva su hueco en el orden de sesión.
-    this.syncSessionOrder();
     await this.persist();
   }
 
@@ -1910,9 +1926,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * Deja una sola lista pinneada. Si el pin apunta a una lista que ya no está en el
    * tablero (la acaba de descartar el usuario) o si el tablero aún no tenía ninguna,
    * la primera lista por `position` asume el pin. `position` es el orden estable
-   * guardado, así que la elección es la misma en todos los dispositivos y no depende
-   * del barajado visual de cada sesión. Devuelve si hubo que corregirlo, para avisar
-   * que el tablero debe guardarse.
+   * guardado, así que la elección es la misma en todos los dispositivos. Devuelve si
+   * hubo que corregirlo, para avisar que el tablero debe guardarse.
    */
   private syncPinnedList(): boolean {
     return syncPinnedList(this.board);
@@ -2012,22 +2027,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (!moveListToTrash(this.board, list.id)) return;
     this.collapsed.delete(list.id);
     this.expandedCompleted.delete(list.id);
-    // La lista desaparece del orden de sesión; si vuelve desde el basurero, entra al final.
-    this.syncSessionOrder();
     await this.persist();
   }
 
   /**
    * Archiva una lista 100% completa: sale del tablero y queda guardada 60 días en la
    * pantalla de Archivo, desde donde se puede restaurar o eliminar para siempre.
-   * Mismo recorrido que el basurero (pin y orden de sesión se reajustan igual).
+   * Mismo recorrido que el basurero (las posiciones y el pin se reajustan igual).
    */
   async moveListToArchive(list: ChecklistList): Promise<void> {
     if (!moveListToArchive(this.board, list.id)) return;
     this.collapsed.delete(list.id);
     this.expandedCompleted.delete(list.id);
-    // La lista sale del orden de sesión; si se restaura, entra al final.
-    this.syncSessionOrder();
     await this.persist();
   }
 
@@ -2184,9 +2195,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   /**
    * Crea una lista al final del tablero (o al inicio si se pidió "ubicar al inicio").
-   * `position` se sigue usando como orden estable guardado; el orden de la rejilla lo
-   * decide el orden de sesión, así que una lista nueva aparece siempre al final salvo
-   * que quede pinneada.
+   * El orden de la rejilla es el de `position`, que `addListToBoard` renumera, así que una
+   * lista nueva aparece siempre al final salvo que quede pinneada al inicio.
    */
   async addList(): Promise<void> {
     if (!this.addingList) return;
@@ -2202,7 +2212,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.addingList = false;
     this.newListTitleCount = 0;
     this.restoreNewListFocus();
-    this.syncSessionOrder();
     await this.persist();
   }
 
@@ -2262,6 +2271,153 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   clearTaskDragState(): void {
     this.draggedTask = null;
     this.releasePendingRemoteBoard();
+  }
+
+  // ── Arrastre de listas (solo vista de lista, escritorio web) ────────────────────
+
+  /**
+   * El reordenamiento de listas es de escritorio: hace falta ratón (o su alternativa con
+   * teclado) y la rejilla masonry, así que se desactiva en la app nativa, en pantallas de
+   * 700px o menos y con la búsqueda abierta. Sin handle no hay nada que arrastrar.
+   */
+  get listDragEnabled(): boolean {
+    return !this.isNative && !this.isMobilePresentation && !this.searching;
+  }
+
+  /** ¿Se está arrastrando esta lista? La tarjeta se atenúa mientras tanto. */
+  isListDragging(listId: string): boolean {
+    return this.draggedListId === listId;
+  }
+
+  /** ¿Es esta la tarjeta sobre la que caería la lista arrastrada? Pinta el indicador. */
+  isListDropTarget(listId: string): boolean {
+    return this.listDropTargetId === listId;
+  }
+
+  /**
+   * Empieza el arrastre de una lista desde el handle de su cabecera. La lista fijada no se
+   * mueve nunca, así que su handle va deshabilitado y no llega aquí.
+   *
+   * La tarjeta entera es la imagen de arrastre: es lo que se ve bajo el cursor, no el
+   * handle de 26px.
+   */
+  startListDrag(list: ChecklistList, event: DragEvent): void {
+    if (!this.listDragEnabled || this.isPinned(list)) return;
+    event.stopPropagation();
+    this.draggedListId = list.id;
+    setListDragPayload(event.dataTransfer, list.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    const card = (event.currentTarget as HTMLElement | null)?.closest('.checklist-column');
+    event.dataTransfer?.setDragImage(card ?? (event.currentTarget as Element), 20, 20);
+    // Las escuchas van en el documento y en fase de captura: así el arrastre de una lista
+    // manda sobre el de las tareas aunque se suelte encima de una (las tareas no se enteran).
+    document.addEventListener('dragover', this.onListDragOverDocument, true);
+    document.addEventListener('drop', this.onListDropDocument, true);
+  }
+
+  /**
+   * Destino del arrastre: la tarjeta que hay bajo el cursor, leída del `data-list-id`.
+   *
+   * Con el maquetado masonry de tres columnas el orden lógico NO es el de lectura en filas:
+   * las tarjetas se apilan en la columna más corta, así que la que está «debajo» puede ir
+   * varias posiciones más tarde. Por eso el destino se calcula por el elemento sobre el que
+   * está el puntero (que es la tarjeta bajo el cursor, porque la arrastrada tiene
+   * `pointer-events: none`) y no por una cuenta de filas y columnas. Si el puntero no está
+   * sobre ninguna tarjeta —el hueco entre columnas o el espacio vacío de debajo— el destino
+   * es `null`, que significa «al final del tablero».
+   */
+  private resolveListDropTargetId(event: DragEvent): string | null {
+    const target = event.target;
+    const card = target instanceof Element ? target.closest('.checklist-column') : null;
+    return card instanceof HTMLElement ? card.dataset['listId'] ?? null : null;
+  }
+
+  /**
+   * Mientras se arrastra una lista hay que dejar claro dónde va a caer. `preventDefault`
+   * es obligatorio en cada `dragover`: sin él el navegador rechaza el soltable y el drop
+   * nunca llega.
+   */
+  private onListDragOver(event: DragEvent): void {
+    if (!this.draggedListId) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    this.listDropTargetId = this.resolveListDropTargetId(event);
+  }
+
+  /** El puntero sale del tablero: el indicador se apaga hasta que vuelva a entrar. */
+  onListDragLeave(event: DragEvent): void {
+    if (!this.draggedListId) return;
+    const next = event.relatedTarget;
+    const container = event.currentTarget;
+    if (next instanceof Node && container instanceof Node && container.contains(next)) return;
+    this.listDropTargetId = null;
+  }
+
+  /**
+   * Suelta la lista: se coloca delante de la tarjeta de destino, o al final si se suelta en
+   * el espacio vacío. Las tareas no se enteran del drop (la escucha es de captura y corta
+   * la propagación), y un soltable que no traiga el id de la lista en el `dataTransfer` se
+   * ignora.
+   */
+  private async onListDrop(event: DragEvent): Promise<void> {
+    const draggedId = this.draggedListId;
+    if (!draggedId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    // El soltable tiene que ser el arrastre de esta lista. Si el `dataTransfer` dice otra
+    // cosa (una tarea, un archivo) se descarta; si no se puede leer, el estado propio de la
+    // página ya basta para saber que el arrastre salió de aquí.
+    const payload = readListDragPayload(event.dataTransfer);
+    if (payload !== null && payload !== draggedId) {
+      this.cancelListDrag();
+      return;
+    }
+    await this.moveListTo(draggedId, this.resolveListDropTargetId(event));
+  }
+
+  /**
+   * Aplica el reordenamiento: una sola escritura por arrastre, con el masonry recolocado
+   * una vez (sin saltos de scroll ni parpadeo).
+   */
+  private async moveListTo(listId: string, targetId: string | null): Promise<void> {
+    this.cancelListDrag();
+    if (!moveListBefore(this.board, listId, targetId)) return;
+    this.scheduleMasonryLayout();
+    await this.persist();
+  }
+
+  /** Cancela el arrastre en curso: se llama al soltar, con Escape y al salir de la tarjeta. */
+  cancelListDrag(): void {
+    this.draggedListId = null;
+    this.listDropTargetId = null;
+    document.removeEventListener('dragover', this.onListDragOverDocument, true);
+    document.removeEventListener('drop', this.onListDropDocument, true);
+  }
+
+  /**
+   * Alternativa al ratón: con el handle enfocado, Alt + flecha mueve la lista una posición
+   * y el resultado se anuncia en la región `aria-live`. Escape cancela el arrastre en curso.
+   * Las flechas sin Alt no hacen nada aquí: siguen moviendo el scroll.
+   */
+  onListHandleKeydown(event: KeyboardEvent, list: ChecklistList): void {
+    if (event.key === 'Escape') {
+      if (!this.draggedListId) return;
+      event.preventDefault();
+      this.cancelListDrag();
+      return;
+    }
+    const offset = listDragKeyOffset(event);
+    if (offset === 0) return;
+    event.preventDefault();
+    const moved = moveListByOffset(this.board, list.id, offset);
+    const order = orderedLists(this.board);
+    const index = Math.max(0, order.findIndex((item) => item.id === list.id));
+    this.listAnnouncement = moved
+      ? listMoveAnnouncement(list.title, index, order.length)
+      : listMoveBlockedAnnouncement(list.title, index, order.length);
+    if (!moved) return;
+    this.scheduleMasonryLayout();
+    void this.persist();
   }
 
   private scheduleMasonryLayout(): void {

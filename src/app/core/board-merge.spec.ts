@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeBoardAdditions } from './board-merge';
+import { BoardMergeConflictError, mergeBoardAdditions } from './board-merge';
 import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
 
 /**
@@ -108,9 +108,55 @@ describe('board-merge', () => {
 });
 
 /**
+ * El reordenamiento de listas escribe `position` y recoloca el array. `mergeBoardAdditions`
+ * solo admite adiciones, así que un reorden NO es fusionable: si dos dispositivos se
+ * separan, sale el conflicto de siempre para que el usuario elija cuál orden conserva.
+ * Estos casos fijan esa decisión (array Y posición) para que no se pierda por accidente.
+ */
+describe('board-merge: reordenar las listas', () => {
+  const baseConDos: ChecklistBoard = {
+    id: 'board-1',
+    title: 'Board',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lists: [
+      { ...newList('list-1', 'Compra'), position: 0 },
+      { ...newList('list-2', 'Casa'), position: 1 }
+    ]
+  };
+
+  it('cambiar position sin tocar el array sigue siendo conflicto', () => {
+    const local = structuredClone(baseConDos);
+    local.lists[1].position = 0;
+    local.lists[0].position = 1;
+
+    expect(() => mergeBoardAdditions(baseConDos, local, structuredClone(baseConDos)))
+      .toThrow(/editadas/i);
+  });
+
+  it('reordenar el array (con position coherente) también es conflicto', () => {
+    const local = structuredClone(baseConDos);
+    local.lists = [local.lists[1], local.lists[0]].map((list, index) => ({ ...list, position: index }));
+
+    expect(() => mergeBoardAdditions(baseConDos, local, structuredClone(baseConDos)))
+      .toThrow(/reordenadas|editadas/i);
+  });
+
+  it('dos dispositivos con reordenamientos distintos son un conflicto', () => {
+    const local = structuredClone(baseConDos);
+    const remote = structuredClone(baseConDos);
+    local.lists = [local.lists[1], local.lists[0]].map((list, index) => ({ ...list, position: index }));
+    // El remoto “reordena” de otra forma: gana la fijada, que se dibuja primera.
+    remote.pinnedListId = 'list-1';
+    remote.lists = remote.lists.map((list, index) => ({ ...list, position: index }));
+
+    expect(() => mergeBoardAdditions(baseConDos, local, remote)).toThrow(BoardMergeConflictError);
+  });
+});
+
+/**
  * El `updatedAt` de la lista viaja dentro de `board_data`, y cada dispositivo escribe la fecha
  * de SU reloj en cada acción. Si se comparara como un campo más, dos dispositivos que añaden
- * tareas distintas a la misma lista parecerían haber editado la lista y la fusión seria un
+ * tareas distintas a la misma lista parecerían haber «editado» la lista y la fusión seria un
  * conflicto inventado. Estos casos fijan esa regla.
  */
 describe('board-merge: updatedAt de las listas', () => {

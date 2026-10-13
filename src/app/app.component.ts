@@ -8,7 +8,6 @@ import { addIcons } from 'ionicons';
 import { shieldCheckmarkOutline } from 'ionicons/icons';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
-import { BoardOrderService } from './core/services/board-order.service';
 import { FeedbackService } from './core/services/feedback.service';
 import { SessionGuardService } from './core/services/session-guard.service';
 import { OverlayStackService } from './core/overlay-stack.service';
@@ -33,7 +32,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly sessionGuard = inject(SessionGuardService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly boardOrder = inject(BoardOrderService);
   private readonly feedback = inject(FeedbackService);
   private readonly overlays = inject(OverlayStackService);
   private readonly zone = inject(NgZone);
@@ -148,12 +146,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Botón «Ir al inicio de sesión»: descarta SOLO el estado en memoria (orden de
-   * sesión y borrador de comentarios; nunca localStorage), cierra el bloqueo y
-   * navega al login reemplazando el historial para que «atrás» no vuelva aquí.
+   * Botón «Ir al inicio de sesión»: descarta SOLO el borrador de comentarios en memoria
+   * (nunca localStorage), cierra el bloqueo y navega al login reemplazando el historial
+   * para que «atrás» no vuelva aquí.
    */
   async goToLogin(): Promise<void> {
-    this.boardOrder.reset();
     this.feedback.clearDraft();
     this.sessionGuard.resetAfterNavigation();
     await this.router.navigateByUrl('/login', { replaceUrl: true });

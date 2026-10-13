@@ -311,13 +311,17 @@
       class="board"
       [class.board-cards]="boardViewMode === 'cards' && isNative"
       #boardGrid
+      (dragleave)="onListDragLeave($event)"
     >
       <div
         #boardItem
         *ngFor="let list of visibleLists; trackBy: trackById"
         class="checklist-column"
+        [attr.data-list-id]="list.id"
         [class.collapsed]="isCollapsed(list.id)"
         [class.list-complete]="isListComplete(list)"
+        [class.list-dragging]="isListDragging(list.id)"
+        [class.list-drop-before]="isListDropTarget(list.id)"
         [attr.role]="boardViewMode === 'cards' && isNative ? 'button' : null"
         [attr.tabindex]="boardViewMode === 'cards' && isNative ? 0 : null"
         (click)="boardViewMode === 'cards' && isNative ? openListFocus(list, $event) : null"
@@ -413,16 +417,43 @@
                 [class.highlight]="seg.highlight"
               >{{ seg.text }}</span>
             </strong>
+          </button>
+
+          <!--
+            Badge y handle de arrastre comparten el mismo sitio: el handle solo se ve al
+            pasar el ratón por la tarjeta (o con el foco del teclado) y entonces el badge se
+            aparta sin cambiar el tamaño, así que la cabecera no se mueve. El handle va
+            primero en el DOM para poder esconder el badge con un selector de hermanos.
+          -->
+          <span class="list-counter-slot">
+            <button
+              *ngIf="listDragEnabled"
+              type="button"
+              class="list-drag-handle"
+              [draggable]="!isPinned(list)"
+              [disabled]="isPinned(list)"
+              [attr.aria-label]="'Mover lista ' + list.title"
+              [attr.aria-disabled]="isPinned(list) ? 'true' : null"
+              [title]="isPinned(list)
+                ? 'La lista fijada no se mueve: siempre va primera'
+                : 'Mover lista (arrastra o usa Alt + flechas)'"
+              (dragstart)="startListDrag(list, $event)"
+              (dragend)="cancelListDrag()"
+              (keydown)="onListHandleKeydown($event, list)"
+            >
+              <ion-icon name="reorder-two" aria-hidden="true"></ion-icon>
+            </button>
             <span
               class="task-counter"
               [class.complete-counter]="isListComplete(list)"
+              [class.slot-hidden]="listDragEnabled"
               [style.--list-visual-color]="list.visualColor || themeAccent"
               aria-hidden="true"
             >
               <span class="counter-status-dot" *ngIf="isListComplete(list)" aria-hidden="true"></span>
               {{ taskCounterLabel(list) }}
             </span>
-          </button>
+          </span>
         </div>
 
         <div *ngIf="!isCollapsed(list.id)" class="list-progress-track" role="progressbar"
@@ -598,6 +629,9 @@
       <ion-icon name="search" class="no-results-icon" aria-hidden="true"></ion-icon>
       <p>No se encontraron listas que coincidan con &ldquo;<strong>{{ searchQuery }}</strong>&rdquo;</p>
     </div>
+
+    <!-- Anuncios del reordenamiento con teclado (Alt + flechas sobre el handle). -->
+    <div class="visually-hidden" role="status" aria-live="polite">{{ listAnnouncement }}</div>
   </div>
   </ng-container>
 

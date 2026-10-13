@@ -9,8 +9,11 @@ import {
   listLimitLabel,
   listProgress,
   listProgressPercent,
+  moveListBefore,
+  moveListByOffset,
   moveListToArchive,
   moveListToTrash,
+  orderedLists,
   pinList,
   reorderLists,
   resolvePinnedListId,
@@ -515,6 +518,189 @@ describe('board-list-rules: contadores de una lista', () => {
   });
 });
 
+describe('board-list-rules: el orden de dibujo', () => {
+  it('la fijada va primera y el resto por position', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)], 'c');
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('sin pin el orden es el de position, aunque el array venga desordenado', () => {
+    const board = tablero([lista('c', 2), lista('a', 0), lista('b', 1)]);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('las position empatadas conservan el orden del array', () => {
+    const board = tablero([lista('a', 3), lista('b', 3), lista('c', 1)]);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('un tablero vacío o con una sola lista se dibuja tal cual', () => {
+    expect(orderedLists(tablero([]))).toEqual([]);
+    expect(orderedLists(tablero([lista('a', 0)])).map((l) => l.id)).toEqual(['a']);
+  });
+
+  it('leer el orden no cambia el tablero', () => {
+    const board = tablero([lista('a', 0), lista('b', 1)], 'b');
+    const antes = structuredClone(board);
+
+    orderedLists(board);
+
+    expect(board).toEqual(antes);
+  });
+});
+
+describe('board-list-rules: mover una lista delante de otra', () => {
+  it('mover al principio deja la fijada primera y la otra detrás', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)], 'c');
+
+    expect(moveListBefore(board, 'b', 'a')).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['c', 'b', 'a']);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1, 2]);
+  });
+
+  it('mover al medio cuela la lista entre las dos', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    expect(moveListBefore(board, 'c', 'b')).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'c', 'b']);
+    expect(board.lists.map((l) => l.id)).toEqual(['a', 'c', 'b']);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1, 2]);
+  });
+
+  it('mover al final con target null la deja la última', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    expect(moveListBefore(board, 'a', null)).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['b', 'c', 'a']);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1, 2]);
+  });
+
+  it('mover una lista cuyo destino es ella misma no cambia nada', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    expect(moveListBefore(board, 'b', 'b')).toBe(false);
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('un destino que no existe no cambia nada', () => {
+    const board = tablero([lista('a', 0), lista('b', 1)]);
+
+    expect(moveListBefore(board, 'a', 'no-existe')).toBe(false);
+    expect(moveListBefore(board, 'no-existe', 'a')).toBe(false);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1]);
+  });
+
+  it('mover al sitio que ya ocupa no reescribe nada', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    // 'a' ya está delante de 'b': el orden de dibujo no se mueve.
+    expect(moveListBefore(board, 'a', 'b')).toBe(false);
+  });
+
+  it('un hueco en las positions se cierra al mover', () => {
+    const board = tablero([lista('a', 0), lista('b', 7), lista('c', 4)]);
+
+    expect(moveListBefore(board, 'c', 'a')).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['c', 'a', 'b']);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1, 2]);
+  });
+
+  it('nada se coloca por delante de la fijada', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)], 'c');
+
+    // Soltar sobre la propia fijada: la lista queda justo detrás, no delante.
+    expect(moveListBefore(board, 'b', 'c')).toBe(true);
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('la lista fijada no se mueve', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)], 'a');
+
+    expect(moveListBefore(board, 'a', 'c')).toBe(false);
+    expect(moveListBefore(board, 'a', null)).toBe(false);
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('mover no toca las tareas ni el pin', () => {
+    const conTareas = lista('b', 1, [tarea('1', true), tarea('2', false)]);
+    const board = tablero([lista('a', 0), conTareas, lista('c', 2)], 'c');
+    const tareasAntes = structuredClone(conTareas.tasks);
+
+    moveListBefore(board, 'a', 'b');
+
+    expect(conTareas.tasks).toEqual(tareasAntes);
+    expect(conTareas.title).toBe('Lista b');
+    expect(board.pinnedListId).toBe('c');
+  });
+
+  it('mover no toca el updatedAt de ninguna lista', () => {
+    const conFecha = lista('a', 0);
+    conFecha.updatedAt = '2026-01-05T00:00:00.000Z';
+    const board = tablero([conFecha, lista('b', 1)]);
+
+    moveListBefore(board, 'b', null);
+
+    expect(conFecha.updatedAt).toBe('2026-01-05T00:00:00.000Z');
+  });
+
+  it('un tablero vacío o de una lista no se puede reordenar', () => {
+    expect(moveListBefore(tablero([]), 'a', null)).toBe(false);
+    expect(moveListBefore(tablero([lista('a', 0)], 'a'), 'a', null)).toBe(false);
+  });
+});
+
+describe('board-list-rules: mover una lista con el teclado', () => {
+  it('bajar una posición la cambia de sitio con la siguiente', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    expect(moveListByOffset(board, 'a', 1)).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['b', 'a', 'c']);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1, 2]);
+  });
+
+  it('subir una posición la cambia de sitio con la anterior', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)]);
+
+    expect(moveListByOffset(board, 'c', -1)).toBe(true);
+
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('un desplazamiento fuera de rango no cambia nada', () => {
+    const primera = tablero([lista('a', 0), lista('b', 1)]);
+    const ultima = tablero([lista('a', 0), lista('b', 1)]);
+
+    expect(moveListByOffset(primera, 'a', -1)).toBe(false);
+    expect(moveListByOffset(ultima, 'b', 1)).toBe(false);
+    expect(orderedLists(primera).map((l) => l.id)).toEqual(['a', 'b']);
+    expect(orderedLists(ultima).map((l) => l.id)).toEqual(['a', 'b']);
+  });
+
+  it('la fijada no se mueve ni se puede pasar', () => {
+    const board = tablero([lista('a', 0), lista('b', 1), lista('c', 2)], 'a');
+
+    expect(moveListByOffset(board, 'a', 1)).toBe(false);
+    expect(moveListByOffset(board, 'b', -1)).toBe(false);
+    expect(orderedLists(board).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('un desplazamiento de cero o una lista ajena no cambia nada', () => {
+    const board = tablero([lista('a', 0), lista('b', 1)]);
+
+    expect(moveListByOffset(board, 'a', 0)).toBe(false);
+    expect(moveListByOffset(board, 'no-existe', 1)).toBe(false);
+    expect(board.lists.map((l) => l.position)).toEqual([0, 1]);
+  });
+});
+
 describe('board-list-rules: ninguna función de lectura cambia el tablero', () => {
   it('las lecturas dejan el tablero igual', () => {
     const board = tablero([lista('a', 0, [tarea('1', true)]), lista('b', 1, [tarea('2', false)])]);
@@ -524,6 +710,7 @@ describe('board-list-rules: ninguna función de lectura cambia el tablero', () =
     listProgress(board);
     listLimitLabel(board);
     resolvePinnedListId(board);
+    orderedLists(board);
     for (const l of board.lists) {
       completedTaskCount(l);
       listProgressPercent(l);

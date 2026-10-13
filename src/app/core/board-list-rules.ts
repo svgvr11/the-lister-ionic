@@ -12,10 +12,11 @@ import { touchList } from './list-updated-at';
  * red, el almacenamiento ni el DOM.
  *
  * CONVENCIÓN DE MUTACIÓN: las funciones que cambian el tablero (`syncPinnedList`,
- * `pinList`, `addListToBoard`, `moveListToTrash`, `moveListToArchive`, `reorderLists`)
- * modifican el objeto recibido y devuelven `true` si cambiaron algo. Es lo mismo que
- * hacía la página, y así quien llama sabe si tiene que guardar. Las de lectura
- * (`completedTaskCount`, `listProgressPercent`, …) no modifican nada.
+ * `pinList`, `addListToBoard`, `moveListToTrash`, `moveListToArchive`, `moveListBefore`,
+ * `moveListByOffset`, `reorderLists`) modifican el objeto recibido y devuelven `true` si
+ * cambiaron algo. Es lo mismo que hacía la página, y así quien llama sabe si tiene que
+ * guardar. Las de lectura (`completedTaskCount`, `listProgressPercent`, `orderedLists`, …)
+ * no modifican nada.
  *
  * De esas acciones, crear una lista (`addListToBoard`) y editar su título (`editListTitle`)
  * son modificaciones de la lista afectada, así que fijan su `updatedAt` con `touchList`.
@@ -46,7 +47,7 @@ function primeraLista(board: ChecklistBoard): ChecklistList | null {
 /**
  * Pin que debería tener el tablero: el actual si sigue existiendo, y si no la primera
  * lista por `position`. `position` es el orden estable guardado, así que la elección es
- * la misma en todos los dispositivos y no depende del barajado de cada sesión.
+ * la misma en todos los dispositivos.
  */
 export function resolvePinnedListId(board: ChecklistBoard): string | null {
   const current = board.pinnedListId ?? null;
@@ -114,7 +115,9 @@ export function addListToBoard(
 
   const nuevoId = opciones.nuevoId ?? (() => crypto.randomUUID());
   const ahora = opciones.ahora ?? (() => new Date().toISOString());
-  const orderedLists = [...board.lists].sort((a, b) => a.position - b.position);
+  // El final del tablero es el del orden de dibujo (la fijada primera, luego `position`),
+  // que es también el orden en el que queda el array.
+  const ordered = orderedLists(board);
   // Una sola fecha por acción: la del alta de la lista.
   const creada = ahora();
 
@@ -123,16 +126,16 @@ export function addListToBoard(
     boardId: board.id,
     title,
     visualColor: opciones.colorVisual,
-    position: opciones.alInicio ? 0 : orderedLists.length,
+    position: opciones.alInicio ? 0 : ordered.length,
     createdAt: creada,
     updatedAt: creada,
     tasks: []
   };
 
-  if (opciones.alInicio) orderedLists.unshift(newList);
-  else orderedLists.push(newList);
-  orderedLists.forEach((list, index) => (list.position = index));
-  board.lists = orderedLists;
+  if (opciones.alInicio) ordered.unshift(newList);
+  else ordered.push(newList);
+  ordered.forEach((list, index) => (list.position = index));
+  board.lists = ordered;
   // Una lista creada "al inicio del tablero" también arranca pinneada.
   if (opciones.alInicio) board.pinnedListId = newList.id;
   return true;
@@ -153,6 +156,99 @@ export function editListTitle(
   list.title = title;
   touchList(list, ahora);
   return true;
+}
+
+/**
+ * Aplica un orden de dibujo al tablero: reescribe `position` sin huecos Y deja el array
+ * de listas en ese mismo orden (igual que hace `addListToBoard`). Devuelve si algo cambió
+ * de verdad, para que quien llame sepa si tiene que guardar: reordenar sobre el orden que
+ * ya se está dibujando no escribe nada.
+ */
+function applyDisplayOrder(board: ChecklistBoard, order: ChecklistList[]): boolean {
+  const previous = orderedLists(board).map((list) => list.id);
+  order.forEach((list, index) => (list.position = index));
+  board.lists = order;
+  const reordered = previous.length !== order.length
+    || previous.some((id, index) => id !== order[index].id);
+  const renumbered = order.some((list, index) => list.position !== index);
+  return reordered || renumbered;
+}
+
+/**
+ * Orden en el que se dibujan las listas: la fijada primero y el resto por `position`.
+ *
+ * `position` es el orden estable guardado, así que este orden es el mismo en todos los
+ * dispositivos: no hay nada aleatorio ni de sesión. Si hay `position` repetida (un tablero
+ * viejo o una fusión rara) el `sort` es estable y las empatadas conservan el orden del
+ * array, que es el que se guarda, así que nunca se duda de cuál va delante.
+ */
+export function orderedLists(board: ChecklistBoard): ChecklistList[] {
+  const pinnedId = board.pinnedListId ?? null;
+  const pinned = pinnedId === null ? [] : board.lists.filter((list) => list.id === pinnedId);
+  const rest = board.lists.filter((list) => list.id !== pinnedId);
+  return [...pinned, ...rest.sort((a, b) => a.position - b.position)];
+}
+
+/**
+ * Mueve una lista delante de otra (o al final del tablero si `targetId` es `null`).
+ *
+ * El destino se mide sobre el orden de dibujo, no sobre la fila que se ve en pantalla: con
+ * el maquetado masonry de tres columnas el orden lógico no se lee de izquierda a derecha,
+ * así que «delante de» significa «antes en el orden de dibujo». Devuelve si el tablero
+ * cambió (entonces hay que guardar); estos casos no mueven nada:
+ *
+ *  - la lista fijada: no se arrastra ni se mueve con el teclado.
+ *  - la lista no está en el tablero, o el destino no existe.
+ *  - soltar la lista sobre sí misma.
+ *
+ * Nada se coloca por delante de la fijada: un destino que caiga antes se corrige al hueco
+ * siguiente, justo detrás de ella. Renumerar posiciones no es una modificación de la lista,
+ * así que no toca ningún `updatedAt`.
+ */
+export function moveListBefore(
+  board: ChecklistBoard,
+  listId: string,
+  targetId: string | null
+): boolean {
+  if (isPinned(board, listId)) return false;
+  const order = orderedLists(board);
+  if (!order.some((list) => list.id === listId)) return false;
+  // El destino se mide sobre lo que queda: quitar la arrastrada antes de buscar sitio es lo
+  // que hace que soltarla sobre sí misma (o en su propio hueco) no la desplace.
+  const remaining = order.filter((list) => list.id !== listId);
+  let target = remaining.length;
+  if (targetId !== null) {
+    const index = remaining.findIndex((list) => list.id === targetId);
+    // La arrastrada ya no está en `remaining`: soltarla sobre sí misma no encuentra destino.
+    if (index < 0) return false;
+    target = index;
+  }
+  if (board.pinnedListId && remaining.some((list) => list.id === board.pinnedListId)) {
+    target = Math.max(target, 1);
+  }
+  return applyDisplayOrder(board, [
+    ...remaining.slice(0, target),
+    order.find((list) => list.id === listId)!,
+    ...remaining.slice(target)
+  ]);
+}
+
+/**
+ * Mueve una lista una posición arriba o abajo en el orden de dibujo (teclado). Devuelve si
+ * el tablero cambió. La lista fijada no se mueve y tampoco se puede pasar por delante de
+ * ella, así que un desplazamiento que choque con el inicio del tablero no hace nada.
+ */
+export function moveListByOffset(board: ChecklistBoard, listId: string, offset: number): boolean {
+  if (isPinned(board, listId) || offset === 0) return false;
+  const order = orderedLists(board);
+  const from = order.findIndex((list) => list.id === listId);
+  if (from < 0) return false;
+  const firstMovable = board.pinnedListId ? 1 : 0;
+  const to = from + offset;
+  if (to < firstMovable || to >= order.length) return false;
+  const next = [...order];
+  next.splice(to, 0, ...next.splice(from, 1));
+  return applyDisplayOrder(board, next);
 }
 
 /** Renumera `position` sin huecos según el orden estable guardado. */
