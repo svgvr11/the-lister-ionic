@@ -306,30 +306,61 @@
       Añade una lista para comenzar
     </div>
 
+    <!--
+      Rejilla del tablero. En la vista Tarjetas de la app nativa es además la lista de
+      CDK: el arrastre táctil reordena las tarjetas. En la vista de lista no se declara
+      ningún `cdkDrag` a propósito: CDK haría `preventDefault` en el `mousedown` del
+      handle nativo (`draggable`) y rompería el arrastre de escritorio. Los dos motores
+      son exclusivos y nunca comparten elemento (ver `resolveReorderEngine`).
+    -->
     <div
       *ngIf="visibleLists.length > 0"
       class="board"
-      [class.board-cards]="boardViewMode === 'cards' && isNative"
+      [class.board-cards]="cardsViewActive"
       #boardGrid
+      cdkDropList
+      cdkDropListOrientation="mixed"
+      [cdkDropListData]="visibleLists"
+      [cdkDropListDisabled]="!cardsReorderEnabled"
+      cdkDropListAutoScrollDisabled
+      [cdkDropListSortPredicate]="cdkSortPredicate"
+      (cdkDropListDropped)="onCdkDrop($event)"
       (dragleave)="onListDragLeave($event)"
     >
-      <div
-        #boardItem
-        *ngFor="let list of visibleLists; trackBy: trackById"
-        class="checklist-column"
-        [attr.data-list-id]="list.id"
-        [class.collapsed]="isCollapsed(list.id)"
-        [class.list-complete]="isListComplete(list)"
-        [class.list-dragging]="isListDragging(list.id)"
-        [class.list-drop-before]="isListDropTarget(list.id)"
-        [attr.role]="boardViewMode === 'cards' && isNative ? 'button' : null"
-        [attr.tabindex]="boardViewMode === 'cards' && isNative ? 0 : null"
-        (click)="boardViewMode === 'cards' && isNative ? openListFocus(list, $event) : null"
-        (keydown)="onCardKeydown($event, list)"
-        [attr.aria-label]="boardViewMode === 'cards' && isNative ? cardAriaLabel(list) : null"
-        [title]="boardViewMode === 'cards' && isNative ? cardTitleTooltip(list) : null"
-      >
-        <ng-container *ngIf="boardViewMode === 'cards' && isNative; else listViewTemplate">
+      <ng-container *ngFor="let list of visibleLists; trackBy: trackById">
+        <!-- Tarjeta móvil (vista Tarjetas, app nativa): reordenable con el dedo. -->
+        <div
+          *ngIf="cardsViewActive; else listCardTemplate"
+          #boardItem
+          class="checklist-column"
+          [attr.data-list-id]="list.id"
+          [class.collapsed]="isCollapsed(list.id)"
+          [class.list-complete]="isListComplete(list)"
+          [attr.role]="'button'"
+          [attr.tabindex]="0"
+          (click)="onCardClick(list, $event)"
+          (keydown)="onCardKeydown($event, list)"
+          [attr.aria-label]="cardAriaLabel(list)"
+          [title]="cardTitleTooltip(list)"
+          cdkDrag
+          [cdkDragStartDelay]="cdkDragStartDelay"
+          [cdkDragDisabled]="!cardsReorderEnabled || isPinned(list)"
+          (cdkDragStarted)="onCdkDragStart($event.source)"
+          (cdkDragMoved)="onCdkDragMove($event)"
+          (cdkDragReleased)="onCdkDragRelease()"
+          (cdkDragEnded)="onCdkDragEnd()"
+        >
+          <!--
+            Previsualización del arrastre táctil. Se porta al `<body>`, así que el tema
+            se le enlaza aquí (las variables viven en el host del tablero). La superficie
+            es fija (`--card-surface`) y el borde lleva el acento del tema.
+          -->
+          <ng-container *cdkDragPreview matchSize>
+            <div class="card-drag-preview" [style.--accent]="themeAccent">
+              <span class="card-drag-preview-title">{{ list.title }}</span>
+              <span class="card-drag-preview-counter">{{ taskCounterLabel(list) }}</span>
+            </div>
+          </ng-container>
           <div class="card-header-row">
             <button
               type="button"
@@ -375,10 +406,20 @@
               </span>
             </div>
           </div>
-        </ng-container>
+        </div>
 
-        <ng-template #listViewTemplate>
-        <div class="column-header">
+        <!-- Tarjeta de escritorio (vista de lista): arrastre propio HTML5, sin CDK. -->
+        <ng-template #listCardTemplate>
+          <div
+            #boardItem
+            class="checklist-column"
+            [attr.data-list-id]="list.id"
+            [class.collapsed]="isCollapsed(list.id)"
+            [class.list-complete]="isListComplete(list)"
+            [class.list-dragging]="isListDragging(list.id)"
+            [class.list-drop-before]="isListDropTarget(list.id)"
+          >
+          <div class="column-header">
           <button
             type="button"
             class="pin-list-button ion-activatable"
@@ -596,32 +637,32 @@
             Sin tareas. Añade una para comenzar.
           </div>
 
-          <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list, taskInput)">
-            <ion-icon name="add" aria-hidden="true"></ion-icon>
-            <ion-input
-              #taskInput
-              autocapitalize="sentences"
-              [(ngModel)]="taskDrafts[list.id]"
-              [name]="'task-' + list.id"
-              placeholder="Añadir tarea a esta lista..."
-              aria-label="Añadir tarea a esta lista"
-              (ionBlur)="onTaskDraftBlur()"
-              (keydown.enter)="$event.preventDefault(); addTask(list, taskInput)"
-            ></ion-input>
-            <button
-              class="add-confirm ion-activatable"
-              type="submit"
-              [disabled]="!taskDrafts[list.id]?.trim()"
-              aria-label="Añadir tarea"
-            >
-              <ion-icon name="checkmark"></ion-icon>
-              <ion-ripple-effect></ion-ripple-effect>
-            </button>
-           </form>
-         </div>
+           <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list, taskInput)">
+             <ion-icon name="add" aria-hidden="true"></ion-icon>
+             <ion-input
+               #taskInput
+               autocapitalize="sentences"
+               [(ngModel)]="taskDrafts[list.id]"
+               [name]="'task-' + list.id"
+               placeholder="Añadir tarea a esta lista..."
+               aria-label="Añadir tarea a esta lista"
+               (ionBlur)="onTaskDraftBlur()"
+               (keydown.enter)="$event.preventDefault(); addTask(list, taskInput)"
+             ></ion-input>
+             <button
+               class="add-confirm ion-activatable"
+               type="submit"
+               [disabled]="!taskDrafts[list.id]?.trim()"
+               aria-label="Añadir tarea"
+             >
+               <ion-icon name="checkmark"></ion-icon>
+               <ion-ripple-effect></ion-ripple-effect>
+             </button>
+            </form>
+          </div>
+          </div>
         </ng-template>
-      </div>
-
+      </ng-container>
     </div>
 
     <!-- Mensaje cuando no hay resultados de búsqueda -->
