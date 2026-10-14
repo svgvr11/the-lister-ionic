@@ -47,6 +47,9 @@ input {
   --z-profile-scrim: 397;
   --z-profile-menu: 398;
   --z-feedback-fab: 399;
+  /* Previsualización del arrastre táctil de listas (CDK, portada al <body>): sobre el
+     contenido y el FAB, bajo los overlays de página y muy bajo el bloqueo de sesión. */
+  --z-drag-preview: 500;
   --z-page-overlay: 1000;
   --z-mobile-profile-scrim: 1000;
   --z-mobile-profile-dialog: 1001;

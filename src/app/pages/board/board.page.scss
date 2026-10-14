@@ -3078,7 +3078,16 @@ ion-header {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /*
+    El deslizamiento normal tiene que seguir scrolleando: mientras no hay arrastre en
+    curso, el paneo vertical manda. Durante el arrastre CDK fija `touch-action: none` en
+    línea (y los estilos globales del componente también), para que el gesto no compita
+    con el scroll.
+  */
+  touch-action: pan-y !important;
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  /* El menú contextual del sistema no tiene sentido sobre una tarjeta arrastrable. */
+  -webkit-touch-callout: none;
 
   &:hover {
     box-shadow: 0 4px 16px rgba(34, 47, 76, 0.08);
@@ -3096,6 +3105,68 @@ ion-header {
   &.list-complete {
     background: color-mix(in srgb, #087750 8%, var(--card-surface, #fff));
     border-color: color-mix(in srgb, #087750 25%, #edf0f6);
+  }
+}
+
+/*
+  Hueco que deja la tarjeta cuando se levanta con el dedo. Es el clon que genera CDK, así
+  que conserva el tamaño de la tarjeta sin forzar nada: borde de acento y sin contenido
+  visible (los hijos se esconden, no se reescriben).
+*/
+.cdk-drag-placeholder {
+  border: 2px dashed var(--accent, #8870ad) !important;
+  background: color-mix(in srgb, var(--accent, #8870ad) 6%, var(--card-surface, #fff)) !important;
+  opacity: 1;
+}
+
+.cdk-drag-placeholder > * {
+  visibility: hidden;
+}
+
+/*
+  Previsualización del arrastre: va portada al `<body>`, así que el tema se le enlaza
+  desde la propia tarjeta ([style.--accent]) y no puede heredar del tablero.
+*/
+.card-drag-preview {
+  --card-surface: #fff;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--card-surface);
+  border: 2px solid var(--accent, #8870ad);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(34, 47, 76, 0.3);
+  transform: scale(1.03);
+  z-index: var(--z-drag-preview, 500);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card-drag-preview-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1c2333;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-drag-preview-counter {
+  font-size: 12px;
+  color: #9fa4a7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-drag-preview {
+    transform: none;
+    box-shadow: 0 0 0 2px var(--accent, #8870ad);
+  }
+
+  .cdk-drag-placeholder {
+    transition: none !important;
   }
 }
 
