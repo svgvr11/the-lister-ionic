@@ -29,7 +29,7 @@ import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpire
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
-import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
+import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
 import { BoardSessionService } from '../../core/services/board-session.service';
@@ -200,7 +200,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private clearMasonryStyles(): void {
-    const board = this.boardGrid?.nativeElement;
+    const board = this.boardGridElement;
     if (board) {
       board.style.position = '';
       board.style.height = '';
@@ -475,12 +475,34 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (ref) this.focusRemoveDialogPrimary();
   }
   private removeDialogPrimaryElement: HTMLButtonElement | null = null;
+  /**
+   * Rejilla del tablero. Se declara con setter a propósito: el contenedor vive bajo un
+   * `*ngIf` (`visibleLists.length > 0`), así que se crea y se destruye en caliente. El
+   * setter es el aviso fiable para atar el observador al nodo vivo (y soltarlo cuando
+   * desaparece). Con el `@ViewChild` plano el observador se conectaba antes de que la
+   * rejilla existiera y se quedaba atado a un nodo muerto: era la causa de que el
+   * masonry no se readaptara al cambiar el ancho de la ventana.
+   */
   @ViewChild('boardGrid', { read: ElementRef, static: false })
-  private boardGrid?: ElementRef<HTMLElement>;
-  private resizeObserver?: ResizeObserver;
-  private layoutFrame: number | null = null;
-
-  private readonly GAP = 22;
+  private set boardGrid(ref: ElementRef<HTMLElement> | undefined) {
+    this.boardGridElement = ref?.nativeElement ?? null;
+    if (this.boardGridElement) {
+      this.masonry.observe(this.boardGridElement);
+      this.scheduleMasonryLayout();
+    } else {
+      this.masonry.release();
+    }
+  }
+  private boardGridElement: HTMLElement | null = null;
+  /**
+   * Ciclo de vida del masonry: observa la rejilla y recalcula en vivo cuando cambia el
+   * ancho del contenedor (ventana, zoom, rotación o barra de scroll).
+   */
+  private readonly masonry = new MasonryController({
+    gap: MASONRY_GAP,
+    getContainer: () => this.boardGridElement,
+    getItems: () => this.boardItems?.toArray().map((item) => item.nativeElement) ?? []
+  });
   private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
   constructor() {
@@ -496,6 +518,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.pageActive = true;
     if (this.activeConflict) this.conflictDialogDeferred = true;
     this.presentDeferredConflict();
+    // Al entrar, el contenedor puede haberse recreado o venir con ancho 0 (se vuelve de
+    // otra página). Se reconcilia el observador con el nodo vivo y se recalcula.
+    this.masonry.observe();
+    this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
 
@@ -912,9 +938,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     const pinnedChanged = this.syncPinnedList();
     // El orden de dibujo sale de `position` (la fijada primera), así que no hay nada que
     // reconciliar al llegar un tablero nuevo: las listas se pintan según su orden guardado.
-    // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
-    // hay que observar y maquetar en cuanto se pinta la rejilla.
-    this.observeBoardGrid();
+    // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que se
+    // reintenta la conexión al nodo vivo por si la rejilla acaba de aparecer.
+    this.masonry.observe();
     this.scheduleMasonryLayout();
     this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
@@ -1561,20 +1587,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   ngAfterViewInit(): void {
     this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
-    this.observeBoardGrid();
     this.scheduleMasonryLayout();
-  }
-
-  /**
-   * Conecta el ResizeObserver al contenedor del tablero. Se vuelve a llamar cada vez
-   * que llegan datos porque, mientras la carga es asíncrona (Supabase), en ngAfterViewInit
-   * el tablero todavía no existe y el observador nunca quedaría conectado.
-   */
-  private observeBoardGrid(): void {
-    const board = this.boardGrid?.nativeElement;
-    if (!board) return;
-    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
-    this.resizeObserver.observe(board);
   }
 
   ngOnDestroy(): void {
@@ -1584,9 +1597,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
     this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
-    this.resizeObserver?.disconnect();
+    this.masonry.disconnect();
     if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
     this.clearFocusUpdatedAtTooltipTimer();
     this.clearNewListInputFocusWork();
@@ -2422,21 +2434,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   private scheduleMasonryLayout(): void {
     if (this.boardViewMode === 'cards' && this.isNative) return;
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
-    this.layoutFrame = requestAnimationFrame(() => {
-      this.layoutFrame = null;
-      this.applyMasonryLayout();
-    });
-  }
-
-  /**
-   * Recoloca las tarjetas en columnas sin perder el scroll delegando en la utilidad compartida.
-   */
-  private applyMasonryLayout(): void {
-    if (this.boardViewMode === 'cards' && this.isNative) return;
-    const board = this.boardGrid?.nativeElement;
-    const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
-    applyMasonryLayout(board, items, { isMobile: this.isMobilePresentation, gap: this.GAP });
+    this.masonry.scheduleLayout();
   }
 
   /** Normaliza el orden estable guardado tras quitar una lista del tablero. */
