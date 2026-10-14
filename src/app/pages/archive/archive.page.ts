@@ -44,7 +44,7 @@ import {
 } from '../../core/board-list-rules';
 import { completedTasks, pendingTasks } from '../../core/board-task-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
-import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
+import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
@@ -91,8 +91,23 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   /** Abre la guía "¿Cómo funciona el Archivo?" desde el botón de la banda informativa. */
   helpOpen = false;
 
+  /**
+   * Rejilla del archivo. Se declara con setter a propósito: el contenedor vive bajo un
+   * `*ngIf`, así que se crea y se destruye en caliente. El setter es el aviso fiable para
+   * atar el observador al nodo vivo (y soltarlo cuando desaparece), que es justo lo que
+   * faltaba para que el masonry se readaptara al cambiar el ancho de la ventana.
+   */
   @ViewChild('archiveGrid', { read: ElementRef, static: false })
-  private archiveGrid?: ElementRef<HTMLElement>;
+  private set archiveGrid(ref: ElementRef<HTMLElement> | undefined) {
+    this.archiveGridElement = ref?.nativeElement ?? null;
+    if (this.archiveGridElement) {
+      this.masonry.observe(this.archiveGridElement);
+      this.scheduleMasonryLayout();
+    } else {
+      this.masonry.release();
+    }
+  }
+  private archiveGridElement: HTMLElement | null = null;
 
   @ViewChildren('archiveCard', { read: ElementRef })
   private archiveCards!: QueryList<ElementRef<HTMLElement>>;
@@ -110,10 +125,17 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   }
   private pendingActionOpener: HTMLElement | null = null;
 
-  private layoutFrame: number | null = null;
-  private resizeObserver: ResizeObserver | null = null;
   private mobilePresentationQuery: MediaQueryList | null = null;
   private isMobilePresentation = false;
+  /**
+   * Ciclo de vida del masonry. Observa la rejilla y recalcula en vivo cuando cambia el
+   * ancho del contenedor (ventana, zoom, rotación o barra de scroll).
+   */
+  private readonly masonry = new MasonryController({
+    gap: MASONRY_GAP,
+    getContainer: () => this.archiveGridElement,
+    getItems: () => this.archiveCards?.toArray().map((item) => item.nativeElement) ?? []
+  });
   private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
     this.isMobilePresentation = event.matches;
     this.scheduleMasonryLayout();
@@ -199,34 +221,18 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   ngAfterViewInit(): void {
     this.archiveCards.changes.subscribe(() => this.scheduleMasonryLayout());
-    this.observeArchiveGrid();
     this.scheduleMasonryLayout();
   }
 
-  private observeArchiveGrid(): void {
-    const grid = this.archiveGrid?.nativeElement;
-    if (!grid) return;
-    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
-    this.resizeObserver.observe(grid);
-  }
-
   scheduleMasonryLayout(): void {
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
-    this.layoutFrame = requestAnimationFrame(() => {
-      this.layoutFrame = null;
-      this.applyMasonryLayout();
-    });
-  }
-
-  private applyMasonryLayout(): void {
-    const grid = this.archiveGrid?.nativeElement;
-    const items = this.archiveCards?.toArray().map((item) => item.nativeElement) ?? [];
-    applyMasonryLayout(grid, items, { isMobile: this.isMobilePresentation, gap: MASONRY_GAP });
+    this.masonry.scheduleLayout();
   }
 
   ionViewDidEnter(): void {
     this.pageActive = true;
-    this.observeArchiveGrid();
+    // Al volver a la página el contenedor puede haberse recreado o venir con ancho 0:
+    // se reconcilia el observador y se recalcula con el ancho que haya ahora.
+    this.masonry.observe();
     this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
@@ -260,8 +266,7 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
     this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
-    this.resizeObserver?.disconnect();
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    this.masonry.disconnect();
     this.helpOpen = false;
   }
 
@@ -392,7 +397,12 @@ export class ArchivePage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     // Una sincronización puede dejar el archivo vacío; la guía no sobrevive a eso.
     this.syncHelpVisibility();
     this.scheduleMasonryLayout();
-    setTimeout(() => this.observeArchiveGrid());
+    // La rejilla se pinta en el siguiente ciclo: se reintenta por si el contenedor
+    // acababa de aparecer y el observador todavía no lo tenía.
+    setTimeout(() => {
+      this.masonry.observe();
+      this.scheduleMasonryLayout();
+    });
     // Sin este guardado, una lista vencida reaparece al volver a entrar.
     if (purged) void this.persist();
   }
