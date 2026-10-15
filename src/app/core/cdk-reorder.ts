@@ -37,6 +37,15 @@ export const CDK_DRAG_START_DELAY_MS = 400;
 export const CDK_TOUCH_MAX_WIDTH = 700;
 
 /**
+ * Altura máxima de la previsualización de arrastre de una lista en la vista de lista.
+ *
+ * Las tarjetas de esa vista pueden tener 40 tareas: arrastrarlas enteras taparía media
+ * pantalla. La previsualización y el hueco muestran la tarjeta COLAPSADA (cabecera,
+ * barra y contador), y este tope es el que se usa en la plantilla y en los estilos.
+ */
+export const LIST_PREVIEW_MAX_HEIGHT_PX = 108;
+
+/**
  * Ventana, tras soltar o cancelar un arrastre, en la que el clic que emite el navegador
  * se come en lugar de abrir el modal de la lista. Sin ella, un arrastre que acaba donde
  * empezó (pulsación larga sin mover) abriría el modal sin que el usuario lo pidiera.
@@ -155,6 +164,20 @@ export function autoScrollStepFor(
     );
   }
   return 0;
+}
+
+/**
+ * Aviso de desplazamiento para la estrategia de orden de CDK.
+ *
+ * El auto-scroll propio mueve el contenido hacia abajo `step` píxeles, así que cada
+ * tarjeta SUBE `step` píxeles en el viewport: el aviso lleva el signo contrario. Es lo
+ * mismo que calcula CDK con su propio listener de scroll (`topDifference`), con la
+ * diferencia de que aquí lo emitimos nosotros porque el scroller de `ion-content` vive
+ * en su shadow DOM y su evento `scroll` no cruza la frontera.
+ */
+export function cdkScrollNotice(step: number): { top: number; left: number } {
+  // `-0` no es `0` a efectos de comparación: sin desplazamiento se avisa 0 exacto.
+  return { top: step === 0 ? 0 : -step, left: 0 };
 }
 
 // ── El toque que cierra el arrastre ──────────────────────────────────────────

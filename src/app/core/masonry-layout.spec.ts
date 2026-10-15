@@ -9,7 +9,8 @@ import {
   MasonryController,
   calculateMasonryPositions,
   computeCardWidth,
-  computeColumnCount
+  computeColumnCount,
+  resolveBoardFlowMode
 } from './masonry-layout';
 
 /**
@@ -534,5 +535,108 @@ describe('MasonryController (ciclo de vida del observador)', () => {
     expect(MASONRY_HYSTERESIS_PX).toBeLessThan(
       MASONRY_THREE_COLUMNS_MIN_WIDTH - MASONRY_TWO_COLUMNS_MIN_WIDTH
     );
+  });
+
+  /**
+   * `canLayout` / `onSkipLayout`: quien use el controlador puede decidir en el último
+   * momento si toca maquetar. El tablero lo usa en flujo normal (una columna), porque el
+   * `ResizeObserver` dispara el maquetado sin pasar por su propia comprobación y volvía a
+   * dejar posiciones absolutas sobre la rejilla.
+   */
+  describe('canLayout', () => {
+    const build = (canLayout: () => boolean) => {
+      FakeResizeObserver.instances = [];
+      let saltos = 0;
+      const container = fakeElement(1000);
+      const items = [fakeItem(), fakeItem(), fakeItem()];
+      const controller = new MasonryController({
+        gap: MASONRY_GAP,
+        getContainer: () => container,
+        getItems: () => items,
+        canLayout,
+        onSkipLayout: () => { saltos += 1; }
+      });
+      return { controller, container, items, getSaltos: () => saltos };
+    };
+
+    it('con canLayout en false no maqueta y avisa', () => {
+      const { controller, container, items, getSaltos } = build(() => false);
+      withSyncRaf(() => {
+        expect(controller.layout()).toBe(false);
+        // No se toca nada: `position` queda sin definir en el elemento falso.
+        expect(container.style.position).toBeUndefined();
+        expect(items[0].style.position).toBeUndefined();
+        expect(getSaltos()).toBe(1);
+      });
+    });
+
+    it('con canLayout en true maqueta como siempre y no avisa', () => {
+      const { controller, container, items, getSaltos } = build(() => true);
+      withSyncRaf(() => {
+        expect(controller.layout()).toBe(true);
+        expect(container.style.position).toBe('relative');
+        expect(items[0].style.position).toBe('absolute');
+        expect(getSaltos()).toBe(0);
+      });
+    });
+
+    it('el observador tampoco maqueta cuando canLayout es false', () => {
+      const { controller, container, getSaltos } = build(() => false);
+      withFakeObserver(() => {
+        withSyncRaf(() => {
+          controller.observe(container);
+          controller.scheduleLayout();
+          expect(container.style.position).toBeUndefined();
+          expect(getSaltos()).toBe(1);
+        });
+      });
+    });
+  });
+});
+
+/**
+ * Flujo normal frente a masonry: con UNA columna el contenedor va en flujo normal
+ * (sin posiciones absolutas) para que CDK pueda reordenar moviendo nodos del DOM.
+ */
+describe('resolveBoardFlowMode', () => {
+  it('móvil en vertical: flujo normal', () => {
+    expect(resolveBoardFlowMode(false, 390)).toBe(true);
+    // El límite es estricto, igual que en computeColumnCount: en 624 siguen 2 columnas.
+    expect(resolveBoardFlowMode(false, 623)).toBe(true);
+    expect(resolveBoardFlowMode(false, 624)).toBe(false);
+  });
+
+  it('escritorio ancho: masonry', () => {
+    expect(resolveBoardFlowMode(true, 1400)).toBe(false);
+    expect(resolveBoardFlowMode(true, 656)).toBe(false);
+  });
+
+  it('no oscila en el margen entre umbral e histéresis', () => {
+    // 624..655: conserva el modo anterior, igual que computeColumnCount.
+    expect(resolveBoardFlowMode(false, 650)).toBe(false);
+    expect(resolveBoardFlowMode(true, 650)).toBe(true);
+    expect(resolveBoardFlowMode(false, 656)).toBe(false);
+    expect(resolveBoardFlowMode(true, 624)).toBe(true);
+  });
+
+  it('los umbrales son los mismos que usa el masonry', () => {
+    expect(MASONRY_TWO_COLUMNS_MIN_WIDTH - MASONRY_HYSTERESIS_PX).toBe(624);
+    expect(MASONRY_TWO_COLUMNS_MIN_WIDTH + MASONRY_HYSTERESIS_PX).toBe(656);
+  });
+
+  it('con ancho no válido conserva el modo actual', () => {
+    expect(resolveBoardFlowMode(true, 0)).toBe(true);
+    expect(resolveBoardFlowMode(false, -10)).toBe(false);
+    expect(resolveBoardFlowMode(false, Number.NaN)).toBe(false);
+  });
+
+  it('ir y volver de móvil a ancho pasa por masonry y vuelve al flujo', () => {
+    let flow = false;
+    flow = resolveBoardFlowMode(flow, 390);
+    expect(flow).toBe(true);
+    flow = resolveBoardFlowMode(flow, 1024);
+    expect(flow).toBe(false);
+    flow = resolveBoardFlowMode(flow, 390);
+    expect(flow).toBe(true);
   });
 });

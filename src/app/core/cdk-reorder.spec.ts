@@ -9,9 +9,11 @@ import {
   CDK_DRAG_SAFETY_TIMEOUT_MS,
   CDK_DRAG_START_DELAY_MS,
   CDK_TOUCH_MAX_WIDTH,
+  LIST_PREVIEW_MAX_HEIGHT_PX,
   LIST_REORDER_ENGINE,
   autoScrollStepFor,
   canSortBeforePinned,
+  cdkScrollNotice,
   planCdkReorder,
   resolveReorderEngine,
   shouldOpenCardFocus
@@ -249,6 +251,73 @@ describe('cdk-reorder: el auto-scroll propio', () => {
 describe('cdk-reorder: la pulsación larga', () => {
   it('el retardo publicado es el de pulsación larga', () => {
     expect(CDK_DRAG_START_DELAY_MS).toBe(400);
+  });
+});
+
+describe('cdk-reorder: tarjetas altas en la vista de lista', () => {
+  it('la previsualización compacta tiene altura acotada', () => {
+    expect(LIST_PREVIEW_MAX_HEIGHT_PX).toBe(108);
+    // Acotada de verdad: bastante menos que una tarjeta con 40 tareas (~900 px).
+    expect(LIST_PREVIEW_MAX_HEIGHT_PX).toBeLessThan(200);
+  });
+
+  it('traducir a moveListBefore en columna única mueve al final con destino nulo', () => {
+    const board = tableroCon(6);
+    const plan = planCdkReorder({
+      visibleIds: ['l0', 'l1', 'l2', 'l3', 'l4', 'l5'],
+      previousIndex: 1,
+      currentIndex: 5,
+      pinnedListId: null,
+      searching: false
+    });
+
+    expect(plan).toEqual({ listId: 'l1', targetId: null });
+    expect(ordenTrasAplicar(board, plan!)).toEqual(['l0', 'l2', 'l3', 'l4', 'l5', 'l1']);
+  });
+
+  it('columna única con fijada: el destino nunca es la fijada', () => {
+    const board = tableroCon(5, 'l0');
+    const plan = planCdkReorder({
+      visibleIds: ['l0', 'l1', 'l2', 'l3', 'l4'],
+      previousIndex: 4,
+      currentIndex: 1,
+      pinnedListId: 'l0',
+      searching: false
+    });
+
+    expect(plan).toEqual({ listId: 'l4', targetId: 'l1' });
+    expect(ordenTrasAplicar(board, plan!)).toEqual(['l0', 'l4', 'l1', 'l2', 'l3']);
+  });
+
+  it('una tarjeta larga que sube un puesto cambia solo con su vecina', () => {
+    const board = tableroCon(4);
+    const plan = planCdkReorder({
+      visibleIds: ['l0', 'l1', 'l2', 'l3'],
+      previousIndex: 3,
+      currentIndex: 2,
+      pinnedListId: null,
+      searching: false
+    });
+
+    expect(plan).toEqual({ listId: 'l3', targetId: 'l2' });
+    expect(ordenTrasAplicar(board, plan!)).toEqual(['l0', 'l1', 'l3', 'l2']);
+  });
+});
+
+describe('cdk-reorder: el aviso de scroll a CDK', () => {
+  it('el contenido baja y las tarjetas suben: el signo es el contrario', () => {
+    expect(cdkScrollNotice(9)).toEqual({ top: -9, left: 0 });
+    expect(cdkScrollNotice(-4)).toEqual({ top: 4, left: 0 });
+  });
+
+  it('sin desplazamiento no hay nada que avisar', () => {
+    expect(cdkScrollNotice(0)).toEqual({ top: 0, left: 0 });
+  });
+
+  it('el paso lento de arranque ya se avisa (no se queda el hueco atrás)', () => {
+    // El mínimo de `autoScrollStepFor` es 3 px por fotograma: con ese paso el aviso
+    // sigue siendo útil desde el primer fotograma.
+    expect(cdkScrollNotice(AUTO_SCROLL_MIN_STEP_PX).top).toBe(-AUTO_SCROLL_MIN_STEP_PX);
   });
 });
 
