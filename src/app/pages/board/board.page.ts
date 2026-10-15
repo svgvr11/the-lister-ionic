@@ -452,6 +452,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   /**
+   * ¿Hay un arrastre táctil en curso? La plantilla lo usa para bloquear el paneo mientras
+   * dura el gesto (`.board.reordering`); en cuanto se suelta o se cancela, el scroll vuelve
+   * a su comportamiento normal.
+   */
+  get cdkReordering(): boolean {
+    return this.cdkDragActive;
+  }
+
+  /**
    * Orientación del `cdkDropList` en la vista de lista.
    *
    * MEDIDO EN EL SPIKE de la Tarea 2 y CORREGIDO tras la prueba de dedo: empezó en
@@ -2768,6 +2777,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private armCdkAutoScroll(): void {
     if (this.cdkAutoScrollFrame) return;
     const tick = (): void => {
+      // Defensa de ciclo de vida: si el arrastre ya terminó por una vía que no pasó por
+      // `endCdkDrag` (una tarjeta que desaparece, un gesto que CDK aborta), el bucle se
+      // para en el siguiente fotograma en lugar de seguir midiendo y desplazando.
+      if (!this.cdkDragActive) {
+        this.stopCdkAutoScroll();
+        return;
+      }
       this.cdkAutoScrollFrame = requestAnimationFrame(tick);
       const scroll = this.cdkScrollElement;
       if (!scroll) return;

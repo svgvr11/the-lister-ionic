@@ -318,6 +318,7 @@
       class="board"
       [class.board-cards]="cardsViewActive"
       [class.board--flow]="usesFlowLayout"
+      [class.reordering]="cdkReordering"
       #boardGrid
       cdkDropList
       [cdkDropListOrientation]="cardsViewActive ? 'mixed' : listOrientation"
