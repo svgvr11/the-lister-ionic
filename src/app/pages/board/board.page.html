@@ -317,11 +317,13 @@
       *ngIf="visibleLists.length > 0"
       class="board"
       [class.board-cards]="cardsViewActive"
+      [class.board--flow]="usesFlowLayout"
+      [class.reordering]="cdkReordering"
       #boardGrid
       cdkDropList
-      cdkDropListOrientation="mixed"
+      [cdkDropListOrientation]="cardsViewActive ? 'mixed' : listOrientation"
       [cdkDropListData]="visibleLists"
-      [cdkDropListDisabled]="!cardsReorderEnabled"
+      [cdkDropListDisabled]="!reorderEnabled"
       cdkDropListAutoScrollDisabled
       [cdkDropListSortPredicate]="cdkSortPredicate"
       (cdkDropListDropped)="onCdkDrop($event)"
@@ -418,8 +420,47 @@
             [class.list-complete]="isListComplete(list)"
             [class.list-dragging]="isListDragging(list.id)"
             [class.list-drop-before]="isListDropTarget(list.id)"
+            (contextmenu)="$event.preventDefault()"
+            cdkDrag
+            [cdkDragData]="list"
+            [cdkDragStartDelay]="cdkDragStartDelay"
+            [cdkDragDisabled]="!listCdkReorderEnabled || isPinned(list)"
+            (cdkDragStarted)="onCdkDragStart($event.source)"
+            (cdkDragMoved)="onCdkDragMove($event)"
+            (cdkDragReleased)="onCdkDragRelease()"
+            (cdkDragEnded)="onCdkDragEnd()"
           >
-          <div class="column-header">
+            <!--
+              Previsualización y hueco del arrastre táctil: la tarjeta COLAPSADA (cabecera,
+              barra y contador), con la altura acotada. El hueco mantiene el alto de la
+              tarjeta arrastrada... que aquí no hace falta forzar: con el hueco compacto el
+              destino siguió siendo el correcto en el spike (tarjetas de 2 a 40 tareas).
+            -->
+            <ng-container *cdkDragPreview>
+              <div class="list-drag-preview" [style.--accent]="themeAccent">
+                <span class="list-preview-title">{{ list.title }}</span>
+                <span class="list-preview-bar" [style.--accent]="themeAccent">
+                  <span class="list-preview-bar-fill" [style.width]="listProgressPercent(list) + '%'"></span>
+                </span>
+                <span class="list-preview-counter">{{ taskCounterLabel(list) }}</span>
+              </div>
+            </ng-container>
+            <ng-container *cdkDragPlaceholder>
+              <div class="list-drag-placeholder" [style.--accent]="themeAccent">
+                <span class="list-preview-title">{{ list.title }}</span>
+                <span class="list-preview-bar" [style.--accent]="themeAccent">
+                  <span class="list-preview-bar-fill" [style.width]="listProgressPercent(list) + '%'"></span>
+                </span>
+                <span class="list-preview-counter">{{ taskCounterLabel(list) }}</span>
+              </div>
+            </ng-container>
+          <!--
+            Asa del arrastre: la cabecera completa. Con asa, el arrastre solo puede empezar
+            aquí, así que ni las tareas, ni los checkboxes, ni "Añadir tarea" lo disparan,
+            y CDK nunca fija `touch-action` en línea sobre la tarjeta (el scroll sigue
+            funcionando desde la cabecera).
+          -->
+          <div class="column-header" cdkDragHandle>
           <button
             type="button"
             class="pin-list-button ion-activatable"
@@ -446,7 +487,7 @@
           <button
             type="button"
             class="list-header-trigger"
-            (click)="openListFocus(list, $event)"
+            (click)="onListHeaderAction(list, $event)"
             aria-haspopup="dialog"
             [attr.aria-expanded]="focusListId === list.id"
             aria-controls="focus-list-dialog"

@@ -61,6 +61,28 @@ export const MASONRY_MOBILE_MAX_WIDTH = 520;
 export const MASONRY_HYSTERESIS_PX = 16;
 
 /**
+ * ¿La rejilla va en FLUJO NORMAL en lugar de en masonry?
+ *
+ * Una sola columna no necesita posiciones absolutas: con `display:flex; column` y el
+ * mismo `gap` y el mismo ancho máximo el resultado es idéntico, y el contenedor mide
+ * solo. Eso es imprescindible para el reordenamiento con `@angular/cdk/drag-drop`, que
+ * reordena moviendo nodos del DOM: con `position:absolute` y `top` en línea el nodo se
+ * mueve pero la posición no, así que el orden visual no sigue al DOM.
+ *
+ * La histéresis es la misma que usa `computeColumnCount`, para que la rotación o una
+ * barra de scroll que aparece y desaparece no hagan oscilar el maquetado.
+ *
+ * @param currentFlow Modo actual: `true` = flujo normal.
+ * @param containerWidth Ancho del contenedor de tarjetas.
+ */
+export function resolveBoardFlowMode(currentFlow: boolean, containerWidth: number): boolean {
+  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return currentFlow;
+  const toFlow = containerWidth < MASONRY_TWO_COLUMNS_MIN_WIDTH - MASONRY_HYSTERESIS_PX;
+  const toMasonry = containerWidth >= MASONRY_TWO_COLUMNS_MIN_WIDTH + MASONRY_HYSTERESIS_PX;
+  return currentFlow ? !toMasonry : toFlow;
+}
+
+/**
  * Ancho mínimo de contenedor que sostiene `columns` columnas.
  *
  * Única fuente de los umbrales: de aquí salen las comparaciones de
@@ -274,6 +296,15 @@ export interface MasonryControllerConfig extends MasonryLayoutOptions {
   getContainer: () => HTMLElement | null | undefined;
   getItems: () => (HTMLElement | null | undefined)[];
   onLayout?: (result: MasonryApplyResult) => void;
+  /**
+   * ¿Toca maquetar en esta pasada? Se pregunta antes de calcular, así que quien lo
+   * use puede decidir en el último momento. El tablero lo usa para el flujo normal de
+   * una columna: cuando el reordenamiento táctil con CDK está en juego, maquetar con
+   * posiciones absolutas impediría reordenar (mover el nodo no cambia su `top`).
+   */
+  canLayout?: () => boolean;
+  /** Se avisa cuando una pasada se salta por `canLayout`, para que el titular limpie. */
+  onSkipLayout?: () => void;
 }
 
 /**
@@ -351,6 +382,10 @@ export class MasonryController {
 
   /** Recalcula ya. Devuelve si el maquetado pudo aplicarse. */
   layout(): boolean {
+    if (this.config.canLayout && !this.config.canLayout()) {
+      this.config.onSkipLayout?.();
+      return false;
+    }
     const container = this.config.getContainer();
     const items = this.config.getItems();
     const result = applyMasonryLayout(container, items, {
