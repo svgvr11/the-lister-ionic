@@ -48,7 +48,7 @@ import {
   taskCounterLabel
 } from '../../core/board-list-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
-import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
+import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardSessionService } from '../../core/services/board-session.service';
 import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
@@ -95,8 +95,23 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
   pendingAction: PendingAction | null = null;
   private pendingActionOpener: HTMLElement | null = null;
 
+  /**
+   * Rejilla del basurero. Se declara con setter a propósito: el contenedor vive bajo un
+   * `*ngIf`, así que se crea y se destruye en caliente. El setter es el aviso fiable para
+   * atar el observador al nodo vivo (y soltarlo cuando desaparece), que es justo lo que
+   * faltaba para que el masonry se readaptara al cambiar el ancho de la ventana.
+   */
   @ViewChild('trashGrid', { read: ElementRef, static: false })
-  private trashGrid?: ElementRef<HTMLElement>;
+  private set trashGrid(ref: ElementRef<HTMLElement> | undefined) {
+    this.trashGridElement = ref?.nativeElement ?? null;
+    if (this.trashGridElement) {
+      this.masonry.observe(this.trashGridElement);
+      this.scheduleMasonryLayout();
+    } else {
+      this.masonry.release();
+    }
+  }
+  private trashGridElement: HTMLElement | null = null;
 
   @ViewChildren('trashCard', { read: ElementRef })
   private trashCards!: QueryList<ElementRef<HTMLElement>>;
@@ -106,10 +121,17 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     if (button) requestAnimationFrame(() => button.nativeElement.focus());
   }
 
-  private layoutFrame: number | null = null;
-  private resizeObserver: ResizeObserver | null = null;
   private mobilePresentationQuery: MediaQueryList | null = null;
   private isMobilePresentation = false;
+  /**
+   * Ciclo de vida del masonry. Observa la rejilla y recalcula en vivo cuando cambia el
+   * ancho del contenedor (ventana, zoom, rotación o barra de scroll).
+   */
+  private readonly masonry = new MasonryController({
+    gap: MASONRY_GAP,
+    getContainer: () => this.trashGridElement,
+    getItems: () => this.trashCards?.toArray().map((item) => item.nativeElement) ?? []
+  });
   private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
     this.isMobilePresentation = event.matches;
     this.scheduleMasonryLayout();
@@ -174,34 +196,18 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
 
   ngAfterViewInit(): void {
     this.trashCards.changes.subscribe(() => this.scheduleMasonryLayout());
-    this.observeTrashGrid();
     this.scheduleMasonryLayout();
   }
 
-  private observeTrashGrid(): void {
-    const grid = this.trashGrid?.nativeElement;
-    if (!grid) return;
-    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
-    this.resizeObserver.observe(grid);
-  }
-
   scheduleMasonryLayout(): void {
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
-    this.layoutFrame = requestAnimationFrame(() => {
-      this.layoutFrame = null;
-      this.applyMasonryLayout();
-    });
-  }
-
-  private applyMasonryLayout(): void {
-    const grid = this.trashGrid?.nativeElement;
-    const items = this.trashCards?.toArray().map((item) => item.nativeElement) ?? [];
-    applyMasonryLayout(grid, items, { isMobile: this.isMobilePresentation, gap: MASONRY_GAP });
+    this.masonry.scheduleLayout();
   }
 
   ionViewDidEnter(): void {
     this.pageActive = true;
-    this.observeTrashGrid();
+    // Al volver a la página el contenedor puede haberse recreado o venir con ancho 0:
+    // se reconcilia el observador y se recalcula con el ancho que haya ahora.
+    this.masonry.observe();
     this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
@@ -231,8 +237,7 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
     this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
-    this.resizeObserver?.disconnect();
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
+    this.masonry.disconnect();
     if (this.countdownTimer) clearInterval(this.countdownTimer);
   }
 
@@ -279,7 +284,12 @@ export class TrashPage implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     const purged = purgeExpiredLists(board);
     this.board = board;
     this.scheduleMasonryLayout();
-    setTimeout(() => this.observeTrashGrid());
+    // La rejilla se pinta en el siguiente ciclo: se reintenta por si el contenedor
+    // acababa de aparecer y el observador todavía no lo tenía.
+    setTimeout(() => {
+      this.masonry.observe();
+      this.scheduleMasonryLayout();
+    });
     // Sin este guardado, una lista vencida reaparece al volver a entrar.
     if (purged) void this.persist();
   }

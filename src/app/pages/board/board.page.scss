@@ -1108,6 +1108,44 @@ ion-header {
   min-height: 74px;
 }
 
+/*
+  Durante un arrastre táctil el scroll no debe competir con el gesto: la rejilla y sus
+  tarjetas dejan de aceptar paneo. Solo está activo mientras `cdkDragActive`, así que el
+  scroll normal (también el diagonal, ver el comentario de `.checklist-column`) no se ve
+  afectado en ningún momento.
+*/
+.board.reordering,
+.board.reordering .checklist-column {
+  touch-action: none;
+}
+
+/*
+  Sin encadenamiento de scroll hacia arriba o abajo: si no, un gesto corto que llega al
+  límite del contenido se lo puede "comer" el scroller padre y el scroll se siente
+  entrecortado.
+*/
+.board.reordering .checklist-column {
+  overscroll-behavior: contain;
+}
+
+/**
+ * Flujo normal de UNA columna. Sustituye al masonry cuando la rejilla cae en una sola
+ * columna (móvil): con los mismos números —`gap` y ancho máximo de 520 px centrado— el
+ * aspecto es idéntico al del masonry en 1 columna, pero el contenedor mide solo y las
+ * tarjetas no van posicionadas en absoluto, que es lo que permite que CDK reordene
+ * moviendo nodos del DOM.
+ */
+.board.board--flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--board-gap, 22px);
+}
+
+.board--flow .checklist-column {
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
 .checklist-column {
   width: 358px;
   padding: 12px 14px 14px;
@@ -3078,7 +3116,23 @@ ion-header {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /*
+    Paneo permitido en LOS DOS EJES: un trazo con inclinación diagonal resoluta a scroll
+    vertical sin quedarse esperando (con `pan-y` el navegador prohibía el horizontal y el
+    gesto se bloqueaba hasta enderezarse).
+
+    Y explícitamente SIN doble-tap-zoom. `auto` lo deja activo, y entonces Chrome retiene
+    la decisión del gesto ~300 ms por si llega un segundo tap: eso es el congelamiento
+    intermitente que se veía con gestos cortos y rápidos. `pan-x pan-y` permite los dos
+    panes y desactiva el doble-tap-zoom, así que ningún gesto corto se queda en espera.
+
+    El bloqueo del paneo durante el arrastre lo pone `.board.reordering`, no la tarjeta.
+  */
+  touch-action: pan-x pan-y;
+  -webkit-user-drag: none;
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  /* El menú contextual del sistema no tiene sentido sobre una tarjeta arrastrable. */
+  -webkit-touch-callout: none;
 
   &:hover {
     box-shadow: 0 4px 16px rgba(34, 47, 76, 0.08);
@@ -3096,6 +3150,175 @@ ion-header {
   &.list-complete {
     background: color-mix(in srgb, #087750 8%, var(--card-surface, #fff));
     border-color: color-mix(in srgb, #087750 25%, #edf0f6);
+  }
+}
+
+/*
+  Hueco que deja la tarjeta cuando se levanta con el dedo. Es el clon que genera CDK, así
+  que conserva el tamaño de la tarjeta sin forzar nada: borde de acento y sin contenido
+  visible (los hijos se esconden, no se reescriben).
+*/
+.cdk-drag-placeholder {
+  border: 2px dashed var(--accent, #8870ad) !important;
+  background: color-mix(in srgb, var(--accent, #8870ad) 6%, var(--card-surface, #fff)) !important;
+  opacity: 1;
+}
+
+.cdk-drag-placeholder > * {
+  visibility: hidden;
+}
+
+/*
+  Previsualización del arrastre: va portada al `<body>`, así que el tema se le enlaza
+  desde la propia tarjeta ([style.--accent]) y no puede heredar del tablero.
+*/
+.card-drag-preview {
+  --card-surface: #fff;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--card-surface);
+  border: 2px solid var(--accent, #8870ad);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(34, 47, 76, 0.3);
+  transform: scale(1.03);
+  z-index: var(--z-drag-preview, 500);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card-drag-preview-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1c2333;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-drag-preview-counter {
+  font-size: 12px;
+  color: #9fa4a7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-drag-preview {
+    transform: none;
+    box-shadow: 0 0 0 2px var(--accent, #8870ad);
+  }
+
+  .cdk-drag-placeholder {
+    transition: none !important;
+  }
+}
+
+/*
+  ── Arrastre táctil en la vista de LISTA ────────────────────────────────────────
+  Las tarjetas de esta vista pueden tener 40 tareas: arrastrarlas enteras taparía media
+  pantalla. La previsualización y el hueco muestran la tarjeta COLAPSADA (título, barra de
+  progreso y contador) con la altura acotada.
+*/
+
+/*
+  Cabecera = asa del arrastre. Con asa, CDK no fija `touch-action` en línea sobre la
+  tarjeta, así que el deslizamiento vertical sigue scrolleando; y como el arrastre solo
+  puede empezar aquí, las tareas, los checkboxes y "Añadir tarea" no lo disparan.
+*/
+.column-header {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/*
+  La tarjeta de la vista de lista: paneo en los dos ejes y sin doble-tap-zoom.
+
+  `pan-x pan-y` es la combinación que resuelve el problema de los gestos cortos:
+  - frente a `pan-y`, permite el eje horizontal, así que un trazo diagonal no se bloquea
+    esperando a enderezarse;
+  - frente a `auto`, desactiva el doble-tap-zoom, que era lo que hacía que Chrome
+    retuviera la decisión del gesto ~300 ms y el scroll se congelara de forma intermitente
+    tras 2-5 gestos cortos.
+
+  `-webkit-user-drag: none` evita además que el navegador evalúe arrastre nativo del
+  elemento en cada gesto (compiten con el arrastre de CDK y añaden latencia).
+*/
+.checklist-column {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-x pan-y;
+}
+
+/*
+  Preview de arrastre de lista en la vista de lista: se asemeja a la tarjeta real
+  (`.checklist-column`), con borde fino, sombra sutil y barra de progreso verde.
+  Va pegada al `<body>`, así que el tema se le enlaza desde la plantilla con
+  `[style.--accent]`: `--card-surface` y `--accent` viajan de la raíz del componente.
+*/
+.list-drag-preview-desktop {
+  --card-surface: #fff;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow: hidden;
+  padding: 12px 14px 14px;
+  background: var(--card-surface);
+  border: 1px solid #edf0f6;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 2px var(--accent, #8870ad),
+    0 2px 8px rgba(34, 47, 76, 0.035);
+  transform: scale(1.02);
+  z-index: var(--z-drag-preview, 500);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.list-drag-placeholder {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  padding: 12px 14px;
+  width: 100%;
+  border: 2px dashed var(--accent, #8870ad);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent, #8870ad) 6%, var(--card-surface, #fff));
+}
+
+.list-preview-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: #172236;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.list-preview-counter {
+  font-size: 12px;
+  font-weight: 600;
+  color: #737b8c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-drag-preview-desktop {
+    transform: none;
+    box-shadow: 0 0 0 2px var(--accent, #8870ad);
+  }
+
+  .list-drag-placeholder {
+    transition: none !important;
   }
 }
 

@@ -12,6 +12,18 @@ import {
   checkmarkCircle, returnDownBack, reorderThree, reorderTwo, schoolOutline
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragEnd,
+  CdkDragHandle,
+  CdkDragMove,
+  CdkDragPlaceholder,
+  CdkDragPreview,
+  CdkDragRelease,
+  CdkDragStart,
+  CdkDropList
+} from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
@@ -29,7 +41,7 @@ import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpire
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
-import { applyMasonryLayout, MASONRY_GAP } from '../../core/masonry-layout';
+import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
 import { BoardSessionService } from '../../core/services/board-session.service';
@@ -44,6 +56,20 @@ import {
   readListDragPayload,
   setListDragPayload
 } from '../../core/board-list-drag';
+import {
+  CARD_CLICK_SUPPRESS_MS,
+  CDK_DRAG_SAFETY_TIMEOUT_MS,
+  CDK_DRAG_START_DELAY_MS,
+  LIST_REORDER_ENGINE,
+  TOUCH_REORDER_ACTIVATION,
+  autoScrollStepFor,
+  canSortBeforePinned,
+  cdkScrollNotice,
+  planCdkReorder,
+  resolveReorderEngine,
+  shouldOpenCardFocus
+} from '../../core/cdk-reorder';
+import { resolveBoardFlowMode } from '../../core/masonry-layout';
 import {
   boardsEqual,
   decideIncomingBoard,
@@ -104,13 +130,26 @@ import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitL
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
 const TOOLTIP_TACTIL_MS = 4000;
 
+/**
+ * Forma mínima de la estrategia de orden de CDK que aquí se usa (ver `notifyCdkScroll`).
+ * `updateOnScroll` es privado en CDK y hace falta: es el aviso de que el contenido se ha
+ * desplazado, para que la estrategia refresque sus posiciones y vuelva a calcular el
+ * destino con el puntero donde está ahora.
+ */
+interface CdkScrollStrategyShape {
+  updateOnScroll(top: number, left: number): void;
+}
+
 @Component({
   selector: 'app-board',
   standalone: true,
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
-    FeedbackModalComponent, InlineEditComponent, WelcomeModalComponent
+    FeedbackModalComponent, InlineEditComponent, WelcomeModalComponent,
+    // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
+    // que el CDK aterrice solo en el chunk del tablero.
+    CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
   ],
   templateUrl: './board.page.html',
   styleUrls: ['./board.page.scss']
@@ -190,6 +229,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   boardViewMode: BoardViewMode = readStoredBoardView(this.isNative);
 
   setBoardViewMode(mode: BoardViewMode): void {
+    if (this.boardViewMode === mode) return;
+    // Un arrastre con el dedo a mitad del gesto no puede seguir en la otra vista: se
+    // cancela (no reordena) antes de cambiar.
+    this.cancelCdkDrag();
     this.boardViewMode = mode;
     storeBoardView(mode, null);
     if (mode === 'cards' && this.isNative) {
@@ -200,7 +243,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private clearMasonryStyles(): void {
-    const board = this.boardGrid?.nativeElement;
+    const board = this.boardGridElement;
     if (board) {
       board.style.position = '';
       board.style.height = '';
@@ -353,6 +396,139 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly onListDragOverDocument = (event: DragEvent): void => this.onListDragOver(event);
   private readonly onListDropDocument = (event: DragEvent): void => void this.onListDrop(event);
 
+  // ── Reordenamiento de listas con CDK (vista Tarjetas y vista de lista) ────────
+  //
+  // Motor propio y separado del de escritorio (HTML5): nunca coexisten en el mismo
+  // elemento. La lógica de decisión vive en `cdk-reorder.ts` (probada sin DOM); aquí
+  // solo se traduce lo que publica CDK a la única regla de negocio, `moveListBefore`.
+
+  /** Retardo de pulsación larga: hasta que no pasa, el deslizamiento sigue scrolleando. */
+  readonly cdkDragStartDelay = CDK_DRAG_START_DELAY_MS;
+  /** Activación por pulsación larga; el respaldo documentado es el asa visible. */
+  readonly cdkTouchActivation = TOUCH_REORDER_ACTIVATION;
+  /** Red de seguridad: si un arrastre se quedara colgado, este plazo lo limpia. */
+  readonly cdkDragSafetyTimeout = CDK_DRAG_SAFETY_TIMEOUT_MS;
+
+  /** ¿Se está dibujando la vista Tarjetas? Solo existe en la app nativa. */
+  get cardsViewActive(): boolean {
+    return this.boardViewMode === 'cards' && this.isNative;
+  }
+
+  /**
+   * ¿Se puede reordenar con el dedo en este momento? Hace falta todo a la vez: vista
+   * Tarjetas en la app nativa, sin búsqueda abierta (la vista está filtrada) y un
+   * dispositivo para el que `resolveReorderEngine` elige CDK (táctil o ventana de 700px
+   * o menos). El interruptor `LIST_REORDER_ENGINE` es la salida de emergencia.
+   *
+   * OJO: la vista Tarjetas solo existe en nativo, así que una ventana estrecha en web
+   * móvil sigue sin tener dónde reordenar con el dedo. Eso queda para la Tarea 2.
+   */
+  get cardsReorderEnabled(): boolean {
+    if (LIST_REORDER_ENGINE !== 'cdk') return false;
+    if (!this.cardsViewActive) return false;
+    if (this.searching) return false;
+    return (
+      resolveReorderEngine({ touch: this.deviceHasTouch(), width: window.innerWidth }) === 'cdk'
+    );
+  }
+
+  /**
+   * Lo mismo para la vista de LISTA: aquí sí cuenta el tamaño de ventana, porque la vista
+   * de lista se ve tanto en la app nativa como en web móvil.
+   */
+  get listCdkReorderEnabled(): boolean {
+    if (LIST_REORDER_ENGINE !== 'cdk') return false;
+    if (this.cardsViewActive) return false;
+    if (this.searching) return false;
+    return (
+      resolveReorderEngine({ touch: this.deviceHasTouch(), width: window.innerWidth }) === 'cdk'
+    );
+  }
+
+  /** Un único interruptor para la rejilla: la vista que se está dibujando decide. */
+  get reorderEnabled(): boolean {
+    return this.cardsViewActive ? this.cardsReorderEnabled : this.listCdkReorderEnabled;
+  }
+
+  /**
+   * ¿Hay un arrastre táctil en curso? La plantilla lo usa para bloquear el paneo mientras
+   * dura el gesto (`.board.reordering`); en cuanto se suelta o se cancela, el scroll vuelve
+   * a su comportamiento normal.
+   */
+  get cdkReordering(): boolean {
+    return this.cdkDragActive;
+  }
+
+  /**
+   * Orientación del `cdkDropList` en la vista de lista.
+   *
+   * MEDIDO EN EL SPIKE de la Tarea 2 y CORREGIDO tras la prueba de dedo: empezó en
+   * `'vertical'`, pero al arrastrar hacia abajo con auto-scroll el hueco se quedaba
+   * arriba. La deriva, medida sobre el tablero real como (posición del hueco) −
+   * (posición del dedo), pasó de +365 px a −814 px mientras el contenido se desplazaba:
+   * el destino coincidía al soltar, pero la referencia visual que sigue el usuario no.
+   *
+   * La causa es de `SingleAxisSortStrategy` (la estrategia de `'vertical'`): compara el
+   * puntero con client rects congelados al empezar el gesto y solo se refrescan con el
+   * scroll que CDK ve; el scroller de `ion-content` vive en su shadow DOM y su scroll no
+   * cruza la frontera, así que nuestro auto-scroll le resulta invisible.
+   *
+   * `'mixed'` (`MixedSortStrategy`) resuelve el destino con `elementFromPoint` en vivo:
+   * el hueco se mueve con el dedo en cada fotograma, auto-scroll incluido, que es lo que
+   * hace que la vista Tarjetas funcione bien desde la Tarea 1. Medido con la misma traza:
+   * deriva ≈ 0 durante todo el arrastre.
+   */
+  get listOrientation(): 'vertical' | 'mixed' {
+    return 'mixed';
+  }
+
+  /**
+   * Forma mínima de la estrategia de orden de CDK que aquí se usa. `updateOnScroll` es
+   * privado en CDK y hace falta: es el aviso de que el contenido se ha desplazado, para
+   * que la estrategia refresque sus posiciones y vuelva a calcular el destino con el
+   * puntero donde está ahora.
+   */
+  readonly cdkStrategyShape: CdkScrollStrategyShape = { updateOnScroll: () => undefined };
+
+  private deviceHasTouch(): boolean {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+  /**
+   * Predicado de orden de CDK: la fijada ocupa el índice 0 y nada se coloca delante de
+   * ella. Refuerza visualmente lo que ya garantiza `moveListBefore`.
+   */
+  readonly cdkSortPredicate = (index: number): boolean =>
+    canSortBeforePinned(index, this.board.pinnedListId ?? null);
+
+  /** Arrastre CDK en curso: bloquea el remoto pendiente y Atrás/Escape lo cancelan. */
+  private cdkDragActive = false;
+  /** Referencia al `CdkDrag` en curso, para poder reiniciarlo al cancelar. */
+  private activeCdkDrag: CdkDrag<ChecklistList> | null = null;
+  /**
+   * Lista que se está arrastrando con el dedo. Hace falta guardarla: si una actualización
+   * remota la elimina a mitad del gesto, CDK NO emite `cdkDragEnded` (lo comprobó el spike
+   * de la Tarea 2), así que el estado de arrastre se limpia al cambiar el tablero.
+   */
+  private cdkDraggedListId: string | null = null;
+  /** Cancelación pedida: el soltable resultante no debe reordenar. */
+  private cdkSuppressDrop = false;
+  /** Posición vertical del puntero durante el arrastre, para el auto-scroll. */
+  private cdkPointerY = 0;
+  /** Elemento scroller del `IonContent`, medido al empezar el arrastre. */
+  private cdkScrollElement: HTMLElement | null = null;
+  /** Fotograma en curso del auto-scroll propio (0 = parado). */
+  private cdkAutoScrollFrame = 0;
+  /** Hasta cuándo se come el clic posterior al arrastre (marca de tiempo). */
+  private cdkSuppressClickUntil = 0;
+  /** Temporizador que fuerza la limpieza de un arrastre atascado. */
+  private cdkSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * ¿La rejilla va en flujo normal? `true` en una columna (móvil), donde el masonry no
+   * hace falta y estorba al reordenamiento táctil. Se recalcula en `scheduleMasonryLayout`
+   * con la histéresis de `resolveBoardFlowMode`.
+   */
+  private flowMode = false;
+
   /** Modal de comentarios abierto. Ambos puntos de entrada (FAB y menú de perfil) lo abren. */
   feedbackOpen = false;
   /** Botón que abrió el modal, para devolverle el foco al cerrar. */
@@ -475,12 +651,50 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (ref) this.focusRemoveDialogPrimary();
   }
   private removeDialogPrimaryElement: HTMLButtonElement | null = null;
+  /**
+   * Rejilla del tablero. Se declara con setter a propósito: el contenedor vive bajo un
+   * `*ngIf` (`visibleLists.length > 0`), así que se crea y se destruye en caliente. El
+   * setter es el aviso fiable para atar el observador al nodo vivo (y soltarlo cuando
+   * desaparece). Con el `@ViewChild` plano el observador se conectaba antes de que la
+   * rejilla existiera y se quedaba atado a un nodo muerto: era la causa de que el
+   * masonry no se readaptara al cambiar el ancho de la ventana.
+   */
   @ViewChild('boardGrid', { read: ElementRef, static: false })
-  private boardGrid?: ElementRef<HTMLElement>;
-  private resizeObserver?: ResizeObserver;
-  private layoutFrame: number | null = null;
-
-  private readonly GAP = 22;
+  private set boardGrid(ref: ElementRef<HTMLElement> | undefined) {
+    this.boardGridElement = ref?.nativeElement ?? null;
+    if (this.boardGridElement) {
+      this.masonry.observe(this.boardGridElement);
+      this.scheduleMasonryLayout();
+    } else {
+      this.masonry.release();
+    }
+  }
+  private boardGridElement: HTMLElement | null = null;
+  /**
+   * La lista de CDK que envuelve la rejilla. Hace falta referencia para poder avisarle de
+   * nuestro auto-scroll (ver `notifyCdkScroll`): su scroller es el de `ion-content`, que
+   * vive en shadow DOM, y sin el aviso el hueco se queda atrás durante el arrastre.
+   */
+  @ViewChild(CdkDropList, { static: false })
+  private boardDropList?: CdkDropList<ChecklistList[]>;
+  /**
+   * Ciclo de vida del masonry: observa la rejilla y recalcula en vivo cuando cambia el
+   * ancho del contenedor (ventana, zoom, rotación o barra de scroll).
+   */
+  private readonly masonry = new MasonryController({
+    gap: MASONRY_GAP,
+    getContainer: () => this.boardGridElement,
+    getItems: () => this.boardItems?.toArray().map((item) => item.nativeElement) ?? [],
+    // En flujo normal (una columna) el masonry no maqueta NADA: ni desde el observador de
+    // tamaño ni desde las pasadas programadas. Sin esta comprobación, el `ResizeObserver`
+    // volvía a dejar `position:absolute` y altura fija sobre la rejilla en flujo después de
+    // limpiarla, y con eso el arrastre táctil dejaba el hueco de la tarjeta movida.
+    canLayout: () => {
+      this.refreshFlowMode();
+      return !this.flowMode;
+    },
+    onSkipLayout: () => this.clearMasonryStyles()
+  });
   private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
   constructor() {
@@ -496,6 +710,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.pageActive = true;
     if (this.activeConflict) this.conflictDialogDeferred = true;
     this.presentDeferredConflict();
+    // Al entrar, el contenedor puede haberse recreado o venir con ancho 0 (se vuelve de
+    // otra página). Se reconcilia el observador con el nodo vivo y se recalcula.
+    this.masonry.observe();
+    this.scheduleMasonryLayout();
     this.syncOverlayStack();
   }
 
@@ -575,6 +793,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.editingTaskId || this.editingListId) {
       overlays.push({ id: 'board:inline-edit', close: () => this.cancelActiveEdit() });
     }
+    // Arrastre táctil de una lista (vista Tarjetas): Atrás lo cancela en lugar de salir
+    // de la app, y el remoto pendiente espera a que se suelte.
+    if (this.cdkDragActive) {
+      overlays.push({ id: 'board:list-reorder', close: () => this.cancelCdkDrag() });
+    }
     this.overlayStack.sync('board', overlays);
   }
 
@@ -589,6 +812,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     for (const listId of Object.keys(this.taskDrafts)) this.taskDrafts[listId] = '';
     this.draggedTask = null;
     this.cancelListDrag();
+    // Un arrastre táctil a medio gesto no debe sobrevivir a la salida de la página.
+    this.cancelCdkDrag();
     this.closeConflictDialog(false);
     this.conflictDialogDeferred = Boolean(this.activeConflict);
     if (!this.deleteBusy) this.cancelDeleteDialog(false);
@@ -912,10 +1137,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     const pinnedChanged = this.syncPinnedList();
     // El orden de dibujo sale de `position` (la fijada primera), así que no hay nada que
     // reconciliar al llegar un tablero nuevo: las listas se pintan según su orden guardado.
-    // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que
-    // hay que observar y maquetar en cuanto se pinta la rejilla.
-    this.observeBoardGrid();
+    // Los datos suelen llegar después de ngAfterViewInit (carga en la nube), así que se
+    // reintenta la conexión al nodo vivo por si la rejilla acaba de aparecer.
+    this.masonry.observe();
     this.scheduleMasonryLayout();
+    // Si justo se estaba arrastrando una lista con el dedo y esta entrega la borra, hay que
+    // limpiar el arrastre: CDK no emite el fin cuando la tarjeta desaparece.
+    this.clearCdkDragIfListVanished();
     this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
     if (persistNormalization && (purged || purgedArchive || pinnedChanged)) void this.persist();
@@ -970,7 +1198,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || this.draggedTask !== null
       // Un arrastre de lista en curso también es interacción activa: lo que llegue de otro
       // dispositivo se queda esperando hasta que se suelte, igual que con las tareas.
-      || this.draggedListId !== null;
+      || this.draggedListId !== null
+      // Lo mismo con el reordenamiento táctil de la vista Tarjetas (CDK).
+      || this.cdkDragActive;
   }
 
   private releasePendingRemoteBoard(saveSucceeded = false): boolean {
@@ -1495,6 +1725,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.cancelListDrag();
       return;
     }
+    // El reordenamiento táctil (CDK) se cancela igual: el gesto se interrumpe y lo que
+    // ya se había movido en pantalla vuelve a su sitio sin llegar a guardarse.
+    if (this.cdkDragActive) {
+      event.preventDefault();
+      this.cancelCdkDrag();
+      return;
+    }
     // El modal de comentarios escucha el Escape en su propio overlay; si está abierto, es el
     // que decide (puede pedir confirmación de descarte). Aquí solo se cierran las demás capas.
     if (this.feedbackOpen) return;
@@ -1561,32 +1798,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   ngAfterViewInit(): void {
     this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
-    this.observeBoardGrid();
     this.scheduleMasonryLayout();
-  }
-
-  /**
-   * Conecta el ResizeObserver al contenedor del tablero. Se vuelve a llamar cada vez
-   * que llegan datos porque, mientras la carga es asíncrona (Supabase), en ngAfterViewInit
-   * el tablero todavía no existe y el observador nunca quedaría conectado.
-   */
-  private observeBoardGrid(): void {
-    const board = this.boardGrid?.nativeElement;
-    if (!board) return;
-    this.resizeObserver ??= new ResizeObserver(() => this.scheduleMasonryLayout());
-    this.resizeObserver.observe(board);
   }
 
   ngOnDestroy(): void {
     this.pageActive = false;
     this.cancelListDrag();
+    this.cancelCdkDrag();
+    this.clearCdkSafetyTimer();
     this.overlayStack.unregisterOwner('board');
     this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
     this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
-    this.resizeObserver?.disconnect();
+    this.masonry.disconnect();
     if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
     if (this.focusNoticeTimer !== null) clearTimeout(this.focusNoticeTimer);
     this.clearFocusUpdatedAtTooltipTimer();
     this.clearNewListInputFocusWork();
@@ -2281,7 +2506,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * 700px o menos y con la búsqueda abierta. Sin handle no hay nada que arrastrar.
    */
   get listDragEnabled(): boolean {
-    return !this.isNative && !this.isMobilePresentation && !this.searching;
+    return !this.isNative && !this.isMobilePresentation && !this.searching
+      && resolveReorderEngine({ touch: this.deviceHasTouch(), width: window.innerWidth }) === 'html5';
+  }
+
+  /**
+   * ¿La rejilla va en flujo normal? Con UNA columna el masonry no hace falta y estorba:
+   * CDK reordena moviendo nodos del DOM, y con `position:absolute` + `top` en línea el
+   * nodo se mueve pero la posición no. La decisión es pura (`resolveBoardFlowMode`, con
+   * la misma histéresis que las columnas) y se toma en `scheduleMasonryLayout`.
+   */
+  get usesFlowLayout(): boolean {
+    return !this.cardsViewActive && this.flowMode;
   }
 
   /** ¿Se está arrastrando esta lista? La tarjeta se atenúa mientras tanto. */
@@ -2394,6 +2630,231 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     document.removeEventListener('drop', this.onListDropDocument, true);
   }
 
+  // ── Reordenamiento táctil con CDK (vista Tarjetas y vista de lista) ───────────
+
+  /**
+   * Empieza el arrastre. La tarjeta fijada lleva `cdkDragDisabled`, así que aquí solo
+   * llegan las movibles. Se abre el registro de overlay para que Atrás cancele el gesto
+   * en lugar de salir de la app.
+   */
+  onCdkDragStart(drag: CdkDrag<ChecklistList>): void {
+    this.activeCdkDrag = drag;
+    this.cdkDragActive = true;
+    this.cdkDraggedListId = drag.data?.id ?? null;
+    this.cdkSuppressDrop = false;
+    this.cdkSuppressClickUntil = Date.now() + CARD_CLICK_SUPPRESS_MS + 50;
+    this.armCdkSafetyTimer();
+    void this.measureCdkScrollElement();
+    this.syncOverlayStack();
+  }
+
+  /** El dedo se mueve: se guarda la posición y se arma el auto-scroll propio. */
+  onCdkDragMove(event: CdkDragMove<ChecklistList>): void {
+    this.cdkPointerY = event.pointerPosition.y;
+    this.armCdkAutoScroll();
+  }
+
+  onCdkDragRelease(): void {
+    // Nada que hacer: el soltable llega por `cdkDropListDropped`.
+  }
+
+  /**
+   * Fin del arrastre, venga de un soltable, de una cancelación o del fin del gesto. Limpia
+   * siempre el estado para que no quede nada colgado.
+   *
+   * OJO: si la lista arrastrada DESAPARECE a mitad del gesto (una actualización remota la
+   * borra), CDK NO emite este evento; el estado se limpia entonces al reemplazar el tablero
+   * (`clearCdkDragIfListVanished`).
+   */
+  onCdkDragEnd(): void {
+    this.cdkSuppressClickUntil = Date.now() + CARD_CLICK_SUPPRESS_MS;
+    this.endCdkDrag();
+  }
+
+  /**
+   * Suelta la lista: se traduce el par de índices de CDK a la regla de negocio y se
+   * guarda UNA sola vez. Sin lógica de orden aquí: la traducción está en
+   * `cdk-reorder.planCdkReorder`.
+   */
+  async onCdkDrop(event: CdkDragDrop<ChecklistList[]>): Promise<void> {
+    const plan = planCdkReorder({
+      visibleIds: this.visibleLists.map((list) => list.id),
+      previousIndex: event.previousIndex,
+      currentIndex: event.currentIndex,
+      pinnedListId: this.board.pinnedListId ?? null,
+      searching: this.searching
+    });
+    // Una cancelación (Atrás o Escape) llega como soltable: se descarta el movimiento.
+    const cancelado = this.cdkSuppressDrop;
+    this.cdkSuppressDrop = false;
+    this.endCdkDrag();
+    if (cancelado) return;
+    if (!plan) return;
+    if (!moveListBefore(this.board, plan.listId, plan.targetId)) return;
+    const order = orderedLists(this.board);
+    const index = order.findIndex((item) => item.id === plan.listId);
+    const moved = order[index];
+    if (moved) this.listAnnouncement = listMoveAnnouncement(moved.title, index, order.length);
+    this.scheduleMasonryLayout();
+    await this.persist();
+  }
+
+  /**
+   * Cancela el arrastre táctil en curso.
+   *
+   * `reset()` de CDK NO cancela: solo devuelve la tarjeta a su sitio si la secuencia ya
+   * había terminado. El mecanismo comprobado es sintetizar el final del gesto (CDK
+   * escucha `touchend`/`mouseup` en el documento en fase de captura, igual que con un
+   * dedo real) y marcarlo como cancelado, para que el soltable resultante no reordene.
+   */
+  cancelCdkDrag(): void {
+    if (!this.cdkDragActive) {
+      this.endCdkDrag();
+      return;
+    }
+    this.cdkSuppressDrop = true;
+    this.stopCdkAutoScroll();
+    document.dispatchEvent(
+      new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], changedTouches: [] })
+    );
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
+    this.activeCdkDrag?.reset();
+    this.endCdkDrag();
+  }
+
+  /** Limpieza común a todos los finales del arrastre. */
+  private endCdkDrag(): void {
+    this.cdkDragActive = false;
+    this.activeCdkDrag = null;
+    this.cdkDraggedListId = null;
+    this.cdkPointerY = 0;
+    this.cdkScrollElement = null;
+    this.stopCdkAutoScroll();
+    this.clearCdkSafetyTimer();
+    this.syncOverlayStack();
+  }
+
+  /**
+   * La lista que se estaba arrastrando ha desaparecido del tablero (una actualización
+   * remota la borró): si el arrastre seguía activo, hay que limpiarlo. Sin esto el estado
+   * se quedaría colgado hasta el temporizador de seguridad, bloqueando el remoto pendiente
+   * y dejando registrado el overlay de Atrás. Lo comprobó el spike de la Tarea 2.
+   */
+  private clearCdkDragIfListVanished(): void {
+    if (!this.cdkDragActive || this.cdkDraggedListId === null) return;
+    const sigueAqui = orderedLists(this.board).some((list) => list.id === this.cdkDraggedListId);
+    if (!sigueAqui) {
+      this.cdkSuppressDrop = true;
+      this.stopCdkAutoScroll();
+      this.endCdkDrag();
+    }
+  }
+
+  /** Red de seguridad: un arrastre que no termine por sí solo se limpia a los 30 s. */
+  private armCdkSafetyTimer(): void {
+    this.clearCdkSafetyTimer();
+    this.cdkSafetyTimer = setTimeout(() => this.endCdkDrag(), CDK_DRAG_SAFETY_TIMEOUT_MS);
+  }
+
+  private clearCdkSafetyTimer(): void {
+    if (this.cdkSafetyTimer !== null) clearTimeout(this.cdkSafetyTimer);
+    this.cdkSafetyTimer = null;
+  }
+
+  /**
+   * Auto-scroll propio. CDK no ve el scroller de `ion-content` (vive en su shadow DOM),
+   * así que su auto-scroll se desactiva y se escribe aquí: cerca del borde, la velocidad
+   * crece con la cercanía y arranca lenta. El bucle se cancela al soltar o cancelar.
+   */
+  private async measureCdkScrollElement(): Promise<void> {
+    this.cdkScrollElement = (await this.boardContent?.getScrollElement()) ?? null;
+  }
+
+  private armCdkAutoScroll(): void {
+    if (this.cdkAutoScrollFrame) return;
+    const tick = (): void => {
+      // Defensa de ciclo de vida: si el arrastre ya terminó por una vía que no pasó por
+      // `endCdkDrag` (una tarjeta que desaparece, un gesto que CDK aborta), el bucle se
+      // para en el siguiente fotograma en lugar de seguir midiendo y desplazando.
+      if (!this.cdkDragActive) {
+        this.stopCdkAutoScroll();
+        return;
+      }
+      this.cdkAutoScrollFrame = requestAnimationFrame(tick);
+      const scroll = this.cdkScrollElement;
+      if (!scroll) return;
+      const rect = scroll.getBoundingClientRect();
+      const step = autoScrollStepFor(this.cdkPointerY, rect.top, rect.bottom);
+      if (step === 0) return;
+      void this.boardContent?.scrollByPoint(0, step, 0);
+      // El contenido se ha movido bajo el dedo: hay que decírselo a CDK.
+      this.notifyCdkScroll(step);
+    };
+    this.cdkAutoScrollFrame = requestAnimationFrame(tick);
+  }
+
+  /**
+   * Avisa a CDK de que acabamos de desplazar el contenido `step` píxeles hacia abajo.
+   *
+   * Sin esto, el hueco se queda atrás: el scroller de `ion-content` vive en su shadow DOM
+   * y el evento `scroll` no cruza la frontera, así que CDK nunca se enteraba de nuestro
+   * auto-scroll. Con `MixedSortStrategy` esto vuelve a calcular el destino contra lo que
+   * hay realmente bajo el puntero; con `SingleAxisSortStrategy` (`vertical`) corrige además
+   * sus rects en caché, que es la deriva que se vio al arrastrar hacia abajo.
+   *
+   * El signo es el contrario al del desplazamiento: si el contenido baja, cada tarjeta
+   * sube en el viewport (`topDifference = -step`), igual que calcula CDK con su propio
+   * listener de scroll.
+   */
+  private notifyCdkScroll(step: number): void {
+    const strategy = (
+      this.boardDropList as unknown as
+        | { _dropListRef?: { _sortStrategy?: CdkScrollStrategyShape } }
+        | undefined
+    )?._dropListRef?._sortStrategy;
+    const notice = cdkScrollNotice(step);
+    strategy?.updateOnScroll?.(notice.top, notice.left);
+  }
+
+  private stopCdkAutoScroll(): void {
+    if (this.cdkAutoScrollFrame) cancelAnimationFrame(this.cdkAutoScrollFrame);
+    this.cdkAutoScrollFrame = 0;
+  }
+
+  /**
+   * Toque sobre una tarjeta en vista Tarjetas. Durante el arrastre y un instante después
+   * no abre el modal: el clic que emite el navegador al levantar el dedo no es una
+   * decisión del usuario. El clic siguiente sí abre.
+   */
+  onCardClick(list: ChecklistList, event: Event): void {
+    if (!shouldOpenCardFocus({
+      dragActive: this.cdkDragActive,
+      suppressClickUntil: this.cdkSuppressClickUntil,
+      now: Date.now()
+    })) {
+      this.cdkSuppressClickUntil = 0;
+      return;
+    }
+    this.openListFocus(list, event);
+  }
+
+  /**
+   * Acciones de la CABECERA de la vista de lista (título, chevron). Misma comprobación de
+   * supresión que el toque sobre la tarjeta: si el usuario acaba de arrastrar, el clic que
+   * emite el navegador al levantar el dedo no debe abrir el modal de enfoque.
+   */
+  onListHeaderAction(list: ChecklistList, event: Event): void {
+    if (!shouldOpenCardFocus({
+      dragActive: this.cdkDragActive,
+      suppressClickUntil: this.cdkSuppressClickUntil,
+      now: Date.now()
+    })) {
+      this.cdkSuppressClickUntil = 0;
+      return;
+    }
+    this.openListFocus(list, event);
+  }
+
   /**
    * Alternativa al ratón: con el handle enfocado, Alt + flecha mueve la lista una posición
    * y el resultado se anuncia en la región `aria-live`. Escape cancela el arrastre en curso.
@@ -2421,22 +2882,35 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private scheduleMasonryLayout(): void {
-    if (this.boardViewMode === 'cards' && this.isNative) return;
-    if (this.layoutFrame !== null) cancelAnimationFrame(this.layoutFrame);
-    this.layoutFrame = requestAnimationFrame(() => {
-      this.layoutFrame = null;
-      this.applyMasonryLayout();
-    });
+    if (this.cardsViewActive) return;
+    this.refreshFlowMode();
+    if (this.flowMode) {
+      // Una columna: flujo normal, sin posiciones absolutas. Es lo que permite que CDK
+      // reordene moviendo nodos del DOM.
+      this.clearMasonryStyles();
+      return;
+    }
+    this.masonry.scheduleLayout();
   }
 
   /**
-   * Recoloca las tarjetas en columnas sin perder el scroll delegando en la utilidad compartida.
+   * Decide si la rejilla va en flujo normal o en masonry, con la histéresis de
+   * `resolveBoardFlowMode` (la misma que usan las columnas).
+   *
+   * Se llama también desde el controlador de masonry antes de cada pasada (`canLayout`),
+   * porque su `ResizeObserver` dispara el maquetado sin pasar por aquí: así cualquier
+   * cambio de ancho revalúa el modo aunque el observador sea quien avisa.
+   *
+   * Si el modo cambia con un arrastre táctil en curso, el gesto se cancela: las tarjetas
+   * ya no están donde CDK las midió.
    */
-  private applyMasonryLayout(): void {
-    if (this.boardViewMode === 'cards' && this.isNative) return;
-    const board = this.boardGrid?.nativeElement;
-    const items = this.boardItems?.toArray().map((item) => item.nativeElement) ?? [];
-    applyMasonryLayout(board, items, { isMobile: this.isMobilePresentation, gap: this.GAP });
+  private refreshFlowMode(): void {
+    const board = this.boardGridElement;
+    if (!board) return;
+    const siguiente = resolveBoardFlowMode(this.flowMode, board.clientWidth);
+    if (siguiente === this.flowMode) return;
+    this.flowMode = siguiente;
+    if (this.cdkDragActive) this.cancelCdkDrag();
   }
 
   /** Normaliza el orden estable guardado tras quitar una lista del tablero. */
