@@ -246,7 +246,14 @@
   [attr.inert]="boardModalOpen ? '' : null"
   [attr.aria-hidden]="boardModalOpen ? 'true' : null"
 >
-  <ion-refresher slot="fixed" (ionRefresh)="refreshBoard($event)">
+  <!--
+    El refresher sólo tiene sentido en móvil (touch + pantalla estrecha): en escritorio
+    con ratón no existe gesto de "tirar para recargar". Además, durante un arrastre CDK
+    el refresher se desactiva para que el gesto no dispare al soltar.
+  -->
+  <ion-refresher slot="fixed"
+    [disabled]="!isMobilePresentation || cdkReordering"
+    (ionRefresh)="refreshBoard($event)">
     <ion-refresher-content
       pullingText="Desliza para actualizar"
       refreshingSpinner="crescent"
@@ -410,7 +417,7 @@
           </div>
         </div>
 
-        <!-- Tarjeta de escritorio (vista de lista): arrastre propio HTML5, sin CDK. -->
+        <!-- Tarjeta de la vista de lista (web/nativo ≤700px): CDK para reordenar con el dedo. -->
         <ng-template #listCardTemplate>
           <div
             #boardItem
@@ -431,16 +438,16 @@
             (cdkDragEnded)="onCdkDragEnd()"
           >
             <!--
-              Previsualización y hueco del arrastre táctil: la tarjeta COLAPSADA (cabecera,
-              barra y contador), con la altura acotada. El hueco mantiene el alto de la
-              tarjeta arrastrada... que aquí no hace falta forzar: con el hueco compacto el
-              destino siguió siendo el correcto en el spike (tarjetas de 2 a 40 tareas).
+              Previsualización del arrastre en la vista de lista. Se asemeja a la tarjeta
+              real (`.checklist-column`): borde fino, sombra sutil y barra de progreso
+              verde; solo el título, la barra y el contador se muestran. `matchSize`
+              hereda el ancho de la columna para que el preview no se estire.
             -->
-            <ng-container *cdkDragPreview>
-              <div class="list-drag-preview" [style.--accent]="themeAccent">
+            <ng-container *cdkDragPreview matchSize>
+              <div class="list-drag-preview-desktop" [style.--accent]="themeAccent">
                 <span class="list-preview-title">{{ list.title }}</span>
-                <span class="list-preview-bar" [style.--accent]="themeAccent">
-                  <span class="list-preview-bar-fill" [style.width]="listProgressPercent(list) + '%'"></span>
+                <span class="list-progress-track">
+                  <span class="list-progress-fill" [style.width.%]="listProgressPercent(list)"></span>
                 </span>
                 <span class="list-preview-counter">{{ taskCounterLabel(list) }}</span>
               </div>
@@ -448,8 +455,8 @@
             <ng-container *cdkDragPlaceholder>
               <div class="list-drag-placeholder" [style.--accent]="themeAccent">
                 <span class="list-preview-title">{{ list.title }}</span>
-                <span class="list-preview-bar" [style.--accent]="themeAccent">
-                  <span class="list-preview-bar-fill" [style.width]="listProgressPercent(list) + '%'"></span>
+                <span class="list-progress-track">
+                  <span class="list-progress-fill" [style.width.%]="listProgressPercent(list)"></span>
                 </span>
                 <span class="list-preview-counter">{{ taskCounterLabel(list) }}</span>
               </div>

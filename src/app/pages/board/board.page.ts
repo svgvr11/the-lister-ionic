@@ -60,7 +60,6 @@ import {
   CARD_CLICK_SUPPRESS_MS,
   CDK_DRAG_SAFETY_TIMEOUT_MS,
   CDK_DRAG_START_DELAY_MS,
-  LIST_PREVIEW_MAX_HEIGHT_PX,
   LIST_REORDER_ENGINE,
   TOUCH_REORDER_ACTIVATION,
   autoScrollStepFor,
@@ -397,7 +396,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly onListDragOverDocument = (event: DragEvent): void => this.onListDragOver(event);
   private readonly onListDropDocument = (event: DragEvent): void => void this.onListDrop(event);
 
-  // ── Reordenamiento táctil de listas con CDK (solo vista Tarjetas, app nativa) ──
+  // ── Reordenamiento de listas con CDK (vista Tarjetas y vista de lista) ────────
   //
   // Motor propio y separado del de escritorio (HTML5): nunca coexisten en el mismo
   // elemento. La lógica de decisión vive en `cdk-reorder.ts` (probada sin DOM); aquí
@@ -482,9 +481,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   get listOrientation(): 'vertical' | 'mixed' {
     return 'mixed';
   }
-
-  /** Altura máxima de la previsualización compacta (ver `LIST_PREVIEW_MAX_HEIGHT_PX`). */
-  readonly listPreviewMaxHeight = LIST_PREVIEW_MAX_HEIGHT_PX;
 
   /**
    * Forma mínima de la estrategia de orden de CDK que aquí se usa. `updateOnScroll` es
