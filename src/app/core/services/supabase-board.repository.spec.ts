@@ -7,7 +7,7 @@ import { setSessionBlockedFlag } from '../session-guard';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { AuthService } from './auth.service';
 import { fakeSession, fakeSupabase, type FakeSupabase } from './testing/fake-supabase';
-import type { ChecklistBoard } from '../../models/board.models';
+import type { ChecklistBoard } from '../../models/board.model';
 
 /**
  * Pruebas del repositorio sincronizado (Supabase).

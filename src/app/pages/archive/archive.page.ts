@@ -23,7 +23,7 @@ import {
   chevronForward, close, helpCircleOutline, timeOutline, trash
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
+import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
 import { readStoredTheme } from '../../core/board-themes';
 import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists

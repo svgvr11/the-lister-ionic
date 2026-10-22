@@ -21,7 +21,7 @@ import {
   timeOutline, trash, trashBinOutline
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.models';
+import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.model';
 import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';

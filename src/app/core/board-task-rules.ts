@@ -1,4 +1,4 @@
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
 import { touchList } from './list-updated-at';
 
 /**

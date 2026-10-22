@@ -6,7 +6,7 @@ import {
   splitLastUpdated,
   touchList
 } from './list-updated-at';
-import type { ChecklistList } from '../models/board.models';
+import type { ChecklistList } from '../models/board.model';
 
 /**
  * Pruebas de la fecha de última modificación de una lista.

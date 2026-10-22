@@ -3,7 +3,7 @@ import { App } from '@capacitor/app';
 import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import { ChecklistBoard } from '../../models/board.models';
+import { ChecklistBoard } from '../../models/board.model';
 import { BoardMergeConflictError, mergeBoardAdditions } from '../board-merge';
 import {
   StoredBoard,

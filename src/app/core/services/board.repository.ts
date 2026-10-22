@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { ChecklistBoard } from '../../models/board.models';
+import { ChecklistBoard } from '../../models/board.model';
 
 export interface BoardConflict {
   localBoard: ChecklistBoard;

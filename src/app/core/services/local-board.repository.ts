@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { ChecklistBoard } from '../../models/board.models';
+import { ChecklistBoard } from '../../models/board.model';
 import { BoardConflict, BoardRepository } from './board.repository';
 
 const STORAGE_KEY = 'the-lister-ionic-v1';

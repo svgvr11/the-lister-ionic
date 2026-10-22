@@ -12,7 +12,7 @@ import {
 import { canonicalBoardContentKey, OwnBoardSnapshots } from './board-sync';
 import { BoardMergeConflictError } from './board-merge';
 import type { BoardConflict } from './services/board.repository';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
 
 /**
  * Pruebas del árbitro de conflictos del tablero.
