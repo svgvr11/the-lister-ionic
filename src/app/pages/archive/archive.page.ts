@@ -45,9 +45,9 @@ import {
 import { completedTasks, pendingTasks } from '../../core/board-task-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
-import { AuthService } from '../../core/services/auth.service';
-import { BoardSessionService } from '../../core/services/board-session.service';
-import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
+import { AuthService } from '../../services/auth.service';
+import { BoardSessionService } from '../../services/board-session.service';
+import { OverlayStackService, RegisteredOverlay } from '../../services/overlay-stack.service';
 
 /** Lista archivada pendiente de eliminar para siempre, a la espera de confirmar. */
 type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };

@@ -1,11 +1,11 @@
-import { PreparedImage } from './feedback.service';
+import { PreparedImage } from '../services/feedback.service';
 import {
   FeedbackImageMime,
   MAX_IMAGE_BYTES,
   MAX_IMAGES,
   detectImageMime,
   extensionForImageMime
-} from '../feedback-core';
+} from './feedback-core';
 
 /** Lado largo máximo al que se re-codifica una imagen antes de enviarla. */
 const MAX_IMAGE_EDGE = 1600;

@@ -10,7 +10,7 @@ import {
   isSupabaseSessionKey,
   markLocalAuthChange as markLocalAuthChangeFlag,
   setSessionBlockedFlag,
-} from '../session-guard';
+} from '../core/session-guard';
 
 /**
  * Bloqueo de pestaña vieja (solo web).

@@ -3,7 +3,7 @@ import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavControl
 import { addIcons } from 'ionicons';
 import { chevronBack } from 'ionicons/icons';
 import { readStoredTheme } from '../../core/board-themes';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService } from '../../services/auth.service';
 
 /**
  * Pantalla legal provisional (política de privacidad y términos de uso).

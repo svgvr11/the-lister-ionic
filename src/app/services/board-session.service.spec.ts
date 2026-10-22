@@ -7,7 +7,7 @@ import { AuthService } from './auth.service';
 import { LocalBoardRepository } from './local-board.repository';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { fakeSession } from './testing/fake-supabase';
-import type { ChecklistBoard } from '../../models/board.model';
+import type { ChecklistBoard } from '../models/board.model';
 
 /**
  * Pruebas del servicio que abre el tablero.

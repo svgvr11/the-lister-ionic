@@ -6,15 +6,15 @@ import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, close, mailOutline, megaphoneOutline, trashOutline } from 'ionicons/icons';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { EMPTY_FEEDBACK_DRAFT, FeedbackDraft, FeedbackService, PreparedImage } from '../../core/services/feedback.service';
+import { EMPTY_FEEDBACK_DRAFT, FeedbackDraft, FeedbackService, PreparedImage } from '../../services/feedback.service';
 import {
   ACCEPTED_IMAGE_TYPES,
   canAcceptMore,
   imageAlt,
   prepareImage,
   releaseImage
-} from '../../core/services/feedback-images';
-import { ConnectivityService } from '../../core/services/connectivity.service';
+} from '../../core/feedback-images';
+import { ConnectivityService } from '../../services/connectivity.service';
 import {
   avisoSinConexion,
   decidirCierre,

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalBoardRepository } from './local-board.repository';
-import type { ChecklistBoard } from '../../models/board.model';
+import type { ChecklistBoard } from '../models/board.model';
 
 /**
  * Pruebas del repositorio local (localStorage).

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ChecklistBoard } from '../../models/board.model';
+import { ChecklistBoard } from '../models/board.model';
 import { AuthService } from './auth.service';
 import { BoardConflict, BoardRepository } from './board.repository';
 import { LocalBoardRepository } from './local-board.repository';

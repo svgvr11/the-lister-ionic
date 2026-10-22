@@ -4,15 +4,15 @@ import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { createClient, Session, SupabaseClient } from '@supabase/supabase-js';
 import { Subject } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../environments/environment';
 import {
   DeleteAccountResponseBody,
   DeleteAccountResult,
   classifyDeleteAccountInvoke,
   deleteAccountMessage,
-} from '../delete-account';
-import { buildGoogleOAuthOptions } from '../google-auth';
-import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../session-guard';
+} from '../core/delete-account';
+import { buildGoogleOAuthOptions } from '../core/google-auth';
+import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../core/session-guard';
 
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';

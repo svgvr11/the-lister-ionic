@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
-import { APP_VERSION_LABEL } from '../app-version';
-import { readStoredThemeId } from '../board-themes';
-import { snapshotRecentErrors } from '../recent-errors';
-import { FeedbackCounts, FeedbackDiagnostics, collectDiagnostics } from '../feedback-core';
+import { APP_VERSION_LABEL } from '../core/app-version';
+import { readStoredThemeId } from '../core/board-themes';
+import { snapshotRecentErrors } from '../core/recent-errors';
+import { FeedbackCounts, FeedbackDiagnostics, collectDiagnostics } from '../core/feedback-core';
 
 /**
  * DIAGNÓSTICO TÉCNICO

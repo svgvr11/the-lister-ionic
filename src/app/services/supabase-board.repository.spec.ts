@@ -1,13 +1,13 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
-import { BoardMergeConflictError } from '../board-merge';
-import { moveListBefore, moveListByOffset } from '../board-list-rules';
-import { setSessionBlockedFlag } from '../session-guard';
+import { BoardMergeConflictError } from '../core/board-merge';
+import { moveListBefore, moveListByOffset } from '../core/board-list-rules';
+import { setSessionBlockedFlag } from '../core/session-guard';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { AuthService } from './auth.service';
 import { fakeSession, fakeSupabase, type FakeSupabase } from './testing/fake-supabase';
-import type { ChecklistBoard } from '../../models/board.model';
+import type { ChecklistBoard } from '../models/board.model';
 
 /**
  * Pruebas del repositorio sincronizado (Supabase).
