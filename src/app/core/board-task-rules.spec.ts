@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
 import {
   COMPLETED_PREVIEW_LIMIT,
   addTaskToList,

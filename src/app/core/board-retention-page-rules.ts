@@ -4,7 +4,7 @@ import type {
   ChecklistBoard,
   ChecklistList,
   ChecklistTrashedList
-} from '../models/board.models';
+} from '../models/board.model';
 
 /**
  * Reglas compartidas del Basurero y del Archivo.

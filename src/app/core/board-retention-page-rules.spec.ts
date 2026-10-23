@@ -19,7 +19,7 @@ import type {
   ChecklistBoard,
   ChecklistList,
   ChecklistTrashedList
-} from '../models/board.models';
+} from '../models/board.model';
 
 /**
  * Pruebas de las reglas compartidas del Basurero y del Archivo.

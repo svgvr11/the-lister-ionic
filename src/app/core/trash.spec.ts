@@ -7,7 +7,7 @@ import {
   purgeExpiredLists,
   trashUrgency
 } from './trash';
-import type { ChecklistBoard } from '../models/board.models';
+import type { ChecklistBoard } from '../models/board.model';
 
 /**
  * Pruebas de los envoltorios del basurero. `core/trash.ts` no calcula nada: fija el plazo

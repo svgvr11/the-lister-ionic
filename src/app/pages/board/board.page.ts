@@ -26,12 +26,12 @@ import {
 } from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
-import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
-import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
-import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
-import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
-import { WelcomeModalComponent } from '../../shared/welcome-modal/welcome-modal.component';
-import { BoardConflict } from '../../core/services/board.repository';
+import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
+import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
+import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
+import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
+import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
+import { BoardConflict } from '../../services/board.repository';
 import { BoardMergeConflictError } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
 import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
@@ -42,12 +42,12 @@ import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/trash';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService } from '../../services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
-import { BoardSessionService } from '../../core/services/board-session.service';
-import { FeedbackService } from '../../core/services/feedback.service';
-import { SessionGuardService } from '../../core/services/session-guard.service';
-import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
+import { BoardSessionService } from '../../services/board-session.service';
+import { FeedbackService } from '../../services/feedback.service';
+import { SessionGuardService } from '../../services/session-guard.service';
+import { OverlayStackService, type RegisteredOverlay } from '../../services/overlay-stack.service';
 import { OwnBoardSnapshots } from '../../core/board-sync';
 import {
   listDragKeyOffset,

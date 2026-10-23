@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BoardMergeConflictError, mergeBoardAdditions } from './board-merge';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
 
 /**
  * Pruebas del merge de adiciones. Migrado desde scripts/test-board-merge.mjs.

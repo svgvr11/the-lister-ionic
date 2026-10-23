@@ -32,3 +32,14 @@ Al añadir un campo al tablero, actualizar `canonicalBoardContentKey`.
 
 ## Zonas horarias
 En el código de producción NUNCA se fija una zona horaria (`America/Santiago` ni ninguna otra): las funciones de formato usan siempre la del dispositivo (`Intl.DateTimeFormat().resolvedOptions().timeZone`) cuando no reciben `timeZone`. Las zonas fijas son solo para los tests, donde hacen falta para que el resultado sea determinista.
+
+## Estructura de src/app
+- `core/` — lógica pura y helpers sin Angular DI (`app-version.ts`, `google-auth.ts`, funciones de reglas y sus specs al lado).
+- `guards/` — guardias de ruta (`auth.guard.ts`, etc.).
+- `models/` — interfaces y tipos en archivos `*.model.ts`.
+- `pages/<nombre>/` — una carpeta por página (`<nombre>.page.ts`, `.html`, `.scss`); las páginas solo componen.
+- `services/` — servicios con Angular DI (`*.service.ts`, `*.repository.ts`, con su spec al lado).
+- `shared/components/<nombre>/` — un componente standalone por carpeta (`<nombre>.component.ts`, `.html`, `.scss`, `.spec.ts`).
+- Los tests viven junto al archivo que prueban.
+- Todo bloque de UI con responsabilidad propia o que se repita es un componente standalone en `shared/components/<nombre>/` con su html, scss y spec. Las páginas solo componen.
+- Nombres con sufijo: `.page`, `.component`, `.service`, `.guard`, `.model`.

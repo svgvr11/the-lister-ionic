@@ -1,6 +1,6 @@
 import { mergeBoardAdditions } from './board-merge';
-import type { ChecklistBoard } from '../models/board.models';
-import type { BoardConflict } from './services/board.repository';
+import type { ChecklistBoard } from '../models/board.model';
+import type { BoardConflict } from '../services/board.repository';
 
 /**
  * Árbitro de conflictos del tablero.

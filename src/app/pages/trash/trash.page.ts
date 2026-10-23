@@ -21,7 +21,7 @@ import {
   timeOutline, trash, trashBinOutline
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.models';
+import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.model';
 import { readStoredTheme } from '../../core/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
 import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
@@ -49,9 +49,9 @@ import {
 } from '../../core/board-list-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
-import { AuthService } from '../../core/services/auth.service';
-import { BoardSessionService } from '../../core/services/board-session.service';
-import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
+import { AuthService } from '../../services/auth.service';
+import { BoardSessionService } from '../../services/board-session.service';
+import { OverlayStackService, RegisteredOverlay } from '../../services/overlay-stack.service';
 
 /** Acción destructiva pendiente de confirmar en el diálogo del basurero. */
 type PendingAction = { kind: 'purge'; entry: ChecklistTrashedList } | { kind: 'empty' };

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.models';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
 import {
   addListToBoard,
   completedTaskCount,
