@@ -129,7 +129,7 @@ Fíjate en lo importante: **la función probada es la de verdad**. El mock solo 
 al almacenamiento. Por eso el test detecta un fallo real.
 
 Para código que usa `inject()` de Angular (servicios, guardas) se usa `TestBed` con
-`useValue`, como en `src/app/core/services/auth.guard.spec.ts`.
+`useValue`, como en `src/app/guards/auth.guard.spec.ts`.
 
 ### Limitación del runner: `vi.mock` NO funciona
 
@@ -154,7 +154,7 @@ compilación de Angular para los specs.
 
 ## 5. Clientes de Supabase falsos
 
-En `src/app/core/services/testing/` hay dos helpers reutilizables:
+En `src/app/services/testing/` hay dos helpers reutilizables:
 
 - `fake-supabase.ts` → tablero (`boards`): búsquedas, inserciones, guardados por versión,
   canal de realtime y `realtime.setAuth`. Usado por `supabase-board.repository.spec.ts`.
@@ -203,7 +203,7 @@ Lógica pura del core (`src/app/core/`):
 | `welcome-modal.component.spec.ts` | 9 |
 | `google-auth.spec.ts` | 2 |
 
-Servicios (`src/app/core/services/`):
+Servicios (`src/app/services/`):
 
 | Archivo | Casos |
 |---|---|

@@ -78,10 +78,10 @@ Supabase y llega por correo a `feedback@soporte.atenis.app` con enlaces firmados
 src/app/core/feedback-core.ts              lógica pura compartida (lista blanca, validación,
                                            magic bytes, escape, límite de frecuencia)
 src/app/core/recent-errors.ts              buffer circular de los 10 últimos errores
-src/app/core/services/diagnostics.service  junta el diagnóstico con lo del entorno
-src/app/core/services/feedback-images.ts   re-codifica a 1600 px con canvas (quita EXIF)
-src/app/core/services/feedback.service    monta el multipart y llama a la Edge Function
-src/app/shared/feedback-modal/             el modal (replica el diálogo de ayuda de Archivo)
+src/app/services/diagnostics.service  junta el diagnóstico con lo del entorno
+src/app/core/feedback-images.ts   re-codifica a 1600 px con canvas (quita EXIF)
+src/app/services/feedback.service    monta el multipart y llama a la Edge Function
+src/app/shared/components/feedback-modal/             el modal (replica el diálogo de ayuda de Archivo)
 supabase/feedback.sql                      tabla, RLS, índices y bucket (SQL manual)
 supabase/functions/submit-feedback/        valida, guarda y avisa por correo
 supabase/functions/feedback-cleanup/       purga de 90 días
@@ -271,7 +271,7 @@ src/app/
 │   │   ├── local-board.repository.ts
 │   │   └── supabase-board.repository.ts
 ├── models/
-│   └── board.models.ts
+│   └── board.model.ts
 ├── pages/login/
 │   ├── login.page.html
 │   ├── login.page.scss
@@ -284,7 +284,7 @@ src/app/
 │   ├── trash.page.html
 │   ├── trash.page.scss
 │   └── trash.page.ts
-├── shared/feedback-modal/
+├── shared/components/feedback-modal/
 │   ├── feedback-modal.component.html
 │   ├── feedback-modal.component.scss
 │   └── feedback-modal.component.ts
