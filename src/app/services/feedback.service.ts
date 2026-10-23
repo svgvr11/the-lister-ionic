@@ -13,7 +13,7 @@ import {
   isValidContactEmail,
   normalizeContactEmail,
   validateMessage
-} from '../core/feedback-core';
+} from '../core/feedback/feedback-core/feedback-core';
 import { SESSION_BLOCKED_MESSAGE, isSessionBlocked } from '../core/session-guard';
 import {
   mensajeEnvioNoDisponible,
@@ -22,7 +22,7 @@ import {
   mensajeRespuestaNoOk,
   mensajeSinConexion,
   mensajeSinSesion
-} from '../core/feedback-messages';
+} from '../core/feedback/feedback-messages/feedback-messages';
 
 /** Una imagen ya preparada para enviar: bytes, tipo real y URL de la miniatura. */
 export interface PreparedImage {

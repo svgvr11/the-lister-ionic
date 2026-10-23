@@ -9,7 +9,7 @@ import {
   puedeEnviar,
   tieneContenido
 } from './feedback-modal-state';
-import { esFlancoDeReconexion, leerConexionNavegador } from './connectivity-rules';
+import { esFlancoDeReconexion, leerConexionNavegador } from '../../connectivity-rules';
 
 /** Estado del modal por defecto: recién abierto, vacío y sin enviar. */
 const estado = (cambios: Partial<Parameters<typeof decidirCierre>[0]> = {}) => ({

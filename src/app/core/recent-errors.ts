@@ -3,7 +3,7 @@ import {
   RECENT_ERRORS_LIMIT,
   RECENT_ERROR_TEXT_LIMIT,
   scrubSensitiveText
-} from './feedback-core';
+} from './feedback/feedback-core/feedback-core';
 
 /**
  * ERRORES RECIENTES

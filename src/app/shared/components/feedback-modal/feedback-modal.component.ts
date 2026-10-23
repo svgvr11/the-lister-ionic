@@ -13,7 +13,7 @@ import {
   imageAlt,
   prepareImage,
   releaseImage
-} from '../../../core/feedback-images';
+} from '../../../core/feedback/feedback-images/feedback-images';
 import { ConnectivityService } from '../../../services/connectivity.service';
 import {
   avisoSinConexion,
@@ -23,14 +23,14 @@ import {
   limpiezaAlCerrar,
   mensajeDemasiadoCorto,
   tieneContenido
-} from '../../../core/feedback-modal-state';
+} from '../../../core/feedback/feedback-modal-state/feedback-modal-state';
 import {
   FEEDBACK_TYPE_CHIPS,
   FeedbackType,
   MAX_IMAGES,
   MESSAGE_MAX_LENGTH,
   MESSAGE_MIN_LENGTH
-} from '../../../core/feedback-core';
+} from '../../../core/feedback/feedback-core/feedback-core';
 
 /**
  * MODAL DE COMENTARIOS Y ERRORES
