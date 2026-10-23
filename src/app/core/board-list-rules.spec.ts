@@ -20,7 +20,7 @@ import {
   syncPinnedList,
   taskCounterLabel
 } from './board-list-rules';
-import { purgeExpiredLists, restoreListToBoard } from './list-retention';
+import { purgeExpiredLists, restoreListToBoard } from './list/list-retention/list-retention';
 
 /**
  * Pruebas de las reglas de las listas del tablero.

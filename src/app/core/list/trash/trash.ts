@@ -4,7 +4,7 @@ import {
   retentionDeadline,
   retentionUrgency,
   TRASH_POLICY
-} from './list-retention';
+} from '../list-retention/list-retention';
 
 /**
  * Días que una lista permanece en el basurero antes de eliminarse de forma permanente.
@@ -45,4 +45,4 @@ export { countdownLabel };
 
 // La purga vive en el módulo compartido: es la misma función con otro plazo y sobre otra
 // colección. Se reexporta aquí para que estas páginas sigan importando el basurero de un solo sitio.
-export { purgeExpiredLists } from './list-retention';
+export { purgeExpiredLists } from '../list-retention/list-retention';

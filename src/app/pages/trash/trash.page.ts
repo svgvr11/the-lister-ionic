@@ -23,8 +23,8 @@ import {
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.model';
 import { readStoredTheme } from '../../core/board-themes';
-import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/trash';
-import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
+import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/list/trash/trash';
+import { isListComplete, listLimitRestoreMessage } from '../../core/list/list-retention/list-retention';
 import {
   claseUrgencia,
   diasRestantesSeguro,

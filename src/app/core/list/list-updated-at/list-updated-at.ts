@@ -1,4 +1,4 @@
-import type { ChecklistList } from '../models/board.model';
+import type { ChecklistList } from '../../../models/board.model';
 
 /**
  * Fecha de la última modificación de una lista («Última actualización» del modal de enfoque).

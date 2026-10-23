@@ -1,7 +1,7 @@
 import type { ChecklistBoard, ChecklistList } from '../models/board.model';
-import { MAX_BOARD_LISTS, archiveList } from './list-retention';
+import { MAX_BOARD_LISTS, archiveList } from './list/list-retention/list-retention';
 import { normalizeListTitle } from './limits';
-import { touchList } from './list-updated-at';
+import { touchList } from './list/list-updated-at/list-updated-at';
 
 /**
  * Reglas de las listas dentro del tablero.

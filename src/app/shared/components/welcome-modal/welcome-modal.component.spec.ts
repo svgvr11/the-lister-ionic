@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ARCHIVE_RETENTION_DAYS } from '../../../core/archive';
+import { ARCHIVE_RETENTION_DAYS } from '../../../core/list/archive/archive';
 import { APP_VERSION_LABEL } from '../../../core/app-version';
-import { TRASH_RETENTION_DAYS } from '../../../core/trash';
+import { TRASH_RETENTION_DAYS } from '../../../core/list/trash/trash';
 import { WelcomeModalComponent } from './welcome-modal.component';
 
 /**

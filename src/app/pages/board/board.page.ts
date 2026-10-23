@@ -37,10 +37,10 @@ import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../
 import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
-import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
+import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list/list-retention/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
-import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
-import { TRASH_RETENTION_DAYS } from '../../core/trash';
+import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
+import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
@@ -125,7 +125,7 @@ import {
   welcomeVariant,
   type WelcomeVariant
 } from '../../core/welcome-tour';
-import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list-updated-at';
+import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list/list-updated-at/list-updated-at';
 
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
 const TOOLTIP_TACTIL_MS = 4000;

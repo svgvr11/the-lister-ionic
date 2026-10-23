@@ -1,4 +1,4 @@
-import type { ChecklistBoard, ChecklistList } from '../models/board.model';
+import type { ChecklistBoard, ChecklistList } from '../../../models/board.model';
 
 /**
  * Lógica pura de las listas que salen del tablero: el basurero y el archivo.

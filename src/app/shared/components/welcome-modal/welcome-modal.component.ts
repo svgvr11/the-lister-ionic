@@ -28,8 +28,8 @@ import {
   trashOutline,
   trendingUpOutline
 } from 'ionicons/icons';
-import { ARCHIVE_RETENTION_DAYS } from '../../../core/archive';
-import { TRASH_RETENTION_DAYS } from '../../../core/trash';
+import { ARCHIVE_RETENTION_DAYS } from '../../../core/list/archive/archive';
+import { TRASH_RETENTION_DAYS } from '../../../core/list/trash/trash';
 import { BOARD_THEMES } from '../../../core/board-themes';
 import { APP_VERSION_LABEL } from '../../../core/app-version';
 import {

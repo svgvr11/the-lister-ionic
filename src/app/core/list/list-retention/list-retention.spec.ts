@@ -13,7 +13,7 @@ import {
   retentionDaysLeft,
   retentionUrgency
 } from './list-retention';
-import type { ChecklistBoard, ChecklistList } from '../models/board.model';
+import type { ChecklistBoard, ChecklistList } from '../../../models/board.model';
 
 /**
  * Pruebas de la lógica pura de las listas que salen del tablero: el basurero y el archivo.

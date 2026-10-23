@@ -12,8 +12,8 @@ import {
   vaciarArchivo,
   vaciarBasurero
 } from './board-retention-page-rules';
-import { purgeExpiredLists } from './trash';
-import { purgeExpiredArchivedLists } from './archive';
+import { purgeExpiredLists } from './list/trash/trash';
+import { purgeExpiredArchivedLists } from './list/archive/archive';
 import type {
   ChecklistArchivedList,
   ChecklistBoard,

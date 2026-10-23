@@ -3,7 +3,7 @@ import {
   countdownLabel,
   retentionDaysLeft,
   retentionUrgency
-} from './list-retention';
+} from '../list-retention/list-retention';
 
 /**
  * Archivo de listas terminadas: especialización de la lógica compartida de
@@ -37,4 +37,4 @@ export { countdownLabel };
 
 // La purga del archivo es la misma función compartida del basurero, con el plazo de 60 días
 // y sobre `archivedLists`. Se reexporta para que la página del archivo use el mismo patrón.
-export { purgeExpiredArchivedLists, archiveList } from './list-retention';
+export { purgeExpiredArchivedLists, archiveList } from '../list-retention/list-retention';

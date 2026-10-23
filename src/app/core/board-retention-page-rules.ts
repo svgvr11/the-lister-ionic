@@ -1,4 +1,4 @@
-import { restoreListToBoard } from './list-retention';
+import { restoreListToBoard } from './list/list-retention/list-retention';
 import type {
   ChecklistArchivedList,
   ChecklistBoard,

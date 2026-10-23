@@ -27,8 +27,8 @@ import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } f
 import { readStoredTheme } from '../../core/board-themes';
 import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists
-} from '../../core/archive';
-import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
+} from '../../core/list/archive/archive';
+import { isListComplete, listLimitRestoreMessage } from '../../core/list/list-retention/list-retention';
 import {
   claseUrgencia,
   diasRestantesSeguro,

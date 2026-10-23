@@ -5,7 +5,7 @@ import {
   archiveUrgency,
   purgeExpiredArchivedLists
 } from './archive';
-import type { ChecklistBoard } from '../models/board.model';
+import type { ChecklistBoard } from '../../../models/board.model';
 
 /**
  * Pruebas de los envoltorios del archivo. `core/archive.ts` fija el plazo de 60 días y
