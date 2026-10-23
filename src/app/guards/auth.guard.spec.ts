@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { authGuard } from './auth.guard';
-import { AuthService } from '../../services/auth.service';
+import { AuthService } from '../services/auth.service';
 
 /**
  * Pruebas de la guarda de rutas. Migrado como caso nuevo: antes no tenía cobertura.
