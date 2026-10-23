@@ -28,10 +28,10 @@ import {
   trashOutline,
   trendingUpOutline
 } from 'ionicons/icons';
-import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
-import { TRASH_RETENTION_DAYS } from '../../core/trash';
-import { BOARD_THEMES } from '../../core/board-themes';
-import { APP_VERSION_LABEL } from '../../core/app-version';
+import { ARCHIVE_RETENTION_DAYS } from '../../../core/archive';
+import { TRASH_RETENTION_DAYS } from '../../../core/trash';
+import { BOARD_THEMES } from '../../../core/board-themes';
+import { APP_VERSION_LABEL } from '../../../core/app-version';
 import {
   type WelcomeVariant,
   isMacOsBrowser,
@@ -44,7 +44,7 @@ import {
   welcomePageCounter,
   welcomePageCount,
   welcomePrimaryLabel
-} from '../../core/welcome-tour';
+} from '../../../core/welcome-tour';
 
 /** Tarjeta de contenido de una página. */
 interface WelcomeCard {

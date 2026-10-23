@@ -6,15 +6,15 @@ import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, close, mailOutline, megaphoneOutline, trashOutline } from 'ionicons/icons';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { EMPTY_FEEDBACK_DRAFT, FeedbackDraft, FeedbackService, PreparedImage } from '../../services/feedback.service';
+import { EMPTY_FEEDBACK_DRAFT, FeedbackDraft, FeedbackService, PreparedImage } from '../../../services/feedback.service';
 import {
   ACCEPTED_IMAGE_TYPES,
   canAcceptMore,
   imageAlt,
   prepareImage,
   releaseImage
-} from '../../core/feedback-images';
-import { ConnectivityService } from '../../services/connectivity.service';
+} from '../../../core/feedback-images';
+import { ConnectivityService } from '../../../services/connectivity.service';
 import {
   avisoSinConexion,
   decidirCierre,
@@ -23,14 +23,14 @@ import {
   limpiezaAlCerrar,
   mensajeDemasiadoCorto,
   tieneContenido
-} from '../../core/feedback-modal-state';
+} from '../../../core/feedback-modal-state';
 import {
   FEEDBACK_TYPE_CHIPS,
   FeedbackType,
   MAX_IMAGES,
   MESSAGE_MAX_LENGTH,
   MESSAGE_MIN_LENGTH
-} from '../../core/feedback-core';
+} from '../../../core/feedback-core';
 
 /**
  * MODAL DE COMENTARIOS Y ERRORES

@@ -1,9 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { APP_VERSION_LABEL } from '../../core/app-version';
-import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../core/legal-urls';
-import { ConnectivityService } from '../../services/connectivity.service';
+import { APP_VERSION_LABEL } from '../../../core/app-version';
+import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../../core/legal-urls';
+import { ConnectivityService } from '../../../services/connectivity.service';
 
 /**
  * Pie del tablero: estado de la sincronización, copyright y enlaces legales con la versión

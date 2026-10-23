@@ -2,8 +2,8 @@ import { Component, HostBinding, Input, inject } from '@angular/core';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronBack } from 'ionicons/icons';
-import { readStoredTheme } from '../../core/board-themes';
-import { AuthService } from '../../services/auth.service';
+import { readStoredTheme } from '../../../core/board-themes';
+import { AuthService } from '../../../services/auth.service';
 
 /**
  * Pantalla legal provisional (política de privacidad y términos de uso).

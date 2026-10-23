@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
-import { editKeyAction, normalizePastedEditText, splitEditOnNewline } from '../../core/inline-edit';
+import { editKeyAction, normalizePastedEditText, splitEditOnNewline } from '../../../core/inline-edit';
 
 @Component({
   selector: 'app-inline-edit',

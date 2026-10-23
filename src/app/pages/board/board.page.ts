@@ -27,10 +27,10 @@ import {
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
-import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
-import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
-import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
-import { WelcomeModalComponent } from '../../shared/welcome-modal/welcome-modal.component';
+import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
+import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
+import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
+import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardConflict } from '../../services/board.repository';
 import { BoardMergeConflictError } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
