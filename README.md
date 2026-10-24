@@ -75,16 +75,16 @@ Supabase y llega por correo a `feedback@soporte.atenis.app` con enlaces firmados
 ### Arquitectura
 
 ```text
-src/app/core/feedback-core.ts              lógica pura compartida (lista blanca, validación,
-                                           magic bytes, escape, límite de frecuencia)
-src/app/core/recent-errors.ts              buffer circular de los 10 últimos errores
-src/app/services/diagnostics.service  junta el diagnóstico con lo del entorno
-src/app/core/feedback-images.ts   re-codifica a 1600 px con canvas (quita EXIF)
-src/app/services/feedback.service    monta el multipart y llama a la Edge Function
-src/app/shared/components/feedback-modal/             el modal (replica el diálogo de ayuda de Archivo)
+src/app/core/feedback/feedback-core/feedback-core.ts   lógica pura compartida (lista blanca, validación,
+                                                       magic bytes, escape, límite de frecuencia)
+src/app/core/platform/recent-errors/recent-errors.ts   buffer circular de los 10 últimos errores
+src/app/services/diagnostics.service                   junta el diagnóstico con lo del entorno
+src/app/core/feedback/feedback-images/feedback-images.ts   re-codifica a 1600 px con canvas (quita EXIF)
+src/app/services/feedback.service                      monta el multipart y llama a la Edge Function
+src/app/shared/components/feedback-modal/              el modal (replica el diálogo de ayuda de Archivo)
 supabase/feedback.sql                      tabla, RLS, índices y bucket (SQL manual)
 supabase/functions/submit-feedback/        valida, guarda y avisa por correo
-supabase/functions/feedback-cleanup/       purga de 90 días
+supabase/functions/feedback-cleanup/        purga de 90 días
 ```
 
 La regla del diseño es que **el cliente no es de fiar**: la app valida para no gastar el envío,
@@ -256,30 +256,57 @@ Los builds de debug funcionan sin necesidad de `keystore.properties` ni `version
 ```text
 src/app/
 ├── core/
-│   ├── board-themes.ts
-│   ├── trash.ts
-│   ├── feedback-core.ts
-│   ├── recent-errors.ts
-│   ├── services/
-│   │   ├── auth.guard.ts
-│   │   ├── auth.service.ts
-│   │   ├── board-session.service.ts
-│   │   ├── board.repository.ts
-│   │   ├── diagnostics.service.ts
-│   │   ├── feedback-images.ts
-│   │   ├── feedback.service.ts
-│   │   ├── local-board.repository.ts
-│   │   └── supabase-board.repository.ts
+│   ├── app-version.ts                              excepción: versión, se queda en la raíz de core/
+│   ├── auth/
+│   │   ├── delete-account/
+│   │   ├── google-auth/
+│   │   ├── login-rules/
+│   │   └── session-guard/
+│   ├── board/
+│   │   ├── board-conflict-rules/
+│   │   ├── board-list-drag/
+│   │   ├── board-list-rules/
+│   │   ├── board-merge/
+│   │   ├── board-retention-page-rules/
+│   │   ├── board-serialization/
+│   │   ├── board-sync/
+│   │   ├── board-task-rules/
+│   │   ├── board-themes/
+│   │   ├── board-view/
+│   │   └── cdk-reorder/
+│   ├── feedback/
+│   │   ├── feedback-core/
+│   │   ├── feedback-images/
+│   │   ├── feedback-messages/
+│   │   └── feedback-modal-state/
+│   ├── list/
+│   │   ├── archive/
+│   │   ├── list-retention/
+│   │   ├── list-updated-at/
+│   │   └── trash/
+│   ├── platform/
+│   │   ├── connectivity-rules/
+│   │   ├── keyboard-probe/
+│   │   ├── legal-urls/
+│   │   ├── limits/
+│   │   └── recent-errors/
+│   └── ui/
+│       ├── edit-contrast/
+│       ├── focus-notice/
+│       ├── inline-edit/
+│       ├── masonry-layout/
+│       ├── overlay-stack/
+│       └── welcome-tour/
 ├── models/
 │   └── board.model.ts
 ├── pages/login/
 │   ├── login.page.html
 │   ├── login.page.scss
-│   └── login.page.ts
+│   ├── login.page.ts
 ├── pages/board/
 │   ├── board.page.html
 │   ├── board.page.scss
-│   └── board.page.ts
+│   ├── board.page.ts
 ├── pages/trash/
 │   ├── trash.page.html
 │   ├── trash.page.scss
