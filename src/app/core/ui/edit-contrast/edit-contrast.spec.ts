@@ -8,7 +8,7 @@ import {
   onAccentToken,
   pickOnAccent
 } from './edit-contrast';
-import { BOARD_THEMES } from './board-themes';
+import { BOARD_THEMES } from '../../board-themes';
 
 /**
  * Pruebas de contraste del modo edición. Migrado desde scripts/test-edit-contrast.mjs.

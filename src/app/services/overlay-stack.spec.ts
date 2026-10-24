@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OverlayStack } from '../core/overlay-stack';
+import { OverlayStack } from '../core/ui/overlay-stack/overlay-stack';
 
 /**
  * Pruebas de la pila de overlays. Migrado desde scripts/test-overlay-stack.mjs.

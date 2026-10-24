@@ -34,14 +34,14 @@ import { WelcomeModalComponent } from '../../shared/components/welcome-modal/wel
 import { BoardConflict } from '../../services/board.repository';
 import { BoardMergeConflictError } from '../../core/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
-import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
+import { pickOnAccent, onAccentToken } from '../../core/ui/edit-contrast/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
 import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list/list-retention/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
-import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
+import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
 import { AuthService } from '../../services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
 import { BoardSessionService } from '../../services/board-session.service';
@@ -69,7 +69,7 @@ import {
   resolveReorderEngine,
   shouldOpenCardFocus
 } from '../../core/cdk-reorder';
-import { resolveBoardFlowMode } from '../../core/masonry-layout';
+import { resolveBoardFlowMode } from '../../core/ui/masonry-layout/masonry-layout';
 import {
   boardsEqual,
   decideIncomingBoard,
@@ -115,7 +115,7 @@ import {
   toggleTask,
   visibleCompletedTasks
 } from '../../core/board-task-rules';
-import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
+import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/ui/focus-notice/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
 import {
   isMacOsBrowser,
@@ -124,7 +124,7 @@ import {
   shouldShowWelcome,
   welcomeVariant,
   type WelcomeVariant
-} from '../../core/welcome-tour';
+} from '../../core/ui/welcome-tour/welcome-tour';
 import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list/list-updated-at/list-updated-at';
 
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */

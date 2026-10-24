@@ -44,7 +44,7 @@ import {
   welcomePageCounter,
   welcomePageCount,
   welcomePrimaryLabel
-} from '../../../core/welcome-tour';
+} from '../../../core/ui/welcome-tour/welcome-tour';
 
 /** Tarjeta de contenido de una página. */
 interface WelcomeCard {

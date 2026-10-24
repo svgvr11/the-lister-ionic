@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { OverlayStack } from '../core/overlay-stack';
+import { OverlayStack } from '../core/ui/overlay-stack/overlay-stack';
 
 export interface RegisteredOverlay {
   id: string;
