@@ -23,12 +23,12 @@ import {
   chevronForward, close, helpCircleOutline, timeOutline, trash
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
-import { readStoredTheme } from '../../core/board-themes';
+import { ChecklistArchivedList, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
+import { readStoredTheme } from '../../core/board/board-themes/board-themes';
 import {
   ARCHIVE_RETENTION_DAYS, archiveDaysLeft, archiveUrgency, countdownLabel, purgeExpiredArchivedLists
-} from '../../core/archive';
-import { isListComplete, listLimitRestoreMessage } from '../../core/list-retention';
+} from '../../core/list/archive/archive';
+import { isListComplete, listLimitRestoreMessage } from '../../core/list/list-retention/list-retention';
 import {
   claseUrgencia,
   diasRestantesSeguro,
@@ -36,18 +36,18 @@ import {
   esUrgente,
   ordenarEntradasPorFecha,
   restaurarDesdeArchivo
-} from '../../core/board-retention-page-rules';
+} from '../../core/board/board-retention-page-rules/board-retention-page-rules';
 import {
   completedTaskCount,
   listProgressPercent,
   taskCounterLabel
-} from '../../core/board-list-rules';
-import { completedTasks, pendingTasks } from '../../core/board-task-rules';
-import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
-import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
-import { AuthService } from '../../core/services/auth.service';
-import { BoardSessionService } from '../../core/services/board-session.service';
-import { OverlayStackService, RegisteredOverlay } from '../../core/overlay-stack.service';
+} from '../../core/board/board-list-rules/board-list-rules';
+import { completedTasks, pendingTasks } from '../../core/board/board-task-rules/board-task-rules';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
+import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
+import { AuthService } from '../../services/auth.service';
+import { BoardSessionService } from '../../services/board-session.service';
+import { OverlayStackService, RegisteredOverlay } from '../../services/overlay-stack.service';
 
 /** Lista archivada pendiente de eliminar para siempre, a la espera de confirmar. */
 type PendingAction = { kind: 'delete'; entry: ChecklistArchivedList };

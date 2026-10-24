@@ -7,10 +7,10 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { addIcons } from 'ionicons';
 import { shieldCheckmarkOutline } from 'ionicons/icons';
 import { Subscription, filter } from 'rxjs';
-import { AuthService } from './core/services/auth.service';
-import { FeedbackService } from './core/services/feedback.service';
-import { SessionGuardService } from './core/services/session-guard.service';
-import { OverlayStackService } from './core/overlay-stack.service';
+import { AuthService } from './services/auth.service';
+import { FeedbackService } from './services/feedback.service';
+import { SessionGuardService } from './services/session-guard.service';
+import { OverlayStackService } from './services/overlay-stack.service';
 
 /** Rutas públicas: no se vigila la sesión desde ellas (el guardia queda desarmado). */
 const PUBLIC_ROUTE_PATTERN = /^\/(login|privacy|terms)([/?#]|$)/;

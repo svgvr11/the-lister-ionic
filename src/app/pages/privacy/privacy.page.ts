@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { LegalPageComponent } from '../../shared/legal-page/legal-page.component';
+import { LegalPageComponent } from '../../shared/components/legal-page/legal-page.component';
 
 /**
  * Ruta pública /privacy: la política de privacidad todavía no está escrita, así que la

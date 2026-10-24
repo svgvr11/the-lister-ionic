@@ -4,8 +4,8 @@ import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalo
 import { Capacitor } from '@capacitor/core';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
-import { installKeyboardProbe } from './app/core/keyboard-probe'; // TEMPORAL: borrar con el archivo
-import { installRecentErrors } from './app/core/recent-errors';
+import { installKeyboardProbe } from './app/core/platform/keyboard-probe/keyboard-probe'; // TEMPORAL: borrar con el archivo
+import { installRecentErrors } from './app/core/platform/recent-errors/recent-errors';
 
 /** INSTRUMENTACIÓN TEMPORAL — solo con `?debug=1`. Quitar junto a keyboard-probe.ts. */
 installKeyboardProbe();

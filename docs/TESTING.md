@@ -16,7 +16,7 @@ npm run test:legacy   # los 5 scripts antiguos que siguen en scripts/
 Para correr **un solo archivo** (útil mientras trabajas en algo concreto):
 
 ```bash
-npx ng test --include="src/app/core/trash.spec.ts"
+npx ng test --include="src/app/core/list/trash/trash.spec.ts"
 ```
 
 > `--include` acepta ponerlo varias veces para correr varios archivos.
@@ -31,14 +31,14 @@ Cuando algo falla, Vitest imprime un bloque así:
  FAIL  ... spec-app-core-trash.spec.js > trash: plazo del basurero > el plazo son 7 días
 AssertionError: expected 8 to be 7
 
- ❯ src/app/core/trash.spec.ts:38:31
+ ❯ src/app/core/list/trash/trash.spec.ts:38:31
 ```
 
 Lélo de arriba abajo:
 
 1. **Qué prueba falló** — la línea larga: archivo > grupo (`describe`) > prueba (`it`).
 2. **Qué se esperaba y qué se obtuvo** — `expected 8 to be 7` significa: *esperaba 7, llegó 8*.
-3. **Dónde** — `src/app/core/trash.spec.ts:38` es el archivo y la línea exacta.
+3. **Dónde** — `src/app/core/list/trash/trash.spec.ts:38:31` es el archivo y la línea exacta.
 
 Si el fallo está dentro de un `expect(() => ...).toThrow(...)`, el mensaje suele ser
 `expected function to throw error, but it didn't` → el código **no** lanzó cuando debía.
@@ -129,7 +129,7 @@ Fíjate en lo importante: **la función probada es la de verdad**. El mock solo 
 al almacenamiento. Por eso el test detecta un fallo real.
 
 Para código que usa `inject()` de Angular (servicios, guardas) se usa `TestBed` con
-`useValue`, como en `src/app/core/services/auth.guard.spec.ts`.
+`useValue`, como en `src/app/guards/auth.guard.spec.ts`.
 
 ### Limitación del runner: `vi.mock` NO funciona
 
@@ -154,7 +154,7 @@ compilación de Angular para los specs.
 
 ## 5. Clientes de Supabase falsos
 
-En `src/app/core/services/testing/` hay dos helpers reutilizables:
+En `src/app/services/testing/` hay dos helpers reutilizables:
 
 - `fake-supabase.ts` → tablero (`boards`): búsquedas, inserciones, guardados por versión,
   canal de realtime y `realtime.setAuth`. Usado por `supabase-board.repository.spec.ts`.
@@ -175,35 +175,35 @@ Lógica pura del core (`src/app/core/`):
 
 | Archivo | Casos |
 |---|---|
-| `list-retention.spec.ts` | 21 |
-| `edit-contrast.spec.ts` | 37 |
-| `limits.spec.ts` | 13 |
-| `board-themes.spec.ts` | 10 |
-| `session-guard.spec.ts` | 9 |
-| `inline-edit.spec.ts` | 8 |
-| `trash.spec.ts` | 7 |
-| `masonry-layout.spec.ts` | 7 |
-| `board-merge.spec.ts` | 15 |
-| `board-view.spec.ts` | 6 |
-| `board-list-drag.spec.ts` | 12 |
-| `archive.spec.ts` | 5 |
-| `board-sync.spec.ts` | 10 |
-| `overlay-stack.spec.ts` | 5 |
-| `delete-account.spec.ts` | 5 |
-| `board-serialization.spec.ts` | 19 |
-| `board-list-rules.spec.ts` | 67 |
-| `board-task-rules.spec.ts` | 50 |
-| `board-conflict-rules.spec.ts` | 31 |
-| `board-retention-page-rules.spec.ts` | 24 |
-| `login-rules.spec.ts` | 14 |
-| `feedback-messages.spec.ts` | 12 |
-| `feedback-modal-state.spec.ts` | 17 |
-| `focus-notice.spec.ts` | 3 |
-| `list-updated-at.spec.ts` | 28 |
+| `src/app/core/list/list-retention/list-retention.spec.ts` | 21 |
+| `src/app/core/ui/edit-contrast/edit-contrast.spec.ts` | 37 |
+| `src/app/core/platform/limits/limits.spec.ts` | 13 |
+| `src/app/core/board/board-themes/board-themes.spec.ts` | 10 |
+| `src/app/core/auth/session-guard/session-guard.spec.ts` | 9 |
+| `src/app/core/ui/inline-edit/inline-edit.spec.ts` | 8 |
+| `src/app/core/list/trash/trash.spec.ts` | 7 |
+| `src/app/core/ui/masonry-layout/masonry-layout.spec.ts` | 7 |
+| `src/app/core/board/board-merge/board-merge.spec.ts` | 15 |
+| `src/app/core/board/board-view/board-view.spec.ts` | 6 |
+| `src/app/core/board/board-list-drag/board-list-drag.spec.ts` | 12 |
+| `src/app/core/list/archive/archive.spec.ts` | 5 |
+| `src/app/core/board/board-sync/board-sync.spec.ts` | 10 |
+| `src/app/core/ui/overlay-stack/overlay-stack.spec.ts` | 5 |
+| `src/app/core/auth/delete-account/delete-account.spec.ts` | 5 |
+| `src/app/core/board/board-serialization/board-serialization.spec.ts` | 19 |
+| `src/app/core/board/board-list-rules/board-list-rules.spec.ts` | 67 |
+| `src/app/core/board/board-task-rules/board-task-rules.spec.ts` | 50 |
+| `src/app/core/board/board-conflict-rules/board-conflict-rules.spec.ts` | 31 |
+| `src/app/core/board/board-retention-page-rules/board-retention-page-rules.spec.ts` | 24 |
+| `src/app/core/auth/login-rules/login-rules.spec.ts` | 14 |
+| `src/app/core/feedback/feedback-messages/feedback-messages.spec.ts` | 12 |
+| `src/app/core/feedback/feedback-modal-state/feedback-modal-state.spec.ts` | 17 |
+| `src/app/core/ui/focus-notice/focus-notice.spec.ts` | 3 |
+| `src/app/core/list/list-updated-at/list-updated-at.spec.ts` | 28 |
 | `welcome-modal.component.spec.ts` | 9 |
-| `google-auth.spec.ts` | 2 |
+| `src/app/core/auth/google-auth/google-auth.spec.ts` | 2 |
 
-Servicios (`src/app/core/services/`):
+Servicios (`src/app/services/`):
 
 | Archivo | Casos |
 |---|---|
@@ -216,7 +216,7 @@ Servicios (`src/app/core/services/`):
 
 **Siguen como scripts de Node (`npm run test:legacy`, 50 casos):**
 
-- `scripts/test-feedback.mjs` — compara byte a byte `src/app/core/feedback-core.ts` con
+- `scripts/test-feedback.mjs` — compara byte a byte `src/app/core/feedback/feedback-core/feedback-core.ts` con
   `supabase/functions/_shared/feedback-core.ts` (la Edge Function tiene su propia copia) y
   simula el flujo de subida del servidor. Necesita `node:fs` y rutas fuera de `src/`.
 - `scripts/test-delete-account.mjs` — prueba `supabase/functions/delete-account/core.ts`,

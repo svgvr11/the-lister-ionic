@@ -26,36 +26,36 @@ import {
 } from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
-import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.models';
-import { AppFooterComponent } from '../../shared/app-footer/app-footer.component';
-import { FeedbackModalComponent } from '../../shared/feedback-modal/feedback-modal.component';
-import { InlineEditComponent } from '../../shared/inline-edit/inline-edit.component';
-import { WelcomeModalComponent } from '../../shared/welcome-modal/welcome-modal.component';
-import { BoardConflict } from '../../core/services/board.repository';
-import { BoardMergeConflictError } from '../../core/board-merge';
-import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
-import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
+import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
+import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
+import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
+import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
+import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
+import { BoardConflict } from '../../services/board.repository';
+import { BoardMergeConflictError } from '../../core/board/board-merge/board-merge';
+import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
+import { pickOnAccent, onAccentToken } from '../../core/ui/edit-contrast/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
-import { FEEDBACK_FAB_ENABLED } from '../../core/feedback-core';
-import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list-retention';
-import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
-import { ARCHIVE_RETENTION_DAYS } from '../../core/archive';
-import { TRASH_RETENTION_DAYS } from '../../core/trash';
-import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
-import { AuthService } from '../../core/services/auth.service';
-import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
-import { BoardSessionService } from '../../core/services/board-session.service';
-import { FeedbackService } from '../../core/services/feedback.service';
-import { SessionGuardService } from '../../core/services/session-guard.service';
-import { OverlayStackService, type RegisteredOverlay } from '../../core/overlay-stack.service';
-import { OwnBoardSnapshots } from '../../core/board-sync';
+import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
+import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list/list-retention/list-retention';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
+import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
+import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
+import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
+import { AuthService } from '../../services/auth.service';
+import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/auth/delete-account/delete-account';
+import { BoardSessionService } from '../../services/board-session.service';
+import { FeedbackService } from '../../services/feedback.service';
+import { SessionGuardService } from '../../services/session-guard.service';
+import { OverlayStackService, type RegisteredOverlay } from '../../services/overlay-stack.service';
+import { OwnBoardSnapshots } from '../../core/board/board-sync/board-sync';
 import {
   listDragKeyOffset,
   listMoveAnnouncement,
   listMoveBlockedAnnouncement,
   readListDragPayload,
   setListDragPayload
-} from '../../core/board-list-drag';
+} from '../../core/board/board-list-drag/board-list-drag';
 import {
   CARD_CLICK_SUPPRESS_MS,
   CDK_DRAG_SAFETY_TIMEOUT_MS,
@@ -68,8 +68,8 @@ import {
   planCdkReorder,
   resolveReorderEngine,
   shouldOpenCardFocus
-} from '../../core/cdk-reorder';
-import { resolveBoardFlowMode } from '../../core/masonry-layout';
+} from '../../core/board/cdk-reorder/cdk-reorder';
+import { resolveBoardFlowMode } from '../../core/ui/masonry-layout/masonry-layout';
 import {
   boardsEqual,
   decideIncomingBoard,
@@ -78,7 +78,7 @@ import {
   pideDobleConfirmacion,
   tableroRemotoParaResolver,
   type EstadoTrasGuardar
-} from '../../core/board-conflict-rules';
+} from '../../core/board/board-conflict-rules/board-conflict-rules';
 import {
   addListToBoard,
   completedTaskCount,
@@ -97,7 +97,7 @@ import {
   reorderLists,
   syncPinnedList,
   taskCounterLabel
-} from '../../core/board-list-rules';
+} from '../../core/board/board-list-rules/board-list-rules';
 import {
   COMPLETED_PREVIEW_LIMIT,
   addTaskToList,
@@ -114,9 +114,9 @@ import {
   shouldShowCompletedToggle,
   toggleTask,
   visibleCompletedTasks
-} from '../../core/board-task-rules';
-import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/focus-notice';
-import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
+} from '../../core/board/board-task-rules/board-task-rules';
+import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/ui/focus-notice/focus-notice';
+import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board/board-view/board-view';
 import {
   isMacOsBrowser,
   markWelcomeSeen,
@@ -124,8 +124,8 @@ import {
   shouldShowWelcome,
   welcomeVariant,
   type WelcomeVariant
-} from '../../core/welcome-tour';
-import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list-updated-at';
+} from '../../core/ui/welcome-tour/welcome-tour';
+import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitLastUpdated } from '../../core/list/list-updated-at/list-updated-at';
 
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
 const TOOLTIP_TACTIL_MS = 4000;

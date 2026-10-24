@@ -32,3 +32,27 @@ Al añadir un campo al tablero, actualizar `canonicalBoardContentKey`.
 
 ## Zonas horarias
 En el código de producción NUNCA se fija una zona horaria (`America/Santiago` ni ninguna otra): las funciones de formato usan siempre la del dispositivo (`Intl.DateTimeFormat().resolvedOptions().timeZone`) cuando no reciben `timeZone`. Las zonas fijas son solo para los tests, donde hacen falta para que el resultado sea determinista.
+
+## Estructura de src/app
+
+- `core/` — lógica pura y helpers sin Angular DI, agrupada por dominio: `core/<dominio>/<nombre>/<nombre>.ts` con su `<nombre>.spec.ts` en la misma carpeta. Dominios actuales: auth, board, feedback, list, platform, ui.
+- Excepción: `core/app-version.ts` se queda en la raíz de `core/` (los scripts de versión leen y reescriben esa ruta exacta).
+- `guards/` — guardias de ruta (`auth.guard.ts`, etc.).
+- `models/` — interfaces y tipos en archivos `*.model.ts`.
+- `pages/<nombre>/` — una carpeta por página (`<nombre>.page.ts`, `.html`, `.scss`); las páginas solo componen.
+- `services/` — servicios con Angular DI (`*.service.ts`, `*.repository.ts`, con su spec al lado).
+- `shared/components/<nombre>/` — un componente standalone por carpeta (`<nombre>.component.ts`, `.html`, `.scss`, `.spec.ts`).
+- Los tests viven junto al archivo que prueban.
+- Todo bloque de UI con responsabilidad propia o que se repita es un componente standalone en `shared/components/<nombre>/` con su html, scss y spec. Las páginas solo componen.
+- Nombres con sufijo: `.page`, `.component`, `.service`, `.guard`, `.model`.
+- Un dominio nuevo de `core/` solo se crea con al menos 3 módulos.
+
+## Git (obligatorio)
+
+Solo el usuario crea, renombra, elimina o cambia de rama. El agente NUNCA ejecuta
+git branch, git switch -c, git checkout -b, git worktree ni ningún otro comando
+que cree o cambie ramas, ni propone nombres de rama en sus planes. Trabaja siempre
+en la rama actual. Si una tarea, un plan o un prompt incluye crear una rama,
+ignora esa parte y avisa al usuario.
+Tampoco hace commit, push, merge, rebase ni stash: eso lo hace el usuario. El
+agente deja los cambios en el árbol de trabajo y se detiene.

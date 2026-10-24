@@ -9,16 +9,16 @@ import { addIcons } from 'ionicons';
 import { checkmarkCircleOutline } from 'ionicons/icons';
 import { Session } from '@supabase/supabase-js';
 import { Subscription } from 'rxjs';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService } from '../../services/auth.service';
 import { APP_VERSION_LABEL } from '../../core/app-version';
-import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../core/legal-urls';
+import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../core/platform/legal-urls/legal-urls';
 import {
   abrirConBrowserNativo,
   avisoDeNavegacion,
   decidirInicioLogin,
   debeDesbloquearTrasReanudar,
   mensajeErrorLogin
-} from '../../core/login-rules';
+} from '../../core/auth/login-rules/login-rules';
 
 @Component({
   selector: 'app-login',
