@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ChecklistBoard } from '../models/board.model';
-import { moveListBefore, orderedLists } from './board-list-rules';
+import type { ChecklistBoard } from '../../../models/board.model';
+import { moveListBefore, orderedLists } from '../board-list-rules/board-list-rules';
 import {
   AUTO_SCROLL_EDGE_PX,
   AUTO_SCROLL_MAX_STEP_PX,

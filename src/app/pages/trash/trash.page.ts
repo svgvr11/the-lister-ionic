@@ -22,7 +22,7 @@ import {
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ChecklistBoard, ChecklistList, ChecklistTask, ChecklistTrashedList } from '../../models/board.model';
-import { readStoredTheme } from '../../core/board-themes';
+import { readStoredTheme } from '../../core/board/board-themes/board-themes';
 import { countdownLabel, daysLeft, purgeExpiredLists, TRASH_RETENTION_DAYS, trashUrgency } from '../../core/list/trash/trash';
 import { isListComplete, listLimitRestoreMessage } from '../../core/list/list-retention/list-retention';
 import {
@@ -34,19 +34,19 @@ import {
   restaurarDesdeBasurero,
   textosAccionBasurero,
   vaciarBasurero
-} from '../../core/board-retention-page-rules';
+} from '../../core/board/board-retention-page-rules/board-retention-page-rules';
 import {
   completedTasks,
   hiddenCompletedCount,
   pendingTasks,
   shouldShowCompletedToggle,
   visibleCompletedTasks
-} from '../../core/board-task-rules';
+} from '../../core/board/board-task-rules/board-task-rules';
 import {
   completedTaskCount,
   listProgressPercent,
   taskCounterLabel
-} from '../../core/board-list-rules';
+} from '../../core/board/board-list-rules/board-list-rules';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
 import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
 import { AuthService } from '../../services/auth.service';

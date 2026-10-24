@@ -6,7 +6,7 @@ import {
   isSameVersion,
   nextBoardVersion
 } from './board-serialization';
-import type { ChecklistBoard } from '../models/board.model';
+import type { ChecklistBoard } from '../../../models/board.model';
 
 /**
  * Pruebas de la serialización del tablero y de sus versiones.

@@ -1,4 +1,4 @@
-import type { ChecklistBoard } from '../models/board.model';
+import type { ChecklistBoard } from '../../../models/board.model';
 
 /**
  * Serialización y versiones del tablero en Supabase.

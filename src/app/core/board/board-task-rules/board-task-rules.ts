@@ -1,5 +1,5 @@
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
-import { touchList } from './list/list-updated-at/list-updated-at';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../../../models/board.model';
+import { touchList } from '../../list/list-updated-at/list-updated-at';
 
 /**
  * Reglas de las tareas dentro de una lista.

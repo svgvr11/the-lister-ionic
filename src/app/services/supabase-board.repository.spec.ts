@@ -1,8 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
-import { BoardMergeConflictError } from '../core/board-merge';
-import { moveListBefore, moveListByOffset } from '../core/board-list-rules';
+import { BoardMergeConflictError } from '../core/board/board-merge/board-merge';
+import { moveListBefore, moveListByOffset } from '../core/board/board-list-rules/board-list-rules';
 import { setSessionBlockedFlag } from '../core/auth/session-guard/session-guard';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { AuthService } from './auth.service';

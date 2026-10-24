@@ -2,7 +2,7 @@ import { Component, HostBinding, Input, inject } from '@angular/core';
 import { IonContent, IonHeader, IonIcon, IonRippleEffect, IonToolbar, NavController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronBack } from 'ionicons/icons';
-import { readStoredTheme } from '../../../core/board-themes';
+import { readStoredTheme } from '../../../core/board/board-themes/board-themes';
 import { AuthService } from '../../../services/auth.service';
 
 /**

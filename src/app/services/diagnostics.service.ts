@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { APP_VERSION_LABEL } from '../core/app-version';
-import { readStoredThemeId } from '../core/board-themes';
+import { readStoredThemeId } from '../core/board/board-themes/board-themes';
 import { snapshotRecentErrors } from '../core/platform/recent-errors/recent-errors';
 import { FeedbackCounts, FeedbackDiagnostics, collectDiagnostics } from '../core/feedback/feedback-core/feedback-core';
 

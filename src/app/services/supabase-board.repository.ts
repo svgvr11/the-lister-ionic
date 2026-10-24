@@ -4,14 +4,14 @@ import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { ChecklistBoard } from '../models/board.model';
-import { BoardMergeConflictError, mergeBoardAdditions } from '../core/board-merge';
+import { BoardMergeConflictError, mergeBoardAdditions } from '../core/board/board-merge/board-merge';
 import {
   StoredBoard,
   deserializeBoard,
   isNewerVersion,
   isSameVersion,
   nextBoardVersion
-} from '../core/board-serialization';
+} from '../core/board/board-serialization/board-serialization';
 import { BoardConflict, BoardRepository } from './board.repository';
 import { AuthService } from './auth.service';
 import { isSessionBlocked, throwIfSessionBlocked } from '../core/auth/session-guard/session-guard';

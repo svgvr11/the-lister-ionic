@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalBoardContentKey, OwnBoardSnapshots } from './board-sync';
-import { mergeBoardAdditions } from './board-merge';
-import { moveListBefore } from './board-list-rules';
-import type { ChecklistBoard } from '../models/board.model';
+import { mergeBoardAdditions } from '../board-merge/board-merge';
+import { moveListBefore } from '../board-list-rules/board-list-rules';
+import type { ChecklistBoard } from '../../../models/board.model';
 
 /**
  * Pruebas del detector de ecos propios. Migrado desde scripts/test-board-sync.mjs.

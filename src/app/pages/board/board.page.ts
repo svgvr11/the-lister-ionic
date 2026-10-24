@@ -32,8 +32,8 @@ import { FeedbackModalComponent } from '../../shared/components/feedback-modal/f
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardConflict } from '../../services/board.repository';
-import { BoardMergeConflictError } from '../../core/board-merge';
-import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board-themes';
+import { BoardMergeConflictError } from '../../core/board/board-merge/board-merge';
+import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
 import { pickOnAccent, onAccentToken } from '../../core/ui/edit-contrast/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
@@ -48,14 +48,14 @@ import { BoardSessionService } from '../../services/board-session.service';
 import { FeedbackService } from '../../services/feedback.service';
 import { SessionGuardService } from '../../services/session-guard.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../services/overlay-stack.service';
-import { OwnBoardSnapshots } from '../../core/board-sync';
+import { OwnBoardSnapshots } from '../../core/board/board-sync/board-sync';
 import {
   listDragKeyOffset,
   listMoveAnnouncement,
   listMoveBlockedAnnouncement,
   readListDragPayload,
   setListDragPayload
-} from '../../core/board-list-drag';
+} from '../../core/board/board-list-drag/board-list-drag';
 import {
   CARD_CLICK_SUPPRESS_MS,
   CDK_DRAG_SAFETY_TIMEOUT_MS,
@@ -68,7 +68,7 @@ import {
   planCdkReorder,
   resolveReorderEngine,
   shouldOpenCardFocus
-} from '../../core/cdk-reorder';
+} from '../../core/board/cdk-reorder/cdk-reorder';
 import { resolveBoardFlowMode } from '../../core/ui/masonry-layout/masonry-layout';
 import {
   boardsEqual,
@@ -78,7 +78,7 @@ import {
   pideDobleConfirmacion,
   tableroRemotoParaResolver,
   type EstadoTrasGuardar
-} from '../../core/board-conflict-rules';
+} from '../../core/board/board-conflict-rules/board-conflict-rules';
 import {
   addListToBoard,
   completedTaskCount,
@@ -97,7 +97,7 @@ import {
   reorderLists,
   syncPinnedList,
   taskCounterLabel
-} from '../../core/board-list-rules';
+} from '../../core/board/board-list-rules/board-list-rules';
 import {
   COMPLETED_PREVIEW_LIMIT,
   addTaskToList,
@@ -114,9 +114,9 @@ import {
   shouldShowCompletedToggle,
   toggleTask,
   visibleCompletedTasks
-} from '../../core/board-task-rules';
+} from '../../core/board/board-task-rules/board-task-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/ui/focus-notice/focus-notice';
-import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board-view';
+import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board/board-view/board-view';
 import {
   isMacOsBrowser,
   markWelcomeSeen,

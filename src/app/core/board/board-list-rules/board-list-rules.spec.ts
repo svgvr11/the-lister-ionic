@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../../../models/board.model';
 import {
   addListToBoard,
   completedTaskCount,
@@ -20,7 +20,7 @@ import {
   syncPinnedList,
   taskCounterLabel
 } from './board-list-rules';
-import { purgeExpiredLists, restoreListToBoard } from './list/list-retention/list-retention';
+import { purgeExpiredLists, restoreListToBoard } from '../../list/list-retention/list-retention';
 
 /**
  * Pruebas de las reglas de las listas del tablero.

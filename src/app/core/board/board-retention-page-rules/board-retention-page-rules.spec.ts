@@ -12,14 +12,14 @@ import {
   vaciarArchivo,
   vaciarBasurero
 } from './board-retention-page-rules';
-import { purgeExpiredLists } from './list/trash/trash';
-import { purgeExpiredArchivedLists } from './list/archive/archive';
+import { purgeExpiredLists } from '../../list/trash/trash';
+import { purgeExpiredArchivedLists } from '../../list/archive/archive';
 import type {
   ChecklistArchivedList,
   ChecklistBoard,
   ChecklistList,
   ChecklistTrashedList
-} from '../models/board.model';
+} from '../../../models/board.model';
 
 /**
  * Pruebas de las reglas compartidas del Basurero y del Archivo.

@@ -1,4 +1,4 @@
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../../../models/board.model';
 
 /**
  * Árbitro de la fusión de adiciones.

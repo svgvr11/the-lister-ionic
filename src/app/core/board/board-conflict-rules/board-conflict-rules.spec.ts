@@ -9,10 +9,10 @@ import {
   razonConflictoPorError,
   tableroRemotoParaResolver
 } from './board-conflict-rules';
-import { canonicalBoardContentKey, OwnBoardSnapshots } from './board-sync';
-import { BoardMergeConflictError } from './board-merge';
-import type { BoardConflict } from '../services/board.repository';
-import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../models/board.model';
+import { canonicalBoardContentKey, OwnBoardSnapshots } from '../board-sync/board-sync';
+import { BoardMergeConflictError } from '../board-merge/board-merge';
+import type { BoardConflict } from '../../../services/board.repository';
+import type { ChecklistBoard, ChecklistList, ChecklistTask } from '../../../models/board.model';
 
 /**
  * Pruebas del árbitro de conflictos del tablero.

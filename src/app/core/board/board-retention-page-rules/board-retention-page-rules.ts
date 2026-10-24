@@ -1,10 +1,10 @@
-import { restoreListToBoard } from './list/list-retention/list-retention';
+import { restoreListToBoard } from '../../list/list-retention/list-retention';
 import type {
   ChecklistArchivedList,
   ChecklistBoard,
   ChecklistList,
   ChecklistTrashedList
-} from '../models/board.model';
+} from '../../../models/board.model';
 
 /**
  * Reglas compartidas del Basurero y del Archivo.

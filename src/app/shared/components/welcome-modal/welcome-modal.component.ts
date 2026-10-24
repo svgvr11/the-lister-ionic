@@ -30,7 +30,7 @@ import {
 } from 'ionicons/icons';
 import { ARCHIVE_RETENTION_DAYS } from '../../../core/list/archive/archive';
 import { TRASH_RETENTION_DAYS } from '../../../core/list/trash/trash';
-import { BOARD_THEMES } from '../../../core/board-themes';
+import { BOARD_THEMES } from '../../../core/board/board-themes/board-themes';
 import { APP_VERSION_LABEL } from '../../../core/app-version';
 import {
   type WelcomeVariant,
