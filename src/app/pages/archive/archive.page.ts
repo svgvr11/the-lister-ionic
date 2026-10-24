@@ -43,7 +43,7 @@ import {
   taskCounterLabel
 } from '../../core/board-list-rules';
 import { completedTasks, pendingTasks } from '../../core/board-task-rules';
-import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
 import { AuthService } from '../../services/auth.service';
 import { BoardSessionService } from '../../services/board-session.service';

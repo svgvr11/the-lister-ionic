@@ -1,6 +1,6 @@
 import type { ChecklistBoard, ChecklistList } from '../models/board.model';
 import { MAX_BOARD_LISTS, archiveList } from './list/list-retention/list-retention';
-import { normalizeListTitle } from './limits';
+import { normalizeListTitle } from './platform/limits/limits';
 import { touchList } from './list/list-updated-at/list-updated-at';
 
 /**

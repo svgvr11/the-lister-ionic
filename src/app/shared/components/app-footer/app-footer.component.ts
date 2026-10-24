@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { APP_VERSION_LABEL } from '../../../core/app-version';
-import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../../core/legal-urls';
+import { DELETE_ACCOUNT_PAGE_URL, PRIVACY_PAGE_URL } from '../../../core/platform/legal-urls/legal-urls';
 import { ConnectivityService } from '../../../services/connectivity.service';
 
 /**

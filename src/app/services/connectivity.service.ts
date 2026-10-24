@@ -2,7 +2,7 @@ import { Injectable, Injector, NgZone, OnDestroy, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { BoardSessionService } from './board-session.service';
-import { esFlancoDeReconexion, leerConexionNavegador } from '../core/connectivity-rules';
+import { esFlancoDeReconexion, leerConexionNavegador } from '../core/platform/connectivity-rules/connectivity-rules';
 
 /** Valor inicial: el navegador solo sabe si el equipo tiene red, no si llega a Supabase. */
 function readNavigatorOnline(): boolean {

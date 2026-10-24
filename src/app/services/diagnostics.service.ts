@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { APP_VERSION_LABEL } from '../core/app-version';
 import { readStoredThemeId } from '../core/board-themes';
-import { snapshotRecentErrors } from '../core/recent-errors';
+import { snapshotRecentErrors } from '../core/platform/recent-errors/recent-errors';
 import { FeedbackCounts, FeedbackDiagnostics, collectDiagnostics } from '../core/feedback/feedback-core/feedback-core';
 
 /**

@@ -38,7 +38,7 @@ import { pickOnAccent, onAccentToken } from '../../core/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
 import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
 import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list/list-retention/list-retention';
-import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/limits';
+import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
 import { MasonryController, MASONRY_GAP } from '../../core/masonry-layout';
