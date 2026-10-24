@@ -685,28 +685,13 @@
             Sin tareas. Añade una para comenzar.
           </div>
 
-           <form *ngIf="!isCollapsed(list.id)" class="add-form" (ngSubmit)="addTask(list, taskInput)">
-             <ion-icon name="add" aria-hidden="true"></ion-icon>
-             <ion-input
-               #taskInput
-               autocapitalize="sentences"
-               [(ngModel)]="taskDrafts[list.id]"
-               [name]="'task-' + list.id"
-               placeholder="Añadir tarea a esta lista..."
-               aria-label="Añadir tarea a esta lista"
-               (ionBlur)="onTaskDraftBlur()"
-               (keydown.enter)="$event.preventDefault(); addTask(list, taskInput)"
-             ></ion-input>
-             <button
-               class="add-confirm ion-activatable"
-               type="submit"
-               [disabled]="!taskDrafts[list.id]?.trim()"
-               aria-label="Añadir tarea"
-             >
-               <ion-icon name="checkmark"></ion-icon>
-               <ion-ripple-effect></ion-ripple-effect>
-             </button>
-            </form>
+            <div class="add-form">
+              <app-add-task-input
+                [placeholder]="'Añadir tarea a esta lista...'"
+                [(value)]="taskDrafts[list.id]"
+                (submitted)="addTask(list, $event)"
+              ></app-add-task-input>
+            </div>
           </div>
           </div>
         </ng-template>
@@ -1264,23 +1249,13 @@
       <p *ngIf="pendingTasks(focus).length === 0 && completedTasks(focus).length === 0" class="focus-list-empty">Sin tareas. Añade una para comenzar.</p>
     </div>
 
-    <div class="focus-list-add">
-      <ion-icon name="add" aria-hidden="true"></ion-icon>
-      <ion-input
-        #focusTaskInput
-        id="focus-add-task-input"
-        autocapitalize="sentences"
-        [(ngModel)]="focusTaskDraft"
-        [name]="'focus-add-task-' + focus.id"
-        placeholder="Añadir tarea..."
-        aria-label="Añadir tarea a la lista"
-        (keydown.enter)="onFocusTaskEnter($event, focus, focusTaskInput)"
-      ></ion-input>
-      <button type="button" class="add-confirm ion-activatable" [disabled]="!focusTaskDraft.trim()" (click)="addFocusTask(focus, focusTaskInput)" aria-label="Añadir tarea">
-        <ion-icon name="checkmark"></ion-icon>
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-    </div>
+     <div class="focus-list-add">
+       <app-add-task-input
+         [placeholder]="'Añadir tarea...'"
+         [(value)]="taskDrafts[focus.id]"
+         (submitted)="addFocusTask(focus, $event)"
+       ></app-add-task-input>
+     </div>
     <footer class="focus-list-footer">
       <!-- Fecha de la última modificación de la lista. El envoltorio corta la propagación de su
            propio toque para que el tooltip no se cierre al abrirlo en pantallas táctiles. -->
@@ -1306,9 +1281,8 @@
           role="tooltip"
           [class.open]="focusUpdatedAtTooltipOpen"
         >{{ focusUpdatedAtTimeZone(iso) }}</span>
-      </div>
-      <button type="button" class="new-list-submit ion-activatable" (click)="finishFocusModal()">Listo<ion-ripple-effect></ion-ripple-effect></button>
-    </footer>
+       </div>
+     </footer>
   </section>
 </div>
 <div *ngIf="focusNotice" class="focus-list-notice" role="status" aria-live="polite">{{ focusNotice }}</div>
