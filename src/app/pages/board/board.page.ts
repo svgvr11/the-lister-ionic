@@ -29,6 +29,7 @@ import { Router } from '@angular/router';
 import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
 import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
 import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
+import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardConflict } from '../../services/board.repository';
@@ -146,7 +147,7 @@ interface CdkScrollStrategyShape {
   imports: [
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
-    FeedbackModalComponent, InlineEditComponent, WelcomeModalComponent,
+    FeedbackModalComponent, InlineEditComponent, AddTaskInputComponent, WelcomeModalComponent,
     // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
     // que el CDK aterrice solo en el chunk del tablero.
     CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
@@ -299,7 +300,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private newListOpener: HTMLElement | null = null;
   private pageActive = false;
   focusListId: string | null = null;
-  focusTaskDraft = '';
   focusNotice = '';
   /** Tooltip de la etiqueta «Última actualización» abierto (foco de teclado o toque). */
   focusUpdatedAtTooltipOpen = false;
@@ -860,7 +860,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.focusOpener = null;
       return;
     }
-    this.focusTaskDraft = '';
     this.focusListMobilePresentation = this.isMobilePresentation;
     // La zona horaria se lee del dispositivo cada vez que se abre el modal.
     this.dispositivoZonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -875,24 +874,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     return [...list.tasks].sort((left, right) => left.position - right.position);
   }
 
-  async addFocusTask(list: ChecklistList, input?: IonInput): Promise<void> {
-    const text = this.focusTaskDraft.trim();
-    if (!text) return;
+  async addFocusTask(list: ChecklistList, text: string): Promise<void> {
+    const trimmed = text.trim();
+    if (!trimmed) return;
     const existingTaskIds = new Set(list.tasks.map((task) => task.id));
-    this.taskDrafts[list.id] = text;
-    this.focusTaskDraft = '';
-    await this.addTask(list, input);
+    this.taskDrafts[list.id] = trimmed;
+    await this.addTask(list, trimmed);
     const addedTask = list.tasks.find((task) => !existingTaskIds.has(task.id));
     if (!addedTask) return;
     requestAnimationFrame(() => {
-      void input?.setFocus();
       this.scrollFocusTaskIntoView(addedTask.id);
     });
-  }
-
-  onFocusTaskEnter(event: Event, list: ChecklistList, input?: IonInput): void {
-    event.preventDefault();
-    void this.addFocusTask(list, input);
   }
 
   private scrollFocusTaskIntoView(taskId: string): void {
@@ -927,7 +919,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   private hasUnsavedFocusText(): boolean {
     const list = this.focusList;
-    return Boolean(this.focusTaskDraft.trim())
+    return Boolean(list && this.taskDrafts[list.id]?.trim())
       || Boolean(list && this.editingListId === list.id
         && normalizeListTitle(this.listTitleDraft) !== list.title);
   }
@@ -947,7 +939,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.closeFocusUpdatedAtTooltip();
     this.focusListId = null;
     this.focusInitialTitleFocusPending = false;
-    this.focusTaskDraft = '';
     this.draggedTask = null;
     this.cancelListDrag();
     this.finishClosingFocus();
@@ -2225,12 +2216,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     return item.id;
   }
 
-  async addTask(list: ChecklistList, input?: IonInput): Promise<void> {
-    const creada = addTaskToList(list, this.taskDrafts[list.id] ?? '');
+  async addTask(list: ChecklistList, text: string): Promise<void> {
+    const creada = addTaskToList(list, text);
     if (!creada) return;
     this.taskDrafts[list.id] = '';
-    // Mantener el foco en el input para poder añadir varias tareas seguidas.
-    input?.setFocus();
     await this.persist();
   }
 

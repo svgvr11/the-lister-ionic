@@ -1688,11 +1688,13 @@ ion-header {
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #667187;
+  color: #80879a;
   display: grid;
   place-items: center;
+  transition: color .15s ease;
 }
 
+.add-confirm.active { color: var(--accent); }
 .add-confirm:disabled { opacity: 0.35; }
 .add-confirm:not(:disabled):hover { color: #087750; background: #e0f0e9; }
 .add-confirm ion-icon { font-size: 14px; }
@@ -2451,7 +2453,7 @@ ion-header {
   position: relative;
   flex: 0 1 auto;
   min-width: 0;
-  margin-left: auto;
+  margin-left: 0;
   margin-block: -9px;
 }
 
@@ -2460,7 +2462,7 @@ ion-header {
 .focus-list-updated {
   display: inline-flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   min-height: 32px;
   min-width: 0;
   padding: 0 2px;

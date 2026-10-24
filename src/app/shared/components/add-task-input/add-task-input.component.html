@@ -1,0 +1,21 @@
+<ion-icon name="add" aria-hidden="true"></ion-icon>
+<ion-input
+  #input
+  autocapitalize="sentences"
+  [ngModel]="normalizedValue"
+  (ngModelChange)="onValueChange($event)"
+  [placeholder]="placeholder"
+  aria-label="Añadir tarea a la lista"
+  (keydown.enter)="onKeyDown($event)"
+></ion-input>
+<button
+  type="button"
+  class="add-confirm ion-activatable"
+  [class.active]="!!normalizedValue.trim()"
+  [disabled]="!normalizedValue.trim()"
+  aria-label="Agregar tarea"
+  (click)="onClick()"
+>
+  <ion-icon name="return-down-back"></ion-icon>
+  <ion-ripple-effect></ion-ripple-effect>
+</button>
