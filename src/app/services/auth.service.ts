@@ -10,9 +10,9 @@ import {
   DeleteAccountResult,
   classifyDeleteAccountInvoke,
   deleteAccountMessage,
-} from '../core/delete-account';
-import { buildGoogleOAuthOptions } from '../core/google-auth';
-import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../core/session-guard';
+} from '../core/auth/delete-account/delete-account';
+import { buildGoogleOAuthOptions } from '../core/auth/google-auth/google-auth';
+import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../core/auth/session-guard/session-guard';
 
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';

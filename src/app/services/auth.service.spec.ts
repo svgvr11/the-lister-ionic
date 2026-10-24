@@ -2,9 +2,9 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Capacitor } from '@capacitor/core';
 import { AuthService, SUPABASE_CLIENT } from './auth.service';
-import { consumeLocalAuthChange, setSessionBlockedFlag } from '../core/session-guard';
+import { consumeLocalAuthChange, setSessionBlockedFlag } from '../core/auth/session-guard/session-guard';
 import { fakeAuthClient, type FakeAuthClient } from './testing/fake-auth-client';
-import type { DeleteAccountResult } from '../core/delete-account';
+import type { DeleteAccountResult } from '../core/auth/delete-account/delete-account';
 
 /**
  * Pruebas de AuthService: sesión, OAuth (web y nativo), cierre y borrado de cuenta.

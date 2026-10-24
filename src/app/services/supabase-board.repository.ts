@@ -14,7 +14,7 @@ import {
 } from '../core/board-serialization';
 import { BoardConflict, BoardRepository } from './board.repository';
 import { AuthService } from './auth.service';
-import { isSessionBlocked, throwIfSessionBlocked } from '../core/session-guard';
+import { isSessionBlocked, throwIfSessionBlocked } from '../core/auth/session-guard/session-guard';
 
 export type { StoredBoard };
 

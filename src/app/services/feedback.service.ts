@@ -14,7 +14,7 @@ import {
   normalizeContactEmail,
   validateMessage
 } from '../core/feedback/feedback-core/feedback-core';
-import { SESSION_BLOCKED_MESSAGE, isSessionBlocked } from '../core/session-guard';
+import { SESSION_BLOCKED_MESSAGE, isSessionBlocked } from '../core/auth/session-guard/session-guard';
 import {
   mensajeEnvioNoDisponible,
   mensajeErrorDeEnvio,

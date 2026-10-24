@@ -43,7 +43,7 @@ import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
 import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
 import { AuthService } from '../../services/auth.service';
-import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/delete-account';
+import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/auth/delete-account/delete-account';
 import { BoardSessionService } from '../../services/board-session.service';
 import { FeedbackService } from '../../services/feedback.service';
 import { SessionGuardService } from '../../services/session-guard.service';

@@ -10,7 +10,7 @@ import {
   isSessionBlocked,
   markLocalAuthChange,
   setSessionBlockedFlag
-} from '../core/session-guard';
+} from '../core/auth/session-guard/session-guard';
 import type { Session } from '@supabase/supabase-js';
 
 /**

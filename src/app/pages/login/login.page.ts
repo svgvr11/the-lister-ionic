@@ -18,7 +18,7 @@ import {
   decidirInicioLogin,
   debeDesbloquearTrasReanudar,
   mensajeErrorLogin
-} from '../../core/login-rules';
+} from '../../core/auth/login-rules/login-rules';
 
 @Component({
   selector: 'app-login',

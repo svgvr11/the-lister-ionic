@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { BoardMergeConflictError } from '../core/board-merge';
 import { moveListBefore, moveListByOffset } from '../core/board-list-rules';
-import { setSessionBlockedFlag } from '../core/session-guard';
+import { setSessionBlockedFlag } from '../core/auth/session-guard/session-guard';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 import { AuthService } from './auth.service';
 import { fakeSession, fakeSupabase, type FakeSupabase } from './testing/fake-supabase';
