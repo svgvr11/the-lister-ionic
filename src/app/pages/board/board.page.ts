@@ -43,6 +43,7 @@ import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/l
 import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
 import { TRASH_RETENTION_DAYS } from '../../core/list/trash/trash';
 import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/masonry-layout';
+import { scrollDestinationForCard } from '../../core/ui/masonry-layout/scroll-into-view';
 import { AuthService } from '../../services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/auth/delete-account/delete-account';
 import { BoardSessionService } from '../../services/board-session.service';
@@ -130,6 +131,12 @@ import { describeDeviceTimeZone, formatLastUpdated, resolveListUpdatedAt, splitL
 
 /** Tiempo que el tooltip de zona horaria se queda en pantalla cuando se abre por toque. */
 const TOOLTIP_TACTIL_MS = 4000;
+
+/**
+ * Margen (px) que queda entre el borde del área visible y la tarjeta de la lista nueva
+ * tras el scroll automático, y que también protege su parte superior del encabezado fijo.
+ */
+const NEW_LIST_SCROLL_MARGIN_PX = 20;
 
 /**
  * Forma mínima de la estrategia de orden de CDK que aquí se usa (ver `notifyCdkScroll`).
@@ -224,6 +231,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private newListTitleFocusTimer: ReturnType<typeof setTimeout> | null = null;
   private newListViewportTimer: ReturnType<typeof setTimeout> | null = null;
   private newListViewportResizeHandler: (() => void) | null = null;
+  /** Id de la lista nueva por la que se debe hacer scroll tras el próximo maquetado. */
+  private pendingScrollListId: string | null = null;
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
@@ -693,7 +702,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.refreshFlowMode();
       return !this.flowMode;
     },
-    onSkipLayout: () => this.clearMasonryStyles()
+    onSkipLayout: () => this.clearMasonryStyles(),
+    /**
+     * Se invoca al final de cada pasada de `applyMasonryLayout`, cuando las posiciones
+     * ya están escritas en el DOM. Aquí se consume el scroll pendiente de la lista nueva
+     * (si lo hay) y se descarta para siempre, así los layouts posteriores no desplazan.
+     */
+    onLayout: () => this.consumePendingNewListScroll()
   });
   private readonly COMPLETED_PREVIEW_LIMIT = COMPLETED_PREVIEW_LIMIT;
 
@@ -2421,6 +2436,13 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       colorVisual: this.selectedVisualColor
     });
     if (!creada) return;
+    // Solo se scrollea hasta la lista nueva cuando se crea al final del tablero. Si se
+    // ancla al inicio (placeNewListAtStart) no hay zona fuera de pantalla a la que
+    // desplazarse y el orden no cambia.
+    if (!this.placeNewListAtStart) {
+      const ordered = orderedLists(this.board);
+      this.pendingScrollListId = ordered[ordered.length - 1]?.id ?? null;
+    }
     this.clearNewListInputFocusWork();
     this.newListTitle = '';
     this.addingList = false;
@@ -2444,6 +2466,69 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.newListOpener = null;
     requestAnimationFrame(() => {
       if (opener?.isConnected) opener.focus();
+    });
+  }
+
+  /**
+   * Consume la petición de scroll pendiente tras crear una lista al final del tablero.
+   *
+   * Se ejecuta al final de cada pasada de `applyMasonryLayout` (por el hook `onLayout`
+   * del controlador, donde ya están las posiciones calculadas y el DOM tiene la tarjeta
+   * nueva) y también en flujo normal (una columna), donde no hay maquetado masonry. Busca
+   * la tarjeta por su `data-list-id`, calcula el destino con la función pura y desplaza el
+   * `ion-content` suavemente solo si la tarjeta no está ya completamente a la vista.
+   *
+   * Se consume de una sola pasada: los layouts posteriores (colapsar/expandir una lista,
+   * cambiar el ancho de la ventana…) no vuelven a desplazar. Si la lista nueva quedó
+   * filtrada por una búsqueda activa y no existe su tarjeta en el DOM, no scrollea ni
+   * falla: se descarta la petición.
+   */
+  private consumePendingNewListScroll(): void {
+    const listId = this.pendingScrollListId;
+    if (!listId) return;
+
+    const content = this.boardContent;
+    if (!content) {
+      this.pendingScrollListId = null;
+      return;
+    }
+
+    const card = this.boardGridElement
+      ? this.boardGridElement.querySelector<HTMLElement>(`[data-list-id="${listId}"]`)
+      : null;
+    // Búsqueda activa: la lista nueva quedó filtrada fuera de visibleLists y su tarjeta
+    // no existe en el DOM. No se scrollea ni se falla: se descarta la petición.
+    if (!card) {
+      this.pendingScrollListId = null;
+      return;
+    }
+
+    void content.getScrollElement().then((scrollEl) => {
+      if (!scrollEl) {
+        this.pendingScrollListId = null;
+        return;
+      }
+      const containerRect = scrollEl.getBoundingClientRect();
+      // Contenedor oculto o sin tamaño: no hay nada que medir. Se conserva la petición
+      // para reintentarla en la siguiente pasada de maquetado (vuelve al mostrar la página).
+      if (containerRect.height <= 0) return;
+
+      const cardRect = card.getBoundingClientRect();
+      const currentScrollTop = scrollEl.scrollTop;
+      const cardOffsetTop = cardRect.top - containerRect.top + currentScrollTop;
+
+      const target = scrollDestinationForCard(
+        cardOffsetTop,
+        cardRect.height,
+        containerRect.height,
+        currentScrollTop,
+        NEW_LIST_SCROLL_MARGIN_PX
+      );
+      this.pendingScrollListId = null;
+      if (target === null) return;
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      void content.scrollToPoint(0, target, prefersReducedMotion ? 0 : 300);
     });
   }
 
@@ -2875,8 +2960,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.refreshFlowMode();
     if (this.flowMode) {
       // Una columna: flujo normal, sin posiciones absolutas. Es lo que permite que CDK
-      // reordene moviendo nodos del DOM.
+      // reordene moviendo nodos del DOM. No hay pasada de masonry, así que el scroll
+      // pendiente de la lista nueva se consume aquí directamente sobre el DOM renderizado.
       this.clearMasonryStyles();
+      this.consumePendingNewListScroll();
       return;
     }
     this.masonry.scheduleLayout();
