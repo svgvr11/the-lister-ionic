@@ -23,7 +23,7 @@
     <span *ngIf="showCount && value.length > 70" class="title-char-count" [class.at-limit]="atLimit" aria-live="polite">{{ count }} / {{ maxlength }}</span>
   </div>
   <div class="inline-edit-actions">
-    <button type="button" class="edit-confirm ion-activatable" (click)="save.emit()" [disabled]="saveDisabled" aria-label="Guardar">
+    <button type="button" class="edit-confirm ion-activatable" (click)="save.emit()" [disabled]="saveDisabled" aria-label="Confirmar edición">
       <ion-icon name="checkmark"></ion-icon>
       <ion-ripple-effect></ion-ripple-effect>
     </button>

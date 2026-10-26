@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
-import { editKeyAction, normalizePastedEditText, splitEditOnNewline } from '../../../core/ui/inline-edit/inline-edit';
+import { editKeyAction, maxInlineEditHeight, normalizePastedEditText, splitEditOnNewline } from '../../../core/ui/inline-edit/inline-edit';
 
 @Component({
   selector: 'app-inline-edit',
@@ -84,10 +84,12 @@ export class InlineEditComponent implements AfterViewInit {
     const el = this.area?.nativeElement;
     if (!el) return;
     el.style.height = 'auto';
-    const h = el.scrollHeight;
+    const maxH = maxInlineEditHeight(typeof window !== 'undefined' ? window.innerHeight : 0);
+    const scrollH = el.scrollHeight;
+    const h = maxH > 0 ? Math.min(scrollH, maxH) : scrollH;
     el.style.height = h + 'px';
-    // Alto real del campo (contenido + padding + borde): los botones de acción
-    // se igualan a este valor con --inline-edit-h en lugar de crecer fijos a 40/44px.
+    el.style.maxHeight = (maxH > 0 ? maxH : scrollH) + 'px';
+    el.style.overflowY = scrollH > maxH && maxH > 0 ? 'auto' : 'hidden';
     const box = el.offsetHeight;
     if (box > 0) this.host.nativeElement.style.setProperty('--inline-edit-h', `${box}px`);
     if (Math.abs(h - this.lastHeight) > 1) { this.lastHeight = h; this.heightChange.emit(); }

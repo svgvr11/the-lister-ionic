@@ -26,6 +26,14 @@ export function normalizePastedEditText(raw: string): string {
   }
   return out;
 }
+/**
+ * Altura máxima razonable del campo de edición (40vh) en píxeles, a partir de la
+ * altura del viewport. Devuelve 0 si no hay viewport válido.
+ */
+export function maxInlineEditHeight(viewportHeight: number): number {
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return 0;
+  return Math.round(viewportHeight * 0.4);
+}
 export function splitEditOnNewline(value: string): { before: string; hadNewline: boolean } {
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i);

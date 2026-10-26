@@ -221,10 +221,7 @@ ion-header {
 }
 
 .title-edit {
-  display: flex;
-  /* Los botones se estiran a la altura real del ion-input (mismo alto, sin agrandarlo). */
-  align-items: stretch;
-  gap: 6px;
+  display: block;
   flex: 1;
   min-width: 0;
   position: relative;
@@ -662,7 +659,7 @@ ion-header {
   margin-top: 14px;
   margin-bottom: 16px;
   padding: 0 16px;
-  color: #86898e;
+  color: var(--accent, #8870ad);
   background: var(--donation-color);
   border-radius: 10px;
   /* El texto es blanco sobre un pastel claro: un ripple currentColor sería
@@ -1334,6 +1331,9 @@ ion-header {
   min-width: 0;
   gap: 4px;
   position: relative;
+  background-color: var(--fab-color);
+  border-radius: 5px 5px 0 5px;
+  padding: 3px;
   app-inline-edit {
     width: 100%;
   }
@@ -1546,6 +1546,9 @@ ion-header {
   flex: 1;
   min-width: 0;
   gap: 4px;
+  background-color: var(--fab-color);
+  padding: 3px;
+  border-radius: 5px 5px 0 5px;
 }
 
 /* El host de app-inline-edit es un flex item con ancho de contenido: sin

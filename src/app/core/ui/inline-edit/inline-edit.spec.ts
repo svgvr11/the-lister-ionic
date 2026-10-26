@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   editKeyAction,
+  maxInlineEditHeight,
   normalizePastedEditText,
   splitEditOnNewline
 } from './inline-edit';
@@ -9,7 +10,6 @@ import {
  * Pruebas del editor en línea. Migrado desde scripts/test-inline-edit.mjs.
  * La composición IME (Android/acentos) se respeta: con isComposing no se guarda.
  */
-
 describe('inline-edit: teclas', () => {
   it('Enter guarda', () => {
     expect(editKeyAction({ key: 'Enter' })).toBe('save');
@@ -58,5 +58,13 @@ describe('inline-edit: pegado y saltos de línea', () => {
     const r = splitEditOnNewline('a\rb');
     expect(r.hadNewline).toBe(true);
     expect(r.before).toBe('a');
+  });
+});
+
+describe('inline-edit: altura máxima', () => {
+  it('40vh del viewport', () => {
+    expect(maxInlineEditHeight(1000)).toBe(400);
+    expect(maxInlineEditHeight(0)).toBe(0);
+    expect(maxInlineEditHeight(-10)).toBe(0);
   });
 });
