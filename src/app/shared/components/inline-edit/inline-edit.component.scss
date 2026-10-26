@@ -1,46 +1,134 @@
-:host { display: block; width: 100%; min-width: 0; }
-.inline-edit { display: flex; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; flex-wrap: wrap; }
-.inline-edit-field-group { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
-.inline-edit--title .inline-edit-field-group { flex: 1 1 140px; }
-.inline-edit--task { flex-wrap: nowrap; }
-.inline-edit--task .inline-edit-field-group { flex: 1 1 0; }
-.inline-edit-row { position: relative; display: flex; width: 100%; min-width: 0; }
+.inline-edit {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.inline-edit-field-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+.inline-edit--title .inline-edit-field-group {
+  flex: 1 1 140px;
+}
+.inline-edit--task .inline-edit-field-group {
+  flex: 1 1 0;
+}
+.inline-edit-row {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
 .inline-edit-field {
-  flex: 1 1 0; min-width: 0; width: 100%;
-  resize: none; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap;
-  background: #fff; color: #172236;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: #fff;
+  color: #172236;
   border: 1px solid var(--accent, #8870ad);
-  border-radius: 8px; padding: 6px 10px; margin: 0; outline: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 0;
+  outline: none;
   font: inherit;
+  max-height: 40vh;
 }
-.inline-edit--task .inline-edit-field { font-size: 12px; font-weight: 450; line-height: 1.3; }
-.inline-edit--title .inline-edit-field { font-size: 20px; font-weight: 700; line-height: 1.25; }
-.inline-edit-field:focus-visible { border-color: var(--accent, #8870ad); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent); }
+.inline-edit--task .inline-edit-field {
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.3;
+}
+.inline-edit--title .inline-edit-field {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.inline-edit-field:focus-visible {
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
+}
 @supports (-webkit-touch-callout: none) {
-  .inline-edit--task .inline-edit-field { font-size: 16px; }
+  .inline-edit--task .inline-edit-field {
+    font-size: 16px;
+  }
 }
-/* El"N/90" va debajo del input, en una línea propia, sin superponerse al texto. */
-.title-char-count { align-self: flex-end; margin-top: 4px; font-size: 10px; color: #5c6372; pointer-events: none; }
-.title-char-count.at-limit { color: #e11d48; }
-.inline-edit-actions { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
-.edit-confirm, .edit-cancel {
-  position: relative; overflow: hidden; display: grid; place-items: center;
-  width: 40px; height: var(--inline-edit-h, 40px); padding: 0; border-radius: 9px; cursor: pointer;
-  border: 1px solid transparent; transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+.title-char-count {
+  align-self: flex-end;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #5c6372;
+  pointer-events: none;
 }
-.edit-confirm { background: var(--accent, #8870ad); color: var(--on-accent, #fff); border-color: transparent; }
-.edit-confirm:hover { background: color-mix(in srgb, var(--accent, #8870ad) 85%, #fff); }
-.edit-confirm:active { transform: scale(0.94); }
-.edit-cancel { background: transparent; color: #5c6372; border-color: color-mix(in srgb, var(--accent, #8870ad) 25%, #fff); }
-.edit-cancel:hover { background: color-mix(in srgb, var(--accent, #8870ad) 10%, #fff); color: #172236; }
-.edit-cancel:active { transform: scale(0.94); }
-.edit-confirm ion-icon, .edit-cancel ion-icon { font-size: 18px; }
-.edit-confirm:focus-visible, .edit-cancel:focus-visible { outline: 2px solid var(--accent, #8870ad); outline-offset: 2px; }
-.edit-confirm:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-/* Móvil (≤700px): el input y los dos botones caben en una fila a 320px; si no,
-   el input ocupa la fila y los botones van debajo alineados a la derecha. */
+.title-char-count.at-limit {
+  color: #e11d48;
+}
+.inline-edit-actions {
+  position: absolute;
+  top: calc(100% + 1px);
+  right: -3px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+  background-color: var(--fab-color);
+  padding: 3px;
+  border-radius: 3px 0 5px 5px;
+}
+.edit-confirm,
+.edit-cancel {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 0 0 25px;
+  border: 1px solid rgba(23, 34, 54, 0.12);
+  background: #fff;
+  color: #172236;
+  box-shadow: 0 1px 2px rgba(23, 34, 54, 0.06);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.edit-confirm:hover,
+.edit-cancel:hover {
+  border-color: rgba(23, 34, 54, 0.28);
+}
+.edit-confirm:active,
+.edit-cancel:active {
+  transform: scale(0.94);
+}
+.edit-confirm:focus-visible,
+.edit-cancel:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+.edit-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+.edit-confirm ion-icon,
+.edit-cancel ion-icon {
+  font-size: 16px;
+}
 @media (max-width: 700px) {
-  .inline-edit-actions { flex: 0 0 auto; justify-content: flex-end; }
-  .edit-confirm, .edit-cancel { width: 44px; }
+  .edit-confirm,
+  .edit-cancel {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 7px;
+  }
 }

@@ -284,28 +284,20 @@
       </div>
 
       <div *ngIf="editingTitle" class="title-edit">
-        <ion-input
-          autocapitalize="sentences"
-          [(ngModel)]="titleDraft"
-          class="title-input"
-          (keyup.enter)="confirmEditTitle()"
-          (keyup.escape)="cancelEditTitle()"
-          (ngModelChange)="onTitleDraftInput($event)"
-          (paste)="onTitleDraftPaste($event)"
+        <app-inline-edit
+          variant="title"
+          label="Editar título del tablero"
+          [fieldName]="'board-title'"
+          [value]="titleDraft"
           [maxlength]="maxListTitleLength"
-          autofocus
-        ></ion-input>
-        <button class="confirm-title-btn ion-activatable" (click)="confirmEditTitle()" aria-label="Confirmar">
-          <ion-icon name="checkmark"></ion-icon>
-          <ion-ripple-effect></ion-ripple-effect>
-        </button>
-        <button class="cancel-title-btn ion-activatable" (click)="cancelEditTitle()" aria-label="Cancelar">
-          <ion-icon name="close"></ion-icon>
-          <ion-ripple-effect></ion-ripple-effect>
-        </button>
-        <span class="title-char-count" [class.at-limit]="titleDraftCount >= maxListTitleLength" aria-live="polite">
-          {{ titleDraftCount }} / {{ maxListTitleLength }}
-        </span>
+          [showCount]="true"
+          [count]="titleDraftCount"
+          [atLimit]="titleDraftCount >= maxListTitleLength"
+          [saveDisabled]="!titleDraft.trim()"
+          (valueChange)="onTitleDraftInput($event)"
+          (save)="confirmEditTitle()"
+          (cancel)="cancelEditTitle()"
+        ></app-inline-edit>
       </div>
     </div>
 
@@ -603,6 +595,7 @@
               </div>
             </ng-template>
             <button
+              *ngIf="!isEditingTask(task.id)"
               class="delete-button ion-activatable"
               (click)="deleteTask(list, task.id)"
               aria-label="Eliminar tarea"
@@ -654,6 +647,7 @@
               </div>
             </ng-template>
             <button
+              *ngIf="!isEditingTask(task.id)"
               class="delete-button ion-activatable"
               (click)="deleteTask(list, task.id)"
               aria-label="Eliminar tarea"
@@ -1178,7 +1172,7 @@
             ></app-inline-edit>
           </div>
         </ng-template>
-        <button type="button" class="delete-button ion-activatable" (click)="deleteTask(focus, task.id)" aria-label="Eliminar tarea">
+        <button *ngIf="!isEditingTask(task.id)" type="button" class="delete-button ion-activatable" (click)="deleteTask(focus, task.id)" aria-label="Eliminar tarea">
           <ion-icon name="trash"></ion-icon>
           <ion-ripple-effect></ion-ripple-effect>
         </button>
@@ -1225,7 +1219,7 @@
             ></app-inline-edit>
           </div>
         </ng-template>
-        <button type="button" class="delete-button ion-activatable" (click)="deleteTask(focus, task.id)" aria-label="Eliminar tarea">
+        <button *ngIf="!isEditingTask(task.id)" type="button" class="delete-button ion-activatable" (click)="deleteTask(focus, task.id)" aria-label="Eliminar tarea">
           <ion-icon name="trash"></ion-icon>
           <ion-ripple-effect></ion-ripple-effect>
         </button>
