@@ -2405,7 +2405,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   get removeDialogActionLabel(): string {
-    return this.isArchiving ? 'Archivar lista' : 'Eliminar lista';
+    return this.isArchiving ? 'Archivar lista' : 'Mover al basurero';
   }
 
   /**
