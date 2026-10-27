@@ -1065,6 +1065,7 @@
     #focusDialog
     id="focus-list-dialog"
     class="focus-list-dialog overlay-card"
+    tabindex="-1"
     role="dialog"
     aria-modal="true"
     aria-labelledby="focus-list-dialog-title"
@@ -1092,16 +1093,12 @@
             (cancel)="cancelEditList()"
           ></app-inline-edit>
         </div>
-        <button
+        <span
           *ngIf="editingListId !== focus.id"
-          #focusTitleButton
-          type="button"
           class="focus-list-title"
-          (click)="startEditList(focus, $event)"
-          [attr.aria-label]="'Editar nombre de lista: ' + focus.title"
         >
           <span>{{ focus.title }}</span>
-        </button>
+        </span>
         <!-- En estado normal los iconos van a la derecha, nunca hacen wrap. -->
         <div class="focus-list-actions" *ngIf="editingListId !== focus.id">
           <button type="button" class="focus-list-action ion-activatable" [class.pinned]="isPinned(focus)" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'" [attr.aria-describedby]="pinTooltipOpen ? pinTooltipId : null" (mouseenter)="openHeaderTooltip('pin', $event.currentTarget)" (mouseleave)="closeHeaderTooltip('pin')" (focusin)="openHeaderTooltip('pin', $event.currentTarget)" (blur)="closeHeaderTooltip('pin')" (keydown.escape)="closeHeaderTooltip('pin')">
