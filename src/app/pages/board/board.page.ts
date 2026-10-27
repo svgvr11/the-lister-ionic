@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, DoCheck, ElementRef, HostBinding, HostListener, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, HostBinding, HostListener, NgZone, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
@@ -165,6 +165,7 @@ interface CdkScrollStrategyShape {
 export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly session = inject(BoardSessionService);
   private readonly auth = inject(AuthService);
+  private readonly ngZone = inject(NgZone);
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
   private readonly sessionGuard = inject(SessionGuardService);
@@ -1067,6 +1068,121 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private hideUpdatedAtTooltipOnEscape(): boolean {
     if (!this.focusUpdatedAtTooltipOpen) return false;
     this.closeFocusUpdatedAtTooltip();
+    return true;
+  }
+
+  /** Estado de los tooltips flotantes de los botones del header del modal. */
+  private headerTooltipOpen: Record<'pin' | 'edit' | 'remove' | 'close', boolean> = {
+    pin: false,
+    edit: false,
+    remove: false,
+    close: false,
+  };
+  private headerTooltipTimer: Record<'pin' | 'edit' | 'remove' | 'close', ReturnType<typeof setTimeout> | null> = {
+    pin: null,
+    edit: null,
+    remove: null,
+    close: null,
+  };
+  /** IDs de los tooltips del header (aria-describedby). */
+  readonly pinTooltipId = 'pin-tooltip';
+  readonly editTooltipId = 'edit-tooltip';
+  readonly removeTooltipId = 'remove-tooltip';
+  readonly closeTooltipId = 'close-tooltip';
+
+  get pinTooltipOpen(): boolean {
+    return this.headerTooltipOpen.pin;
+  }
+  get editTooltipOpen(): boolean {
+    return this.headerTooltipOpen.edit;
+  }
+  get removeTooltipOpen(): boolean {
+    return this.headerTooltipOpen.remove;
+  }
+  get closeTooltipOpen(): boolean {
+    return this.headerTooltipOpen.close;
+  }
+
+  /** Abre el tooltip del botón del header con la posición calculada. */
+  public openHeaderTooltip(key: 'pin' | 'edit' | 'remove' | 'close', host: EventTarget | null, alignRight = false): void {
+    if (!host) return;
+    this.clearHeaderTooltipTimer(key);
+    const el = host as HTMLElement;
+    const tooltip = document.getElementById(key + '-tooltip') as HTMLElement | null;
+    if (!tooltip) return;
+    this.headerTooltipOpen[key] = true;
+    this.updateHeaderTooltipPosition(el, tooltip, alignRight);
+    document.addEventListener('pointerdown', this.onOutsideHeaderTooltipPointer);
+    this.headerTooltipTimer[key] = setTimeout(() => {
+      this.headerTooltipTimer[key] = null;
+      this.closeHeaderTooltip(key);
+    }, TOOLTIP_TACTIL_MS);
+  }
+
+  /** Cierra el tooltip del botón del header. */
+  public closeHeaderTooltip(key: 'pin' | 'edit' | 'remove' | 'close'): void {
+    this.clearHeaderTooltipTimer(key);
+    this.headerTooltipOpen[key] = false;
+    document.removeEventListener('pointerdown', this.onOutsideHeaderTooltipPointer);
+  }
+
+  /** Toque fuera de cualquier botón del header: cierra el tooltip abierto. */
+  private readonly onOutsideHeaderTooltipPointer = (event: PointerEvent): void => {
+    if (event.pointerType !== 'touch') return;
+    const keys: ('pin' | 'edit' | 'remove' | 'close')[] = ['pin', 'edit', 'remove', 'close'];
+    for (const key of keys) {
+      if (!this.headerTooltipOpen[key]) continue;
+      const host = document.getElementById(key + '-host');
+      const tooltip = document.getElementById(key + '-tooltip');
+      if (host && !host.contains(event.target as Node) && tooltip && !tooltip.contains(event.target as Node)) {
+        this.closeHeaderTooltip(key);
+        break;
+      }
+    }
+  };
+
+  private clearHeaderTooltipTimer(key: 'pin' | 'edit' | 'remove' | 'close'): void {
+    if (this.headerTooltipTimer[key] !== null) {
+      clearTimeout(this.headerTooltipTimer[key]);
+      this.headerTooltipTimer[key] = null;
+    }
+  }
+
+  /**
+   * Posiciona el tooltip fixed respecto al host con getBoundingClientRect.
+   * `position: fixed` es necesario porque `.focus-list-dialog` usa `overflow: hidden`
+   * y recortaría un tooltip absoluto.
+   */
+  private updateHeaderTooltipPosition(host: HTMLElement, tooltip: HTMLElement, alignRight = false): void {
+    const rect = host.getBoundingClientRect();
+    const tw = tooltip.offsetWidth || tooltip.scrollWidth || 0;
+    const th = tooltip.offsetHeight || tooltip.scrollHeight || 0;
+    const top = rect.top - th - 8;
+
+    let left = rect.left + rect.width / 2 - tw / 2;
+    if (alignRight) {
+      left = rect.right - tw;
+    }
+
+    const maxRight = window.innerWidth - tw - 8;
+    if (left < 8) left = 8;
+    if (left > maxRight) left = maxRight;
+
+    this.ngZone.run(() => {
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+      tooltip.style.transform = 'none';
+    });
+  }
+
+  /** Escape con un tooltip del header abierto: cierra el tooltip sin cerrar el modal. */
+  private hideHeaderTooltipOnEscape(): boolean {
+    const openKey = ('pin' as const) in this.headerTooltipOpen
+      ? (['pin', 'edit', 'remove', 'close'] as const).find((k) => this.headerTooltipOpen[k])
+      : undefined;
+    if (!openKey) return false;
+    this.closeHeaderTooltip(openKey);
     return true;
   }
 
