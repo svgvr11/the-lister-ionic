@@ -1266,6 +1266,10 @@ ion-header {
   background: #f1f4fa;
 }
 
+.pin-list-button:focus-visible {
+  outline: none;
+}
+
 /* En pantallas táctiles no hay hover: el pin se muestra siempre para poder fijarlo. */
 @media (hover: none) {
   .pin-list-button {
@@ -1314,9 +1318,14 @@ ion-header {
   word-break: normal;
 }
 
-.list-header-trigger:focus-visible::after {
+.list-header-trigger:focus-visible {
+  outline: none;
+}
+
+.column-header:has(:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: 9px;
 }
 
 .list-header-trigger {
@@ -1372,6 +1381,10 @@ ion-header {
 .collapse-button:hover {
   background: #f1f4fa;
   color: #283951;
+}
+
+.collapse-button:focus-visible {
+  outline: none;
 }
 
 .task-counter {
@@ -2259,20 +2272,14 @@ ion-header {
   background: transparent;
   border: 0;
   border-radius: 6px;
-  cursor: pointer;
   display: flex;
   align-items: center;
 }
 
-.focus-list-title:hover,
 .focus-list-action:focus-visible,
 .focus-list-footer button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.focus-list-title:hover {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 
 .focus-list-title h2,
@@ -2290,6 +2297,10 @@ ion-header {
   font-size: 20px;
   line-height: 1.25;
   font-weight: 700;
+}
+
+.focus-list-dialog:focus-visible {
+  outline: none;
 }
 
 .focus-list-sr-only {

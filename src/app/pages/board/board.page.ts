@@ -314,7 +314,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** Tooltip de la etiqueta «Última actualización» abierto (foco de teclado o toque). */
   focusUpdatedAtTooltipOpen = false;
   private focusUpdatedAtTooltipTimer: ReturnType<typeof setTimeout> | null = null;
-  private focusInitialTitleFocusPending = false;
   private focusOpener: HTMLElement | null = null;
   private focusRemovalCause: FocusListRemovalCause | null = null;
   private focusRemovalListId: string | null = null;
@@ -622,19 +621,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private newListFab?: ElementRef<HTMLButtonElement>;
   @ViewChild('newListTitleInput', { read: IonInput })
   private newListTitleInput?: IonInput;
-  @ViewChild('focusTitleButton', { read: ElementRef })
-  private set focusTitleButton(button: ElementRef<HTMLButtonElement> | undefined) {
-    if (!button || !this.focusInitialTitleFocusPending) return;
-    requestAnimationFrame(() => {
-      if (!this.focusInitialTitleFocusPending) return;
-      this.focusInitialTitleFocusPending = false;
-      if (button.nativeElement.isConnected) button.nativeElement.focus();
-    });
-  }
   @ViewChild('focusListTasks', { read: ElementRef })
   private focusListTasks?: ElementRef<HTMLElement>;
   @ViewChild('focusDialog', { read: ElementRef })
-  private focusDialog?: ElementRef<HTMLElement>;
+  private set focusDialog(dialog: ElementRef<HTMLElement> | undefined) {
+    if (!dialog) return;
+    requestAnimationFrame(() => {
+      dialog.nativeElement.focus();
+    });
+  }
   /** Etiqueta «Última actualización» del pie del modal. Solo existe con el modal abierto. */
   @ViewChild('updatedAtLabel', { read: ElementRef })
   private updatedAtLabel?: ElementRef<HTMLElement>;
@@ -880,7 +875,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     // La zona horaria se lee del dispositivo cada vez que se abre el modal.
     this.dispositivoZonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
     this.closeFocusUpdatedAtTooltip();
-    this.focusInitialTitleFocusPending = true;
     this.focusListId = list.id;
     this.focusRemovalCause = null;
     this.focusRemovalListId = null;
@@ -954,7 +948,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.editingTaskId) this.cancelEditTask();
     this.closeFocusUpdatedAtTooltip();
     this.focusListId = null;
-    this.focusInitialTitleFocusPending = false;
     this.draggedTask = null;
     this.cancelListDrag();
     this.finishClosingFocus();

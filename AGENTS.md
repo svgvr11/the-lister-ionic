@@ -56,3 +56,14 @@ en la rama actual. Si una tarea, un plan o un prompt incluye crear una rama,
 ignora esa parte y avisa al usuario.
 Tampoco hace commit, push, merge, rebase ni stash: eso lo hace el usuario. El
 agente deja los cambios en el árbol de trabajo y se detiene.
+
+## Pruebas en navegador (Playwright MCP)
+
+Al desarrollar o modificar UI, verifica en el navegador con el MCP de Playwright en lugar de suponer cómo se ve.
+
+- Levanta la app con `npm start` (ng serve) y navega a `http://localhost:4200/`. La app usa rutas con hash (`withHashLocation`), por ejemplo `/#/board`.
+- Comprueba lo que cambió: hover, focus (Tab), click, estados vacío/con datos, textos largos. Revisa escritorio y móvil (redimensiona a ≤700px), y al menos dos temas de BOARD_THEMES.
+- Toma una captura de lo verificado y descríbela.
+- La app exige sesión (Supabase + Google). Si no puedes iniciar sesión desde Playwright, NO afirmes que verificaste visualmente: dilo y entrega los pasos de verificación manual para mí.
+- Nunca digas "verificado" ni "se ve bien" sin haberlo comprobado de verdad en el navegador.
+- Cierra el navegador y deja el servidor como lo encontraste.
