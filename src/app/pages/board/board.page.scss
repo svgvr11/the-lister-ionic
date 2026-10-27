@@ -2523,6 +2523,47 @@ ion-header {
   transition: opacity 120ms ease 300ms, visibility 0s;
 }
 
+/* Tooltips flotantes de los botones del header del modal (pin, editar, eliminar, cerrar).
+   position: fixed porque .focus-list-dialog usa overflow: hidden y recortaría un tooltip
+   absoluto. La posición se calcula con getBoundingClientRect en el componente. */
+.focus-list-action-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  max-width: min(calc(100vw - 48px), 200px);
+  min-width: max-content;
+  padding: 5px 8px;
+  color: var(--focus-muted-text);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--card-surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 0s linear 120ms;
+}
+
+.focus-list-action-tooltip.open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms ease, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-list-action-tooltip {
+    transition: none;
+  }
+}
+
 .focus-list-footer .new-list-submit {
   min-width: 90px;
 }

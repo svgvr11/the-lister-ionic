@@ -1104,18 +1104,25 @@
         </button>
         <!-- En estado normal los iconos van a la derecha, nunca hacen wrap. -->
         <div class="focus-list-actions" *ngIf="editingListId !== focus.id">
-          <button type="button" class="focus-list-action ion-activatable" [class.pinned]="isPinned(focus)" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'">
+          <button type="button" class="focus-list-action ion-activatable" [class.pinned]="isPinned(focus)" (click)="pinList(focus)" [attr.aria-pressed]="isPinned(focus)" [attr.aria-label]="isPinned(focus) ? 'Desfijar lista' : 'Fijar lista'" [attr.aria-describedby]="pinTooltipOpen ? pinTooltipId : null" (mouseenter)="openHeaderTooltip('pin', $event.currentTarget)" (mouseleave)="closeHeaderTooltip('pin')" (focusin)="openHeaderTooltip('pin', $event.currentTarget)" (blur)="closeHeaderTooltip('pin')" (keydown.escape)="closeHeaderTooltip('pin')">
             <span class="pin-icon" aria-hidden="true"></span>
           </button>
-          <button type="button" class="focus-list-action ion-activatable" (click)="startEditList(focus, $event)" aria-label="Editar nombre de lista">
+          <span id="pin-tooltip" class="focus-list-action-tooltip" role="tooltip" [class.open]="pinTooltipOpen" aria-hidden="true">Fijar</span>
+
+          <button type="button" class="focus-list-action ion-activatable" (click)="startEditList(focus, $event)" aria-label="Editar nombre de lista" [attr.aria-describedby]="editTooltipOpen ? editTooltipId : null" (mouseenter)="openHeaderTooltip('edit', $event.currentTarget)" (mouseleave)="closeHeaderTooltip('edit')" (focusin)="openHeaderTooltip('edit', $event.currentTarget)" (blur)="closeHeaderTooltip('edit')" (keydown.escape)="closeHeaderTooltip('edit')">
             <ion-icon name="pencil"></ion-icon>
           </button>
-          <button type="button" class="focus-list-action ion-activatable" [class.archiving]="isListComplete(focus)" (click)="requestRemoveList(focus, $event)" [attr.aria-label]="isListComplete(focus) ? 'Archivar lista' : 'Mover al basurero'">
+          <span id="edit-tooltip" class="focus-list-action-tooltip" role="tooltip" [class.open]="editTooltipOpen" aria-hidden="true">Editar</span>
+
+          <button type="button" class="focus-list-action ion-activatable" [class.archiving]="isListComplete(focus)" (click)="requestRemoveList(focus, $event)" [attr.aria-label]="isListComplete(focus) ? 'Archivar lista' : 'Mover al basurero'" [attr.aria-describedby]="removeTooltipOpen ? removeTooltipId : null" (mouseenter)="openHeaderTooltip('remove', $event.currentTarget)" (mouseleave)="closeHeaderTooltip('remove')" (focusin)="openHeaderTooltip('remove', $event.currentTarget)" (blur)="closeHeaderTooltip('remove')" (keydown.escape)="closeHeaderTooltip('remove')">
             <ion-icon [name]="isListComplete(focus) ? 'archive-outline' : 'trash'"></ion-icon>
           </button>
-          <button type="button" class="focus-list-action ion-activatable" (click)="finishFocusModal()" aria-label="Lista">
+          <span id="remove-tooltip" class="focus-list-action-tooltip" role="tooltip" [class.open]="removeTooltipOpen" aria-hidden="true">{{ isListComplete(focus) ? 'Archivar' : 'Eliminar' }}</span>
+
+          <button type="button" class="focus-list-action ion-activatable" (click)="finishFocusModal()" aria-label="Cerrar" [attr.aria-describedby]="closeTooltipOpen ? closeTooltipId : null" (mouseenter)="openHeaderTooltip('close', $event.currentTarget, true)" (mouseleave)="closeHeaderTooltip('close')" (focusin)="openHeaderTooltip('close', $event.currentTarget, true)" (blur)="closeHeaderTooltip('close')" (keydown.escape)="closeHeaderTooltip('close')">
             <ion-icon name="close"></ion-icon>
           </button>
+          <span id="close-tooltip" class="focus-list-action-tooltip" role="tooltip" [class.open]="closeTooltipOpen" aria-hidden="true">Cerrar</span>
         </div>
       </div>
       <!-- Fila 2: barra de progreso verde a ancho completo, justo debajo del título. -->
