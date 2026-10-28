@@ -26,7 +26,6 @@ const tablero = (id: string): ChecklistBoard => ({
 /** Repositorio falso con todo lo que `BoardSessionService` necesita. */
 const repoFalso = (nombre: string) => {
   const subject = new BehaviorSubject<ChecklistBoard>(tablero(nombre));
-  const conflictos = new BehaviorSubject<unknown>(null);
   // `watchBoard()` devuelve SIEMPRE el mismo observable, para poder compararlo por identidad.
   const observable: Observable<ChecklistBoard> = subject.asObservable();
   const fake = {
@@ -34,11 +33,9 @@ const repoFalso = (nombre: string) => {
     getStoredBoardForUser: vi.fn((): ChecklistBoard | null => null),
     watchBoard: () => observable,
     saveBoard: vi.fn(async () => undefined),
-    refresh: vi.fn(async () => undefined),
-    resolveConflict: vi.fn(async () => undefined),
-    conflict$: conflictos.asObservable()
+    refresh: vi.fn(async () => undefined)
   };
-  return { fake, observable, subject, conflictos };
+  return { fake, observable, subject };
 };
 
 /** Monta el servicio con una sesión y unos repositorios concretos. */
@@ -146,9 +143,6 @@ describe('BoardSessionService', () => {
 
       await servicio.refresh();
       expect(local.fake.refresh).toHaveBeenCalled();
-
-      await servicio.resolveConflict('local');
-      expect(local.fake.resolveConflict).toHaveBeenCalledWith('local');
     });
 
     it('con sesión, guardar y refrescar van a Supabase', async () => {
@@ -163,9 +157,6 @@ describe('BoardSessionService', () => {
 
       await servicio.refresh();
       expect(supabase.fake.refresh).toHaveBeenCalled();
-
-      await servicio.resolveConflict('remote');
-      expect(supabase.fake.resolveConflict).toHaveBeenCalledWith('remote');
     });
 
     it('los errores de guardado se propagan tal cual', async () => {
@@ -183,13 +174,6 @@ describe('BoardSessionService', () => {
     it('userId sale de la sesión', () => {
       expect(montar('user-1', local, supabase).userId).toBe('user-1');
       expect(montar(null, local, supabase).userId).toBeNull();
-    });
-
-    it('conflict$ refleja el repositorio activo', async () => {
-      const servicio = montar('user-1', local, supabase);
-      await servicio.open();
-
-      expect(servicio.conflict$).toBe(supabase.fake.conflict$);
     });
   });
 

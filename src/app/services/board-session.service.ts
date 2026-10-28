@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ChecklistBoard } from '../models/board.model';
 import { AuthService } from './auth.service';
-import { BoardConflict, BoardRepository } from './board.repository';
+import { BoardRepository } from './board.repository';
 import { LocalBoardRepository } from './local-board.repository';
 import { SupabaseBoardRepository } from './supabase-board.repository';
 
@@ -19,10 +19,6 @@ export class BoardSessionService {
   private repository: BoardRepository = this.localRepository;
 
   readonly authEnabled = this.auth.enabled;
-
-  get conflict$(): Observable<BoardConflict | null> {
-    return this.repository.conflict$;
-  }
 
   get userId(): string | null {
     return this.auth.session?.user.id ?? null;
@@ -53,9 +49,5 @@ export class BoardSessionService {
 
   async refresh(): Promise<void> {
     await this.repository.refresh();
-  }
-
-  async resolveConflict(resolution: 'local' | 'remote'): Promise<void> {
-    await this.repository.resolveConflict(resolution);
   }
 }

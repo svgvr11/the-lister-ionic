@@ -32,8 +32,6 @@ import { FeedbackModalComponent } from '../../shared/components/feedback-modal/f
 import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
-import { BoardConflict } from '../../services/board.repository';
-import { BoardMergeConflictError } from '../../core/board/board-merge/board-merge';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
 import { pickOnAccent, onAccentToken } from '../../core/ui/edit-contrast/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
@@ -46,11 +44,10 @@ import { MasonryController, MASONRY_GAP } from '../../core/ui/masonry-layout/mas
 import { scrollDestinationForCard } from '../../core/ui/masonry-layout/scroll-into-view';
 import { AuthService } from '../../services/auth.service';
 import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/auth/delete-account/delete-account';
-import { BoardSessionService } from '../../services/board-session.service';
-import { FeedbackService } from '../../services/feedback.service';
 import { SessionGuardService } from '../../services/session-guard.service';
+import { BoardSessionService } from '../../services/board-session.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../services/overlay-stack.service';
-import { OwnBoardSnapshots } from '../../core/board/board-sync/board-sync';
+import { FeedbackService } from '../../services/feedback.service';
 import {
   listDragKeyOffset,
   listMoveAnnouncement,
@@ -72,15 +69,6 @@ import {
   shouldOpenCardFocus
 } from '../../core/board/cdk-reorder/cdk-reorder';
 import { resolveBoardFlowMode } from '../../core/ui/masonry-layout/masonry-layout';
-import {
-  boardsEqual,
-  decideIncomingBoard,
-  decidePendingAfterSave,
-  decidePendingBeforeSave,
-  pideDobleConfirmacion,
-  tableroRemotoParaResolver,
-  type EstadoTrasGuardar
-} from '../../core/board/board-conflict-rules/board-conflict-rules';
 import {
   addListToBoard,
   completedTaskCount,
@@ -171,16 +159,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private readonly sessionGuard = inject(SessionGuardService);
   private readonly overlayStack = inject(OverlayStackService);
   private subscription?: Subscription;
-  private lastAppliedBoard: ChecklistBoard | null = null;
-  private pendingRemoteBoard: ChecklistBoard | null = null;
-  private readonly ownBoardSnapshots = new OwnBoardSnapshots();
-  activeConflict: BoardConflict | null = null;
-  conflictDialogOpen = false;
-  confirmingLocalConflict = false;
-  private conflictFromRepository = false;
-  private resolvingConflict = false;
-  private conflictDialogDeferred = false;
-
   board: ChecklistBoard = {
     id: '', title: 'Cargando tablero...', createdAt: new Date().toISOString(), lists: []
   };
@@ -554,7 +532,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** Elemento que tenía el foco al abrirse el recorrido, para devolvérselo al cerrar. */
   private welcomeTourOpener: HTMLElement | null = null;
   private deleteDialogOpener: HTMLElement | null = null;
-  private conflictDialogOpener: HTMLElement | null = null;
 
   /** Interruptor global de la función; el estado visual de la página no oculta el botón. */
   readonly feedbackFabEnabled = FEEDBACK_FAB_ENABLED;
@@ -568,7 +545,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || (this.accountMenuOpen && this.accountMenuMobilePresentation)
       || this.focusListId !== null
       || this.listToRemove !== null
-      || this.conflictDialogOpen
       || this.deleteDialogOpen
       || this.feedbackOpen
       || this.welcomeTourOpen
@@ -586,7 +562,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || (this.accountMenuOpen && this.accountMenuMobilePresentation)
       || this.focusListId !== null
       || this.listToRemove !== null
-      || this.conflictDialogOpen
       || this.deleteDialogOpen
       || this.feedbackOpen
       || this.welcomeTourOpen
@@ -636,10 +611,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   @ViewChild('deleteAccountInput', { read: ElementRef })
   private set deleteAccountInput(input: ElementRef<HTMLInputElement> | undefined) {
     if (input) requestAnimationFrame(() => input.nativeElement.focus());
-  }
-  @ViewChild('syncConflictFocus', { read: ElementRef })
-  private set syncConflictFocus(button: ElementRef<HTMLButtonElement> | undefined) {
-    if (button) requestAnimationFrame(() => button.nativeElement.focus());
   }
   @ViewChild(FeedbackModalComponent)
   private feedbackModal?: FeedbackModalComponent;
@@ -719,8 +690,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   ionViewDidEnter(): void {
     this.pageActive = true;
-    if (this.activeConflict) this.conflictDialogDeferred = true;
-    this.presentDeferredConflict();
     // Al entrar, el contenedor puede haberse recreado o venir con ancho 0 (se vuelve de
     // otra página). Se reconcilia el observador con el nodo vivo y se recalcula.
     this.masonry.observe();
@@ -744,28 +713,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.focusRemovalListId = null;
       this.showFocusNotice(focusListRemovalMessage(cause));
     }
-    this.presentDeferredConflict();
-    // El recorrido de bienvenida espera a que no quede ningún overlay abierto.
-    if (this.welcomeTourDeferred && this.canOpenWelcomeTour()) this.openWelcomeTour();
     if (this.pageActive) this.syncOverlayStack();
-  }
-
-  private canShowConflictDialog(): boolean {
-    return !this.accountMenuOpen
-      && !this.addingList
-      && !this.focusListId
-      && !this.listToRemove
-      && !this.deleteDialogOpen
-      && !this.feedbackOpen
-      && !this.welcomeTourOpen
-      && !this.sessionGuard.blocked();
-  }
-
-  private presentDeferredConflict(): void {
-    if (!this.pageActive || !this.activeConflict || !this.conflictDialogDeferred
-      || !this.canShowConflictDialog()) return;
-    this.conflictDialogOpen = true;
-    this.conflictDialogDeferred = false;
   }
 
   private syncOverlayStack(): void {
@@ -788,9 +736,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
         close: () => this.cancelDeleteDialog(),
         dismissible: !this.deleteBusy
       });
-    }
-    if (this.conflictDialogOpen) {
-      overlays.push({ id: 'board:sync-conflict', close: () => this.closeConflictDialog() });
     }
     if (this.feedbackOpen) {
       overlays.push({ id: 'board:feedback', close: () => this.requestFeedbackCloseFromBack() });
@@ -825,8 +770,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.cancelListDrag();
     // Un arrastre táctil a medio gesto no debe sobrevivir a la salida de la página.
     this.cancelCdkDrag();
-    this.closeConflictDialog(false);
-    this.conflictDialogDeferred = Boolean(this.activeConflict);
     if (!this.deleteBusy) this.cancelDeleteDialog(false);
     this.feedbackOpen = false;
     this.feedbackOpener = null;
@@ -856,7 +799,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   openListFocus(list: ChecklistList, event: Event): void {
     if (this.focusListId || this.editingListId === list.id
       || this.addingList || this.listToRemove || this.deleteDialogOpen
-      || this.conflictDialogOpen || this.feedbackOpen || this.activeConflict) return;
+      || this.feedbackOpen) return;
     const opener = event.currentTarget;
     this.focusOpener = opener instanceof HTMLElement ? opener : null;
 
@@ -950,21 +893,11 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.focusListId = null;
     this.draggedTask = null;
     this.cancelListDrag();
-    this.finishClosingFocus();
     if (restoreFocus) {
       const opener = this.focusOpener;
       setTimeout(() => opener?.isConnected && opener.focus(), 0);
     }
     this.focusOpener = null;
-  }
-
-  private finishClosingFocus(): void {
-    if (this.activeConflict) {
-      this.conflictDialogDeferred = true;
-      this.presentDeferredConflict();
-      return;
-    }
-    this.releasePendingRemoteBoard();
   }
 
   // ── «Última actualización» ────────────────────────────────────────────────
@@ -1229,7 +1162,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       const boardStream = await this.session.open();
       this.subscription = new Subscription();
       this.subscription.add(boardStream.subscribe((board) => this.receiveBoard(board)));
-      this.subscription.add(this.session.conflict$.subscribe((conflict) => this.receiveConflict(conflict)));
     } catch (error) {
       console.error('No se pudo cargar el tablero sincronizado', error);
       this.boardError = 'No se pudo cargar el tablero desde la nube. Comprueba la conexión y la configuración de Supabase.';
@@ -1259,137 +1191,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     // Si justo se estaba arrastrando una lista con el dedo y esta entrega la borra, hay que
     // limpiar el arrastre: CDK no emite el fin cuando la tarjeta desaparece.
     this.clearCdkDragIfListVanished();
-    this.lastAppliedBoard = structuredClone(this.board);
     // Sin este guardado, una lista vencida o el pin inicial volverían a aparecer en el próximo inicio.
     if (persistNormalization && (purged || purgedArchive || pinnedChanged)) void this.persist();
   }
 
   private receiveBoard(board: ChecklistBoard): void {
-    const decision = decideIncomingBoard({
-      esEcoPropio: this.ownBoardSnapshots.has(board),
-      interaccionActiva: this.hasActiveInteraction(),
-      hayConflicto: Boolean(this.activeConflict)
-    });
-    if (decision === 'ignore') return;
-    if (decision === 'defer') {
-      // Solo se queda el más reciente: si llegan dos seguidos, el primero se descarta.
-      this.pendingRemoteBoard = structuredClone(board);
-      return;
-    }
+    // Last-write-wins: el repositorio solo publica versiones más recientes que la conocida,
+    // así que se aplica tal cual.
     this.applyBoard(structuredClone(board));
-  }
-
-  private receiveConflict(conflict: BoardConflict | null): void {
-    if (conflict) {
-      this.activeConflict = conflict;
-      this.pendingRemoteBoard = structuredClone(conflict.remoteBoard);
-      this.conflictDialogOpen = false;
-      this.conflictDialogDeferred = true;
-      this.confirmingLocalConflict = false;
-      this.conflictFromRepository = true;
-      this.saveError = '';
-      this.presentDeferredConflict();
-      return;
-    }
-
-    if (!this.resolvingConflict && this.conflictFromRepository) {
-      this.activeConflict = null;
-      this.conflictDialogDeferred = false;
-      this.conflictFromRepository = false;
-      this.conflictDialogOpen = false;
-      this.confirmingLocalConflict = false;
-      this.releasePendingRemoteBoard();
-    }
-  }
-
-  private hasActiveInteraction(): boolean {
-    return this.busy
-      || this.focusListId !== null
-      || this.editingTitle
-      || this.editingListId !== null
-      || this.editingTaskId !== null
-      || this.addingList
-      || Object.values(this.taskDrafts).some((draft) => Boolean(draft?.trim()))
-      || this.draggedTask !== null
-      // Un arrastre de lista en curso también es interacción activa: lo que llegue de otro
-      // dispositivo se queda esperando hasta que se suelte, igual que con las tareas.
-      || this.draggedListId !== null
-      // Lo mismo con el reordenamiento táctil de la vista Tarjetas (CDK).
-      || this.cdkDragActive;
-  }
-
-  private releasePendingRemoteBoard(saveSucceeded = false): boolean {
-    const estado: EstadoTrasGuardar = {
-      local: this.board,
-      ultimoAplicado: this.lastAppliedBoard,
-      pendienteRemoto: this.pendingRemoteBoard,
-      guardadoOk: saveSucceeded,
-      interaccionActiva: this.hasActiveInteraction(),
-      hayConflicto: Boolean(this.activeConflict)
-    };
-    const decision = decidePendingAfterSave(estado);
-    if (decision.tipo === 'nada') return false;
-
-    this.pendingRemoteBoard = null;
-    if (decision.tipo === 'conflicto') {
-      this.publicarConflictoLocal(structuredClone(this.board), structuredClone(decision.board), decision.razon);
-      return false;
-    }
-
-    this.applyBoard(structuredClone(decision.board));
-    return true;
-  }
-
-  private boardsEqual(left: ChecklistBoard, right: ChecklistBoard): boolean {
-    return boardsEqual(left, right);
-  }
-
-  private preparePendingRemoteBeforeSave(): boolean {
-    if (!this.pendingRemoteBoard || this.hasActiveInteraction() || this.activeConflict) return false;
-
-    const decision = decidePendingBeforeSave({
-      local: this.board,
-      ultimoAplicado: this.lastAppliedBoard,
-      pendienteRemoto: this.pendingRemoteBoard
-    });
-    // El pendiente se consume en cuanto se decide qué hacer con él.
-    this.pendingRemoteBoard = null;
-
-    switch (decision.tipo) {
-      case 'adopt':
-        // El local no tenía cambios: se adopta el remoto y no hace falta guardar.
-        this.applyBoard(structuredClone(decision.board));
-        return true;
-      case 'merge':
-        // La fusión ya viene hecha: se aplica y se sigue adelante con el guardado.
-        this.applyBoard(decision.board, false);
-        return false;
-      case 'conflicto':
-        this.publicarConflictoLocal(structuredClone(this.board), structuredClone(decision.board), decision.razon);
-        return true;
-      default:
-        // Sin pendiente no se llega hasta aquí (la guarda inicial ya retornó).
-        return false;
-    }
-  }
-
-  /**
-   * Publica un conflicto surgido en la propia página (no en el repositorio): misma forma
-   * que el del repositorio, para que el diálogo se muestre igual.
-   */
-  private publicarConflictoLocal(localBoard: ChecklistBoard, remoteBoard: ChecklistBoard, reason: string): void {
-    this.activeConflict = {
-      localBoard,
-      remoteBoard,
-      remoteUpdatedAt: '',
-      reason
-    };
-    this.conflictFromRepository = false;
-    this.conflictDialogOpen = false;
-    this.conflictDialogDeferred = true;
-    this.confirmingLocalConflict = false;
-    this.saveError = '';
-    this.presentDeferredConflict();
   }
 
   async refreshBoard(event: CustomEvent): Promise<void> {
@@ -1405,84 +1214,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }
   }
 
-  closeConflictDialog(restoreFocus = true): void {
-    this.conflictDialogOpen = false;
-    this.confirmingLocalConflict = false;
-    this.conflictDialogDeferred = false;
-    if (restoreFocus) this.restoreConflictFocus();
-    else this.conflictDialogOpener = null;
-  }
-
-  private restoreConflictFocus(): void {
-    const opener = this.conflictDialogOpener;
-    this.conflictDialogOpener = null;
-    requestAnimationFrame(() => opener?.isConnected && opener.focus());
-  }
-
-  openConflictDialog(event?: Event): void {
-    if (!this.activeConflict || !this.canShowConflictDialog()) return;
-    const opener = event?.currentTarget;
-    this.conflictDialogOpener = opener instanceof HTMLElement ? opener : null;
-    this.conflictDialogOpen = true;
-    this.conflictDialogDeferred = false;
-    this.confirmingLocalConflict = false;
-  }
-
-  async resolveActiveConflict(resolution: 'remote' | 'local'): Promise<void> {
-    const conflict = this.activeConflict;
-    if (!conflict) return;
-    // Resolver con el tablero local pide una confirmación aparte.
-    if (pideDobleConfirmacion({ resolution, confirmandoLocal: this.confirmingLocalConflict })) {
-      this.confirmingLocalConflict = true;
-      return;
-    }
-
-    this.resolvingConflict = true;
-    this.saveError = '';
-    try {
-      if (this.conflictFromRepository) {
-        await this.session.resolveConflict(resolution);
-      } else if (resolution === 'local') {
-        await this.session.save(conflict.localBoard);
-      }
-
-      if (resolution === 'remote') {
-        const remoteBoard = tableroRemotoParaResolver(conflict, this.pendingRemoteBoard);
-        this.pendingRemoteBoard = null;
-        this.activeConflict = null;
-        this.conflictDialogDeferred = false;
-        this.conflictFromRepository = false;
-        this.conflictDialogOpen = false;
-        this.confirmingLocalConflict = false;
-        this.applyBoard(structuredClone(remoteBoard));
-      } else {
-        this.board = structuredClone(conflict.localBoard);
-        this.lastAppliedBoard = structuredClone(this.board);
-        this.pendingRemoteBoard = null;
-        this.activeConflict = null;
-        this.conflictDialogDeferred = false;
-        this.conflictFromRepository = false;
-        this.conflictDialogOpen = false;
-        this.confirmingLocalConflict = false;
-        this.scheduleMasonryLayout();
-      }
-      this.restoreConflictFocus();
-    } catch (error) {
-      console.error('No se pudo resolver el conflicto del tablero', error);
-      if (!(error instanceof BoardMergeConflictError)) {
-        this.saveError = 'No se pudo resolver el conflicto. Comprueba la conexión e inténtalo de nuevo.';
-      }
-    } finally {
-      this.resolvingConflict = false;
-    }
-  }
-
   toggleAccountMenu(): void {
     if (this.accountMenuOpen) {
       this.closeAccountMenu();
       return;
     }
-    if (this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.activeConflict || this.listToRemove) return;
+    if (this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.listToRemove) return;
     if (this.addingList) this.cancelAddList(false);
     this.accountMenuMobilePresentation = this.isMobilePresentation;
     this.accountMenuOpener = this.accountButton?.nativeElement ?? null;
@@ -1712,7 +1449,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    * y el usuario perdería el texto escrito.
    *
    * Al abrir se cierran TODAS las demás capas para que nunca haya dos overlays a la vez: el
-   * menú de perfil, el modal de nueva lista, los diálogos de eliminar y de conflicto y la
+    * menú de perfil, el modal de nueva lista, los diálogos de eliminar y las demás capas
    * búsqueda. Ninguno de ellos depende de estar abierto para funcionar.
    */
   openFeedback(opener?: HTMLElement): void {
@@ -1723,8 +1460,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.closeAccountMenu(true, false);
     this.cancelAddList(false);
     this.cancelDeleteList();
-    this.closeConflictDialog(false);
-    this.conflictDialogDeferred = Boolean(this.activeConflict);
     this.closeSearch();
     if (!this.deleteBusy) {
       this.deleteDialogOpen = false;
@@ -1829,7 +1564,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }, 0);
   }
 
-  /** Escape cierra el diálogo de conflicto sin resolverlo y las demás capas abiertas. */
+  /** Escape cierra los diálogos y las demás capas abiertas. */
   @HostListener('document:keydown.escape', ['$event'])
   closeOverlaysOnEscape(event: KeyboardEvent): void {
     if (!this.pageActive) return;
@@ -1883,11 +1618,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (this.deleteDialogOpen) {
       event.preventDefault();
       this.cancelDeleteDialog();
-      return;
-    }
-    if (this.conflictDialogOpen) {
-      event.preventDefault();
-      this.closeConflictDialog();
       return;
     }
     if (this.addingList) {
@@ -1961,7 +1691,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.editingTitle = false;
     this.titleDraft = '';
     this.titleDraftCount = 0;
-    this.releasePendingRemoteBoard();
   }
 
   startEditList(list: ChecklistList, event: Event): void {
@@ -1990,7 +1719,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.editingListId = null;
     this.listTitleDraft = '';
     this.listTitleEditCount = 0;
-    this.releasePendingRemoteBoard();
     this.scheduleMasonryLayout();
   }
 
@@ -2071,7 +1799,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   cancelEditTask(): void {
     this.editingTaskId = null;
     this.taskTextDraft = '';
-    this.releasePendingRemoteBoard();
     this.scheduleMasonryLayout();
   }
 
@@ -2083,7 +1810,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   toggleAddList(): void {
     if (!this.addingList && this.isAtListLimit) return;
     if (!this.addingList && (
-      this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.conflictDialogOpen || this.listToRemove || this.activeConflict
+      this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.listToRemove
     )) return;
     if (!this.addingList && this.accountMenuOpen) {
       this.closeAccountMenu(true, false);
@@ -2388,7 +2115,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    */
   requestRemoveList(list: ChecklistList, event?: Event | null): void {
     // Con el diálogo de sincronización abierto no se apila un segundo overlay encima.
-    if (this.conflictDialogOpen || this.feedbackOpen || this.addingList
+    if (this.feedbackOpen || this.addingList
       || this.deleteDialogOpen || this.accountMenuOpen) return;
     this.listToRemove = list;
     const opener = event?.currentTarget;
@@ -2565,7 +2292,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.clearNewListInputFocusWork();
     this.newListTitle = '';
     this.newListTitleCount = 0;
-    this.releasePendingRemoteBoard();
     if (restoreFocus) this.restoreNewListFocus();
     else this.newListOpener = null;
   }
@@ -2642,7 +2368,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   onTaskDraftBlur(): void {
-    this.releasePendingRemoteBoard();
   }
 
   startTaskDrag(listId: string, taskId: string, event: DragEvent): void {
@@ -2678,7 +2403,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** Las listas ya no se arrastran; solo queda el reordenamiento de tareas dentro de la lista. */
   clearTaskDragState(): void {
     this.draggedTask = null;
-    this.releasePendingRemoteBoard();
   }
 
   // ── Arrastre de listas (solo vista de lista, escritorio web) ────────────────────
@@ -3112,24 +2836,16 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   private async persist(): Promise<void> {
-    if (this.activeConflict || this.preparePendingRemoteBeforeSave()) return;
-    const ownSnapshotToken = this.ownBoardSnapshots.begin(this.board);
     this.busy = true;
     this.saveError = '';
-    let saved = false;
     try {
       await this.session.save(this.board);
-      saved = true;
       this.scheduleMasonryLayout();
     } catch (error) {
       console.error('No se pudo guardar el tablero sincronizado', error);
-      if (!this.activeConflict) {
-        this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
-      }
+      this.saveError = 'No se pudieron guardar los cambios en la nube. Revisa tu conexión e inténtalo de nuevo.';
     } finally {
-      this.ownBoardSnapshots.complete(ownSnapshotToken, saved);
       this.busy = false;
-      this.releasePendingRemoteBoard(saved);
     }
   }
 }

@@ -262,10 +262,6 @@
   </ion-refresher>
 
   <div *ngIf="loadingBoard" class="board-empty-state" role="status">Cargando tablero...</div>
-  <div *ngIf="activeConflict && !conflictDialogOpen" class="sync-conflict-banner" role="status">
-    <span>Hay cambios del tablero pendientes de resolver.</span>
-    <button type="button" (click)="openConflictDialog($event)">Revisar conflicto</button>
-  </div>
 
   <ng-container *ngIf="!loadingBoard && !boardError">
   <div class="board-scroller" [class.board-scroller--fills]="board.lists.length === 0">
@@ -838,58 +834,6 @@
     </section>
   </div>
 </ng-container>
-
-<div
-  *ngIf="activeConflict && conflictDialogOpen"
-  class="delete-list-overlay sync-conflict-overlay"
-  (click)="closeConflictDialog()"
->
-  <section
-    class="delete-list-dialog sync-conflict-dialog"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="sync-conflict-title"
-    aria-describedby="sync-conflict-description"
-    (click)="$event.stopPropagation()"
-    (keydown)="keepFocusInsideDialog($event)"
-  >
-    <div class="delete-list-icon sync-conflict-icon" aria-hidden="true">
-      <ion-icon name="layers-outline"></ion-icon>
-    </div>
-    <h2 id="sync-conflict-title">Hay cambios en ambos dispositivos</h2>
-    <p id="sync-conflict-description">{{ activeConflict.reason }}</p>
-
-    <p *ngIf="confirmingLocalConflict" class="sync-conflict-warning">
-      Se reemplazarán los cambios hechos en el otro dispositivo por los tuyos.
-    </p>
-
-    <div class="delete-list-actions sync-conflict-actions" *ngIf="!confirmingLocalConflict">
-      <button #syncConflictFocus type="button" class="delete-list-cancel ion-activatable" (click)="closeConflictDialog()">
-        Ahora no
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-      <button type="button" class="sync-cloud-confirm ion-activatable" (click)="resolveActiveConflict('remote')">
-        Usar la versión de la nube
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-      <button type="button" class="sync-local-confirm ion-activatable" (click)="resolveActiveConflict('local')">
-        Mantener mis cambios
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-    </div>
-
-    <div class="delete-list-actions sync-conflict-actions" *ngIf="confirmingLocalConflict">
-      <button #syncConflictFocus type="button" class="delete-list-cancel ion-activatable" (click)="closeConflictDialog()">
-        Cancelar
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-      <button type="button" class="sync-local-confirm ion-activatable" (click)="resolveActiveConflict('local')">
-        Sí, reemplazar los cambios de la nube
-        <ion-ripple-effect></ion-ripple-effect>
-      </button>
-    </div>
-  </section>
-</div>
 
 <div
   *ngIf="listToRemove as list"
