@@ -1,16 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { ChecklistBoard } from '../models/board.model';
-import { BoardConflict, BoardRepository } from './board.repository';
 
 const STORAGE_KEY = 'the-lister-ionic-v1';
 
 @Injectable({ providedIn: 'root' })
-export class LocalBoardRepository extends BoardRepository {
+export class LocalBoardRepository {
   private storageKey = STORAGE_KEY;
   private readonly subject = new BehaviorSubject<ChecklistBoard>(this.load());
-  private readonly conflictSubject = new BehaviorSubject<BoardConflict | null>(null);
-  readonly conflict$ = this.conflictSubject.asObservable();
 
   watchBoard(): Observable<ChecklistBoard> {
     return this.subject.asObservable();
@@ -18,10 +15,6 @@ export class LocalBoardRepository extends BoardRepository {
 
   async refresh(): Promise<void> {
     this.subject.next(this.load());
-  }
-
-  async resolveConflict(_resolution: 'local' | 'remote'): Promise<void> {
-    this.conflictSubject.next(null);
   }
 
   async saveBoard(board: ChecklistBoard): Promise<void> {

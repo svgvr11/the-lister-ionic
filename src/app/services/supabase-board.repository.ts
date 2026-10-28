@@ -4,7 +4,6 @@ import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { ChecklistBoard } from '../models/board.model';
-import { BoardMergeConflictError, mergeBoardAdditions } from '../core/board/board-merge/board-merge';
 import {
   StoredBoard,
   deserializeBoard,
@@ -12,11 +11,24 @@ import {
   isSameVersion,
   nextBoardVersion
 } from '../core/board/board-serialization/board-serialization';
-import { BoardConflict, BoardRepository } from './board.repository';
+import { BoardRepository } from './board.repository';
 import { AuthService } from './auth.service';
 import { isSessionBlocked, throwIfSessionBlocked } from '../core/auth/session-guard/session-guard';
 
 export type { StoredBoard };
+
+/** Un guardado pendiente en la cola del dispositivo. */
+interface SaveItem {
+  board: ChecklistBoard;
+  resolve: (value: void) => void;
+  reject: (reason?: unknown) => void;
+}
+
+/** Ranura de la cola: el guardado actual y los que desplazó (se resuelven con él). */
+interface SaveSlot {
+  item: SaveItem;
+  displaced: SaveItem[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class SupabaseBoardRepository extends BoardRepository implements OnDestroy {
@@ -33,8 +45,10 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
   private lastRefreshAt = 0;
   private refreshInFlight: Promise<void> | null = null;
   private pendingWriteVersion: string | null = null;
-  private readonly conflictSubject = new BehaviorSubject<BoardConflict | null>(null);
-  readonly conflict$ = this.conflictSubject.asObservable();
+  /** Un solo guardado en vuelo por dispositivo. */
+  private saveInFlight = false;
+  /** Cambios que llegaron mientras se guardaba: se funden en el siguiente guardado. */
+  private pendingSave: SaveSlot | null = null;
   private readonly authSubscription = this.auth.sessionChanges.subscribe((session) => {
     if (!session || session.user.id !== this.userId) {
       this.stopSynchronization();
@@ -42,7 +56,6 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
       this.initialized = false;
       this.lastKnownUpdatedAt = null;
       this.lastKnownBoard = null;
-      this.conflictSubject.next(null);
       return;
     }
     void this.requireClient().realtime.setAuth(session.access_token);
@@ -110,88 +123,92 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     return this.refreshInFlight;
   }
 
+  /**
+   * Guarda el tablero. Nunca hay dos guardados en vuelo a la vez en un mismo
+   * dispositivo: si llega un cambio mientras hay uno en curso, se encola y se fusiona
+   * con el estado más reciente en un solo guardado posterior. Un guardado fallido rechaza
+   * su promesa (la página lo muestra en `saveError`) pero no bloquea los siguientes.
+   */
   async saveBoard(board: ChecklistBoard): Promise<void> {
-    // Bloqueada: se rechaza ANTES de tocar Supabase (lectura base, escritura o merge).
     throwIfSessionBlocked();
-    const userId = this.userId;
-    const unresolvedConflict = this.conflictSubject.value;
-    if (unresolvedConflict) {
-      this.conflictSubject.next({ ...unresolvedConflict, localBoard: structuredClone(board) });
-      throw new BoardMergeConflictError('Resuelve el conflicto pendiente antes de guardar de nuevo.');
+    const item: SaveItem = { board: structuredClone(board), resolve: () => undefined, reject: () => undefined };
+    const promise = new Promise<void>((resolve, reject) => {
+      item.resolve = resolve;
+      item.reject = reject;
+    });
+    if (this.saveInFlight) {
+      // Coalescing: el guardado en curso ya lleva un estado intermedio. Este lo reemplaza
+      // por el más reciente; ambos se resuelven cuando éste complete, porque el tablero
+      // que se guarda es el completo (no un delta), así que nada se pierde.
+      const slot = this.pendingSave;
+      this.pendingSave = slot
+        ? { item, displaced: [slot.item, ...slot.displaced] }
+        : { item, displaced: [] };
+      return promise;
     }
+    this.saveInFlight = true;
+    this.pendingSave = { item, displaced: [] };
+    void this.runSave();
+    return promise;
+  }
+
+  private async runSave(): Promise<void> {
+    while (this.pendingSave) {
+      const slot = this.pendingSave;
+      this.pendingSave = null;
+      try {
+        await this.doSaveBoard(slot.item.board);
+        slot.item.resolve();
+        for (const sustituido of slot.displaced) sustituido.resolve();
+      } catch (error) {
+        slot.item.reject(error);
+        for (const sustituido of slot.displaced) sustituido.reject(error);
+      }
+    }
+    this.saveInFlight = false;
+  }
+
+  /**
+   * Escribe el estado local más reciente tal cual: last-write-wins, sin pedir al usuario
+   * que elija una versión. Si la versión del servidor es más reciente que la que se
+   * vio al leer, se adopta la remota en silencio. Si no, se conserva el local y se guarda,
+   * forzando la escritura sobre la versión remota vista. Marcas iguales: gana el local.
+   */
+  private async doSaveBoard(board: ChecklistBoard): Promise<void> {
+    const userId = this.userId;
     const baseBoard = this.lastKnownBoard;
     const baseVersion = this.lastKnownUpdatedAt;
     if (!userId || !baseBoard || !baseVersion) {
       throw new Error('No hay una versión sincronizada del tablero para guardar.');
     }
 
-    const localBoard = structuredClone(board);
-    const savedVersion = await this.updateBoard(localBoard, userId, baseVersion);
+    const savedVersion = await this.updateBoard(board, userId, baseVersion);
     if (savedVersion) {
-      // Se publica también en la ruta directa (y no solo al fusionar). Sin esto el tablero
-      // guardado se queda solo en `lastKnownBoard`: la página que ya estaba montada (el
-      // tablero, al archivar) lo tiene de memoria, pero cualquier OTRA página que se monte
-      // después —el Archivo, el Basurero o el propio tablero al volver— se suscribe a este
-      // BehaviorSubject y recibiría la versión anterior, con la lista todavía en su sitio.
-      this.recordSavedBoard(localBoard, savedVersion, true);
-      this.conflictSubject.next(null);
+      this.recordSavedBoard(board, savedVersion, true);
       return;
     }
 
     const remoteRecord = await this.findBoard(userId);
     if (!remoteRecord) throw new Error('No se pudo recuperar la versión remota del tablero.');
-    const remoteBoard = deserializeBoard(remoteRecord);
-    let mergedBoard: ChecklistBoard;
-    try {
-      mergedBoard = mergeBoardAdditions(baseBoard, localBoard, remoteBoard);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'No se pudieron combinar las adiciones.';
-      this.publishConflict(localBoard, remoteBoard, remoteRecord.updated_at, reason);
-      throw error;
-    }
 
-    const retryVersion = await this.updateBoard(mergedBoard, userId, remoteRecord.updated_at);
-    if (!retryVersion) {
-      const latestRecord = await this.findBoard(userId);
-      const latestBoard = latestRecord ? deserializeBoard(latestRecord) : remoteBoard;
-      const latestVersion = latestRecord?.updated_at ?? remoteRecord.updated_at;
-      const reason = 'El tablero volvió a cambiar mientras se guardaba. Resuelve el conflicto para continuar.';
-      this.publishConflict(localBoard, latestBoard, latestVersion, reason);
-      throw new BoardMergeConflictError(reason);
-    }
-    this.recordSavedBoard(mergedBoard, retryVersion, true);
-    this.conflictSubject.next(null);
-  }
-
-  async resolveConflict(resolution: 'local' | 'remote'): Promise<void> {
-    throwIfSessionBlocked();
-    const conflict = this.conflictSubject.value;
-    if (!conflict || !this.userId) return;
-
-    if (resolution === 'remote') {
-      this.lastKnownBoard = structuredClone(conflict.remoteBoard);
-      this.lastKnownUpdatedAt = conflict.remoteUpdatedAt;
-      this.conflictSubject.next(null);
-      this.subject.next(structuredClone(conflict.remoteBoard));
+    if (isNewerVersion(remoteRecord.updated_at, baseVersion)) {
+      // Remoto más reciente: se adopta silenciosamente.
+      this.publishBoard(remoteRecord);
       return;
     }
 
-    const savedVersion = await this.updateBoard(conflict.localBoard, this.userId, conflict.remoteUpdatedAt);
-    if (!savedVersion) {
-      const latestRecord = await this.findBoard(this.userId);
-      if (latestRecord) {
-        this.publishConflict(
-          conflict.localBoard,
-          deserializeBoard(latestRecord),
-          latestRecord.updated_at,
-          'El tablero remoto cambió otra vez. Revisa las dos versiones antes de resolver.'
-        );
-      }
-      throw new BoardMergeConflictError('El tablero remoto cambió otra vez antes de resolver el conflicto.');
+    const retryVersion = await this.updateBoard(board, userId, remoteRecord.updated_at);
+    if (retryVersion) {
+      this.recordSavedBoard(board, retryVersion, true);
+      return;
     }
 
-    this.recordSavedBoard(conflict.localBoard, savedVersion);
-    this.conflictSubject.next(null);
+    const latestRecord = await this.findBoard(userId);
+    if (latestRecord && isNewerVersion(latestRecord.updated_at, remoteRecord.updated_at)) {
+      this.publishBoard(latestRecord);
+      return;
+    }
+    throw new Error('No se pudo guardar el tablero: cambió mientras se escribía. Inténtalo de nuevo.');
   }
 
   private async findBoard(userId: string): Promise<StoredBoard | null> {
@@ -209,11 +226,6 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     if (!record || userId !== this.userId) return;
     if (!isNewerVersion(record.updated_at, this.lastKnownUpdatedAt)) return;
     const board = deserializeBoard(record);
-    const conflict = this.conflictSubject.value;
-    if (conflict) {
-      this.publishConflict(conflict.localBoard, board, record.updated_at, conflict.reason);
-      return;
-    }
     this.publishBoard(record);
   }
 
@@ -247,17 +259,6 @@ export class SupabaseBoardRepository extends BoardRepository implements OnDestro
     this.lastKnownUpdatedAt = version;
     this.lastKnownBoard = structuredClone(board);
     if (emit) this.subject.next(structuredClone(board));
-  }
-
-  private publishConflict(localBoard: ChecklistBoard, remoteBoard: ChecklistBoard, remoteUpdatedAt: string, reason: string): void {
-    this.lastKnownBoard = structuredClone(remoteBoard);
-    this.lastKnownUpdatedAt = remoteUpdatedAt;
-    this.conflictSubject.next({
-      localBoard: structuredClone(localBoard),
-      remoteBoard: structuredClone(remoteBoard),
-      remoteUpdatedAt,
-      reason
-    });
   }
 
   private startSynchronization(userId: string): void {

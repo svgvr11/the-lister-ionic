@@ -309,17 +309,4 @@ describe('LocalBoardRepository', () => {
       await expect(repo.saveBoard(tablero('x'))).rejects.toThrow(/Error/);
     });
   });
-
-  describe('resolveConflict', () => {
-    it('limpia el conflicto activo', async () => {
-      const repo = new LocalBoardRepository();
-      const conflictos: unknown[] = [];
-      repo.conflict$.subscribe((c) => conflictos.push(c));
-
-      // El repositorio local nunca publica conflictos: siempre emite null.
-      expect(conflictos).toEqual([null]);
-      await repo.resolveConflict('local');
-      expect(conflictos.at(-1)).toBeNull();
-    });
-  });
 });

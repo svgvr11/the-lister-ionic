@@ -1071,34 +1071,6 @@ ion-header {
 .board-error { top: calc(86px + var(--app-safe-area-top)); }
 .board-save-error { bottom: calc(24px + var(--app-safe-area-bottom)); }
 
-.sync-conflict-banner {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin: 10px 16px;
-  padding: 9px 12px;
-  color: #38485e;
-  background: #fff;
-  border: 1px solid #cbd8ea;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.sync-conflict-banner button {
-  padding: 5px 9px;
-  color: #fff;
-  background: #426b91;
-  border: 0;
-  border-radius: 6px;
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
-
 .board {
   position: relative;
   width: 100%;
@@ -2836,14 +2808,6 @@ ion-header {
   border-color: #d8ece0;
 }
 
-.sync-conflict-dialog {
-  width: min(100%, 460px);
-  max-width: 100%;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
 /* ── Eliminar cuenta ─────────────────────────────────────────────────────────
    Reutiliza .delete-list-overlay/.delete-list-dialog/.delete-list-actions: aquí solo lo
    propio (campo de confirmación y mensajes). El diálogo no se desborda en móvil:
@@ -2914,70 +2878,6 @@ ion-header {
 
 .delete-account-dialog .delete-list-actions {
   margin-top: 14px;
-}
-
-.sync-conflict-icon {
-  color: #426b91;
-  background: #edf4fb;
-}
-
-.sync-conflict-icon ion-icon {
-  font-size: 19px;
-}
-
-.sync-conflict-warning {
-  margin: 10px 0 0;
-  padding: 10px;
-  color: #754c17;
-  background: #fff6e5;
-  border: 1px solid #f0d7a7;
-  border-radius: 7px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.sync-conflict-actions {
-  align-items: stretch;
-  flex-wrap: wrap;
-  overflow: visible;
-  margin-inline: 2px;
-  padding: 2px;
-}
-
-.sync-conflict-actions button {
-  min-height: 38px;
-  flex: 1 1 max-content;
-  min-width: max-content;
-  max-width: 100%;
-  padding: 6px 10px;
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: normal;
-  word-break: normal;
-  overflow-wrap: normal;
-  hyphens: none;
-  overflow: visible;
-}
-
-.sync-cloud-confirm {
-  color: #314d6a;
-  background: #edf4fb;
-  border-color: #cbd8ea !important;
-}
-
-.sync-local-confirm {
-  color: #fff;
-  background: #236c5a;
-  border-color: #236c5a !important;
-}
-
-.sync-cloud-confirm:hover { background: #e0ebf7; }
-.sync-local-confirm:hover { background: #185747; }
-
-@media (max-width: 480px) {
-  .sync-conflict-actions button {
-    flex-basis: 100%;
-  }
 }
 
 /* Móviles estrechos: la marca se queda con el logo y el nombre, y el badge de versión
