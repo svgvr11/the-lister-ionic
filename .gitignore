@@ -1,8 +1,45 @@
+# Dependencias y builds
 node_modules/
 dist/
 .angular/
-*.log
+*.tsbuildinfo
+
+# Sistema, editor y herramientas
 .DS_Store
-.env
-supabase/.temp/
+.idea/
+*.log
 .kilo/
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+supabase/.temp/
+src/environments/environment.ts
+src/environments/environment.prod.ts
+
+# Firma de Android (NUNCA subir)
+android/keystore.properties
+*.jks
+*.keystore
+
+# Servicios de Google
+android/app/google-services.json
+
+# Android: builds y archivos generados
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+android/capacitor-cordova-android-plugins/
+android/version.properties
+*.apk
+*.aab

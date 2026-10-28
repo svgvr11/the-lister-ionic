@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos conocidos"
+paths = ['''scripts/test-feedback\.mjs''']
+regexes = ['''sb_publishable_[A-Za-z0-9_-]+''']
