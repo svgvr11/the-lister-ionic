@@ -197,9 +197,14 @@ describe('list-updated-at: describeDeviceTimeZone', () => {
   });
 
   it('UTC se nombra con lo que dé el motor', () => {
-    // Para UTC el motor escribe «GMT» a secas, sin horas: se muestra tal cual.
-    expect(describeDeviceTimeZone('2025-11-02T22:31:00.000Z', { timeZone: 'UTC' }))
-      .toBe('Zona horaria del dispositivo: UTC (GMT)');
+    const iso = '2025-11-02T22:31:00.000Z';
+    const offset = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'UTC',
+      timeZoneName: 'longOffset'
+    }).formatToParts(new Date(iso)).find((part) => part.type === 'timeZoneName')?.value ?? '';
+    const suffix = offset && /gmt|[+-]/i.test(offset) ? ` (${offset})` : '';
+    expect(describeDeviceTimeZone(iso, { timeZone: 'UTC' }))
+      .toBe(`Zona horaria del dispositivo: UTC${suffix}`);
   });
 
   it('sin timeZone usa la zona del entorno, igual que pasarla explícita', () => {

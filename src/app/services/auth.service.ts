@@ -13,6 +13,7 @@ import {
 } from '../core/auth/delete-account/delete-account';
 import { buildGoogleOAuthOptions } from '../core/auth/google-auth/google-auth';
 import { SESSION_BLOCKED_MESSAGE, isSessionBlocked, markLocalAuthChange } from '../core/auth/session-guard/session-guard';
+import { assertRealSupabaseClientAllowed } from '../core/auth/runtime-mode/runtime-mode';
 
 // Debe coincidir con el intent-filter de AndroidManifest.xml y con las Redirect URLs de Supabase
 const NATIVE_REDIRECT = 'dev.vmunoz.thelister://auth/callback';
@@ -32,6 +33,7 @@ export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient | null>('SUPABA
 
 /** Crea el cliente solo si hay credenciales completas; si no, la app va en modo local. */
 function createSupabaseClient(): SupabaseClient | null {
+  assertRealSupabaseClientAllowed(environment);
   const { url, anonKey } = environment.supabase;
   const hasCredentials = Boolean(
     url.trim() && anonKey.trim() && !url.includes('YOUR_') && !anonKey.includes('YOUR_')
@@ -43,6 +45,7 @@ function createSupabaseClient(): SupabaseClient | null {
 export class AuthService {
   private readonly client: SupabaseClient | null = inject(SUPABASE_CLIENT);
   readonly enabled = this.client !== null;
+  readonly mockMode = false;
   private activeSession: Session | null = null;
   private readonly sessionChangesSubject = new Subject<Session | null>();
   readonly sessionChanges = this.sessionChangesSubject.asObservable();

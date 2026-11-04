@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { AuthService } from '../services/auth.service';
+import { MockAuthService } from '../services/mock-auth.service';
 
 /**
  * Pruebas de la guarda de rutas. Migrado como caso nuevo: antes no tenía cobertura.
@@ -70,5 +71,15 @@ describe('authGuard', () => {
     });
     const destino = await evaluar();
     expect(destino).toEqual({ __urlTree: ['/login'] });
+  });
+
+  it('con MockAuthService deja pasar en modo mock', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useClass: MockAuthService },
+        { provide: Router, useValue: routerFalso() }
+      ]
+    });
+    expect(await evaluar()).toBe(true);
   });
 });
