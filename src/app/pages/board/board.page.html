@@ -769,6 +769,21 @@
     <ion-ripple-effect></ion-ripple-effect>
   </button>
 
+  <!-- ✨ Botón flotante para añadir nota (vista Notas) -->
+  <button
+    #newNoteFab
+    *ngIf="contentView === 'notes'"
+    class="fab-add-list ion-activatable"
+    type="button"
+    (click)="createNoteFromFab()"
+    aria-label="Nueva nota"
+    aria-haspopup="dialog"
+    [title]="'Nueva nota'"
+  >
+    <ion-icon name="add" aria-hidden="true"></ion-icon>
+    <ion-ripple-effect></ion-ripple-effect>
+  </button>
+
   <!-- Modal de creación: conserva el disparador flotante, con tarjeta y backdrop de diálogo. -->
   <div
     *ngIf="addingList"

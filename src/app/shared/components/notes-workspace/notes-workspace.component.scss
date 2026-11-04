@@ -9,6 +9,13 @@
   gap: 18px;
 }
 
+.note-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-start;
+}
+
 .notes-heading {
   display: flex;
   align-items: center;
@@ -30,7 +37,6 @@
   font-size: 13px;
 }
 
-.new-note-button,
 .note-save-button,
 .note-cancel-button,
 .note-delete-button,
@@ -49,15 +55,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.new-note-button,
 .note-save-button {
   position: relative;
   overflow: hidden;
   color: var(--on-accent, #fff);
   background: var(--accent, #8870ad);
 }
-
-.new-note-button ion-icon { font-size: 18px; }
 
 .notes-grid {
   position: relative;

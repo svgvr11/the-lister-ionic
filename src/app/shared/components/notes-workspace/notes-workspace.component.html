@@ -4,11 +4,6 @@
       <h2>Notas</h2>
       <p *ngIf="!hasNotes">Guarda ideas, información y archivos en un solo lugar.</p>
     </div>
-    <button class="new-note-button ion-activatable" type="button" (click)="createNote()">
-      <ion-icon name="add" aria-hidden="true"></ion-icon>
-      <span>Nueva nota</span>
-      <ion-ripple-effect></ion-ripple-effect>
-    </button>
   </div>
 
   <div *ngIf="hasSearchResults; else emptyNotes" class="notes-grid"
@@ -26,6 +21,7 @@
       (click)="editNote(note, $event.currentTarget)"
       (keydown)="openFromKeyboard($event, note)"
     >
+    <div class="note-card-header">
       <button class="note-pin-button ion-activatable" type="button"
         [class.pinned]="isPinned(note)"
         [attr.aria-label]="isPinned(note) ? 'Desfijar nota' : 'Fijar nota al inicio'"
@@ -35,6 +31,7 @@
         <ion-ripple-effect></ion-ripple-effect>
       </button>
       <h3>{{ note.title }}</h3>
+    </div>
       <div *ngIf="!compactCards" class="note-preview" [innerHTML]="note.contentHtml"></div>
       <div *ngIf="!compactCards && note.attachments.length" class="note-attachment-count">
         <ion-icon name="attach-outline" aria-hidden="true"></ion-icon>

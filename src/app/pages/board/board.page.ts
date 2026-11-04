@@ -614,6 +614,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       dialog.nativeElement.focus();
     });
   }
+  @ViewChild(NotesWorkspaceComponent)
+  private notesWorkspace?: NotesWorkspaceComponent;
   /** Etiqueta «Última actualización» del pie del modal. Solo existe con el modal abierto. */
   @ViewChild('updatedAtLabel', { read: ElementRef })
   private updatedAtLabel?: ElementRef<HTMLElement>;
@@ -1835,10 +1837,15 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.selectedVisualColor = this.visualColors[0].value;
       this.placeNewListAtStart = false;
       this.newListTitleFocusTimer = setTimeout(() => {
-        this.newListTitleFocusTimer = null;
-        this.focusNewListTitleAfterEntrance();
-      }, 220);
+      this.newListTitleFocusTimer = null;
+      this.focusNewListTitleAfterEntrance();
+    }, 220);
     }
+  }
+
+  // ✨ Abre el editor de nueva nota desde el FAB flotante de la vista Notas
+  createNoteFromFab(): void {
+    this.notesWorkspace?.createNote();
   }
 
   submitNewListFromInput(event: Event): void {
