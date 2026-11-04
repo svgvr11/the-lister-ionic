@@ -39,11 +39,31 @@ export interface ChecklistArchivedList {
   archivedAt: string;
 }
 
+export interface BoardNoteAttachment {
+  id: string;
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface BoardNote {
+  id: string;
+  title: string;
+  contentHtml: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+  attachments: BoardNoteAttachment[];
+}
+
 export interface ChecklistBoard {
   id: string;
   title: string;
   createdAt: string;
   lists: ChecklistList[];
+  notes?: BoardNote[];
+  pinnedNoteId?: string | null;
   /**
    * Lista fijada al tablero: siempre se dibuja en la primera posición de la rejilla.
    * Opcional para que los tableros ya guardados (sin pin) sigan cargando sin migración.

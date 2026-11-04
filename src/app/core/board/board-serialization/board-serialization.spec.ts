@@ -40,6 +40,7 @@ const tableroCompleto = (): ChecklistBoard => ({
   title: 'Título que no manda',
   createdAt: '1999-01-01T00:00:00.000Z',
   pinnedListId: 'lista-pin',
+  pinnedNoteId: 'nota-pin',
   lists: [
     {
       id: 'lista-1',
@@ -59,6 +60,21 @@ const tableroCompleto = (): ChecklistBoard => ({
       ]
     }
   ],
+  notes: [{
+    id: 'nota-1',
+    title: 'Reunión',
+    contentHtml: '<p>Ideas</p>',
+    position: 0,
+    createdAt: '2026-01-03T00:00:00.000Z',
+    updatedAt: '2026-01-03T00:00:00.000Z',
+    attachments: [{
+      id: 'adjunto-1',
+      path: 'usuario/tablero/nota/documento.pdf',
+      name: 'documento.pdf',
+      mimeType: 'application/pdf',
+      size: 12
+    }]
+  }],
   trashedLists: [
     { list: listaDescartada('lista-2'), deletedAt: '2026-05-30T00:00:00.000Z' }
   ],
@@ -84,6 +100,9 @@ describe('board-serialization: deserializeBoard', () => {
     expect(result.createdAt).toBe('2026-01-01T00:00:00.000Z');
     // El contenido sí se conserva tal cual.
     expect(result.pinnedListId).toBe('lista-pin');
+    expect(result.pinnedNoteId).toBe('nota-pin');
+    expect(result.notes?.[0].contentHtml).toBe('<p>Ideas</p>');
+    expect(result.notes?.[0].attachments[0].path).toBe('usuario/tablero/nota/documento.pdf');
     expect(result.lists.map((l) => l.id)).toEqual(['lista-1']);
     expect(result.lists[0].tasks.map((t) => t.id)).toEqual(['tarea-1']);
     expect(result.trashedLists?.map((e) => e.list.id)).toEqual(['lista-2']);

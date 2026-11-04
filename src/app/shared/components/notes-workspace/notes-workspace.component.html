@@ -1,0 +1,118 @@
+<section class="notes-workspace" aria-label="Notas">
+  <div class="notes-heading">
+    <div>
+      <h2>Notas</h2>
+      <p *ngIf="!hasNotes">Guarda ideas, información y archivos en un solo lugar.</p>
+    </div>
+    <button class="new-note-button ion-activatable" type="button" (click)="createNote()">
+      <ion-icon name="add" aria-hidden="true"></ion-icon>
+      <span>Nueva nota</span>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+  </div>
+
+  <div *ngIf="hasSearchResults; else emptyNotes" class="notes-grid"
+    [class.notes-grid--cards]="compactCards"
+    [class.notes-grid--flow]="!compactCards && (isNative || notesFlowMode)"
+    #notesGrid>
+    <article
+      *ngFor="let note of orderedNotes; trackBy: trackById"
+      #noteCard
+      class="note-card overlay-card"
+      [class.note-card--pinned]="isPinned(note)"
+      [attr.role]="'button'"
+      [attr.tabindex]="0"
+      [attr.aria-label]="'Abrir nota: ' + note.title"
+      (click)="editNote(note, $event.currentTarget)"
+      (keydown)="openFromKeyboard($event, note)"
+    >
+      <button class="note-pin-button ion-activatable" type="button"
+        [class.pinned]="isPinned(note)"
+        [attr.aria-label]="isPinned(note) ? 'Desfijar nota' : 'Fijar nota al inicio'"
+        [attr.aria-pressed]="isPinned(note)"
+        (click)="togglePin(note, $event)">
+        <ion-icon [name]="isPinned(note) ? 'pin' : 'pin-outline'" aria-hidden="true"></ion-icon>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+      <h3>{{ note.title }}</h3>
+      <div *ngIf="!compactCards" class="note-preview" [innerHTML]="note.contentHtml"></div>
+      <div *ngIf="!compactCards && note.attachments.length" class="note-attachment-count">
+        <ion-icon name="attach-outline" aria-hidden="true"></ion-icon>
+        {{ note.attachments.length }} adjunto{{ note.attachments.length === 1 ? '' : 's' }}
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyNotes>
+    <div class="notes-empty">
+      <ion-icon name="image-outline" aria-hidden="true"></ion-icon>
+      <strong>{{ hasNotes ? 'No se encontraron notas' : 'Todavía no hay notas' }}</strong>
+      <span>{{ hasNotes ? 'Prueba con otras palabras.' : 'Crea una nota para empezar.' }}</span>
+    </div>
+  </ng-template>
+</section>
+
+<div *ngIf="editorOpen" class="note-editor-backdrop" (click)="cancelEditing()">
+  <section class="note-editor overlay-card" role="dialog" aria-modal="true"
+    aria-labelledby="note-editor-title" (click)="$event.stopPropagation()"
+    (keydown.escape)="cancelEditing()">
+    <header class="note-editor-header">
+      <h2 id="note-editor-title">{{ editingExistingNote ? 'Editar nota' : 'Nueva nota' }}</h2>
+      <button class="note-editor-close ion-activatable" type="button" aria-label="Cerrar"
+        [disabled]="editorBusy" (click)="cancelEditing()">
+        <ion-icon name="close"></ion-icon>
+      </button>
+    </header>
+
+    <label class="note-title-label" for="note-title">Título</label>
+    <input id="note-title" class="note-title-input" maxlength="160" [value]="draft?.title ?? ''"
+      (input)="onTitleInput($any($event.target).value)" placeholder="Título de la nota">
+
+    <div class="rich-text-toolbar" role="toolbar" aria-label="Formato del texto">
+      <button type="button" aria-label="Negrita" title="Negrita" (mousedown)="$event.preventDefault()" (click)="format('bold')"><strong>B</strong></button>
+      <button type="button" aria-label="Cursiva" title="Cursiva" (mousedown)="$event.preventDefault()" (click)="format('italic')"><em>I</em></button>
+      <button type="button" aria-label="Lista con viñetas" title="Lista con viñetas" (mousedown)="$event.preventDefault()" (click)="format('insertUnorderedList')"><ion-icon name="list-outline"></ion-icon></button>
+    </div>
+    <div class="note-rich-editor" contenteditable="true" role="textbox" aria-multiline="true"
+      aria-label="Contenido de la nota" data-placeholder="Escribe tu nota..."
+      #richEditor (input)="onEditorInput($event)"></div>
+
+    <div class="note-attachments">
+      <div class="note-attachment-heading">
+        <strong>Adjuntos</strong>
+        <label class="attach-button ion-activatable">
+          <ion-icon name="attach-outline"></ion-icon>
+          <span>Añadir archivos</span>
+          <input type="file" multiple accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            [disabled]="editorBusy" (change)="addAttachments($event)">
+        </label>
+      </div>
+      <div *ngFor="let attachment of draft?.attachments" class="note-attachment">
+        <img *ngIf="isImage(attachment) && attachmentUrls[attachment.id]"
+          [src]="attachmentUrls[attachment.id]" [alt]="attachment.name">
+        <ion-icon *ngIf="!isImage(attachment)" name="attach-outline" aria-hidden="true"></ion-icon>
+        <a *ngIf="attachmentUrls[attachment.id]" [href]="attachmentUrls[attachment.id]"
+          target="_blank" rel="noopener noreferrer">{{ attachment.name }}</a>
+        <span *ngIf="!attachmentUrls[attachment.id]">{{ attachment.name }}</span>
+        <button type="button" [attr.aria-label]="'Quitar ' + attachment.name"
+          [disabled]="editorBusy" (click)="removeAttachment(attachment)">
+          <ion-icon name="close"></ion-icon>
+        </button>
+      </div>
+      <p class="attachment-hint">Imágenes o documentos de hasta 10 MB. Se guardan de forma privada.</p>
+    </div>
+
+    <p *ngIf="editorError" class="note-editor-error" role="alert">{{ editorError }}</p>
+    <footer class="note-editor-footer">
+      <button *ngIf="editingExistingNote" type="button"
+        class="note-delete-button" [disabled]="editorBusy" (click)="deleteNote()">
+        <ion-icon name="trash"></ion-icon>
+        {{ confirmDelete ? 'Confirmar eliminación' : 'Eliminar' }}
+      </button>
+      <span class="note-editor-spacer"></span>
+      <button type="button" class="note-cancel-button" [disabled]="editorBusy" (click)="cancelEditing()">Cancelar</button>
+      <button type="button" class="note-save-button" [disabled]="editorBusy || !draft?.title?.trim()"
+        (click)="saveNote()">{{ editorBusy ? 'Guardando…' : 'Guardar nota' }}</button>
+    </footer>
+  </section>
+</div>
