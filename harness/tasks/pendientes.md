@@ -1,17 +1,113 @@
 # Backlog de tareas pendientes
 
-Este archivo funciona como backlog. Está vacío inicialmente.
-
-Cada elemento debe tener, cuando corresponda:
-
-- **Identificador**: código corto único (ej. `T-001`).
-- **Prioridad**: alta / media / baja (solo si el usuario la ha definido).
-- **Descripción**: qué se quiere lograr.
-- **Contexto**: por qué se hace.
-- **Dependencias**: otras tareas o decisiones necesarias.
-- **Criterios de finalización**: condiciones verificables.
-- **Estado**: pendiente / en curso / bloqueado / terminado.
+Este archivo funciona como backlog. Cada elemento tiene identificador, descripción, contexto, dependencias en cadena, criterios de finalización y estado.
 
 No inventar prioridades ni compromisos que el usuario no haya aprobado.
 
---- Backlog vacío ---
+---
+
+## T-001 — Investigación y plan, sin cambios de código
+
+**Descripción:** Confirmar la auditoría (hallazgos H1-H9) contra el código y el navegador, y proponer un plan de implementación que el usuario apruebe antes de tocar código.
+
+**Contexto:** Base `claude/01-auditoria-ui-fab-y-modales.md` (snapshot v1.64.5-a, 2026-11-04). El FAB de Notas no gira y queda sobre el modal; el modal de Nueva nota es otra implementación del bottom sheet. Causa del FAB sobre el modal: `<app-notes-workspace>` vive dentro de `<ion-content>` y su `position: fixed; z-index: 1200` queda atrapado en el contexto de apilamiento del scroller de Ionic.
+
+**Dependencias:** Ninguna (tarea inicial de la serie).
+
+**Criterios de finalización:**
+- Confirmación o corrección de cada hallazgo H1-H9 con evidencia (archivo/línea; para H3 y H5 comprobación en navegador; para Atrás de Android, qué se pudo y qué no).
+- Descripción exacta de lo que hace hoy el FAB de lista (ícono, giro, estado abierto) en escritorio y móvil, como comportamiento de referencia.
+- Propuesta de arquitectura: (a) dónde se renderizan FAB y sheet respecto de `<ion-content>` (evalúa portal a `document.body` con CDK Overlay/Portal y renderizado en el host de la page), (b) API del componente FAB, del sheet y de los botones, (c) registro de overlays en `OverlayStackService`, (d) fuente única del modo móvil, (e) cómo se monta `pages/notes` bajo el toggle y su contrato, (f) división de `notes-workspace` en componentes compartidos (tarjeta de nota, editor de nota).
+- Recomendación por cada decisión con alternativas y riesgos; lista de decisiones que necesitan aprobación del usuario.
+- Orden y tamaño estimado de las tareas 2-6 (puede proponer dividir una).
+
+**Estado:** pendiente
+
+---
+
+## T-002 — FAB compartido (`shared/components/fab-button/`)
+
+**Descripción:** Un único componente de FAB usado por Checklists y Notas, mismo aspecto, animación de giro, estados y accesibilidad.
+
+**Contexto:** Extraer markup y estilos del FAB (`.fab-add-list`, `.open`, hover, active, disabled, variante móvil 54px, reduced-motion) de `board.page.html/.scss` al componente. Reemplazar `#newListFab` y `#newNoteFab` en `board.page.html` por el componente. Mantener `#newListFab` accesible como opener para devolver el foco.
+
+**Dependencias:** T-001 (plan aprobado).
+
+**Criterios de finalización:**
+- En Checklists el FAB se ve y se comporta exactamente como antes (captura antes/después).
+- En Notas el FAB es idéntico en aspecto y animación al de Checklists.
+- No queda CSS de FAB duplicado en `board.page.scss` ni en `notes-workspace`.
+- Spec del componente: render por inputs, estado abierto, disabled, emite clic, aria; foco devuelto al opener al cerrar el modal.
+
+**Estado:** pendiente
+
+---
+
+## T-003 — Botones y campos de formulario compartidos
+
+**Descripción:** Cancelar / confirmar / peligro / cerrar y campos de texto iguales en Nueva lista y Nueva nota (hallazgos H6 y H7).
+
+**Contexto:** Componentes en `shared/components/`: botón de acción (primario, secundario, peligro, ícono opcional, `ion-ripple-effect`), botón de cerrar de cabecera, campo de texto con etiqueta, foco, contador de caracteres opcional y estado de error. Sustituir clases `.new-list-cancel/.new-list-submit/.new-list-close` y el campo en Nueva lista; `.note-cancel-button/.note-save-button/.note-delete-button/.note-editor-close` y `<input>` de título en edición de nota.
+
+**Dependencias:** T-001 (plan aprobado).
+
+**Criterios de finalización:**
+- Nueva lista se ve y funciona igual que antes.
+- Botones y campo de Nueva nota visualmente idénticos a los de Nueva lista.
+- No quedan familias de clases duplicadas en esos dos flujos.
+- Specs de los componentes; accesibilidad (labels, `aria-pressed`/`disabled`, foco visible).
+
+**Estado:** pendiente
+
+---
+
+## T-004 — Sheet/modal compartido (corrige que el FAB tape el modal)
+
+**Descripción:** Un único `shared/components/sheet-dialog/` que implemente diálogo centrado en escritorio y bottom sheet en móvil, usado por Nueva lista y Nueva nota. Resuelve H3, H4, H5.
+
+**Contexto:** Debe renderizarse fuera del contexto de apilamiento de `<ion-content>` según lo aprobado en T-001. Incluye backdrop con `--overlay-backdrop-color` y blur, asa superior en móvil, animación de entrada (con reduced-motion), `role="dialog"` + `aria-modal` + `aria-labelledby`, trampa de Tab, foco inicial tras la animación, devolución de foco al opener, cierre por backdrop solo si no hay datos sin guardar, Escape. Registro en `OverlayStackService`. Una sola fuente del modo móvil. Slots: cabecera, cuerpo, acciones. Migrar Nueva lista y Nueva nota.
+
+**Dependencias:** T-001 (plan aprobado), T-002 (FAB), T-003 (botones/campos).
+
+**Criterios de finalización:**
+- Nueva lista: sin diferencias visibles ni de foco/teclado respecto de antes (capturas antes/después).
+- Nueva nota: mismo backdrop, asa, animación, botones y foco que Nueva lista; el FAB queda debajo del modal; Atrás de Android/Escape lo cierran vía overlay-stack (si no se puede probar Android, declarado pendiente de verificar en dispositivo).
+- Cerrar un modal con cambios sin guardar en nota mantiene el comportamiento actual.
+- Specs: apertura/cierre, Escape, backdrop, registro/desregistro en overlay-stack, foco, trampa de Tab, modo móvil. Specs existentes de notes-workspace actualizadas, no borradas.
+
+**Estado:** pendiente
+
+---
+
+## T-005 — Capas (z-index) y tokens
+
+**Descripción:** Eliminar z-index literales con significado de capa y usar solo los tokens de `styles.css` (H8), sin cambiar cómo se apila nada.
+
+**Contexto:** Auditar y reemplazar literales en `board.page.scss`, `trash.page.scss`, `archive.page.scss`, `legal-page`, `notes` y componentes compartidos. Los z-index de orden interno de un componente (0/1/2/5) pueden quedarse; los que compiten con overlays o FAB se pasan a token. Documentar el mapa final de capas en el comentario de `styles.css`.
+
+**Dependencias:** T-004 (sheet/modal compartido define las capas reales).
+
+**Criterios de finalización:**
+- Sin diferencias visuales ni de apilamiento (FAB, perfil, feedback, foco, nueva lista, nueva nota, eliminar, bloqueo de sesión, vista tarjetas con arrastre).
+- No queda ningún literal ≥100 sin token. Si un literal no tiene equivalente claro, se pregunta al usuario.
+
+**Estado:** pendiente
+
+---
+
+## T-006 — Mover Notas a `pages/notes/`
+
+**Descripción:** `notes-workspace` deja `shared/components/` y pasa a ser la page `pages/notes/notes.page.*`, igual que `pages/board`, sin ruta propia: se sigue mostrando desde el toggle Checklists/Notas con el estado de `localStorage` (`core/board/board-content-view` no cambia). Resuelve H1.
+
+**Contexto:** Crear `pages/notes/notes.page.ts/.html/.scss/.spec.ts` y mover la lógica y el spec existentes. Siguiendo "las pages solo componen", extraer lo reutilizable a `shared/components/` (tarjeta de nota y contenido del editor de nota) y dejar la page componiendo. Actualizar `board.page` para montarla según el contrato aprobado en T-001; actualizar imports, specs y `harness/docs/architecture.md`. La page no debe renderizar overlays ni FAB dentro de `<ion-content>`. Mantener intactos: pin de nota, masonry y modo flujo, búsqueda, adjuntos, vista tarjetas compacta, persistencia (`updateNotes`, `updatePinnedNoteId`).
+
+**Dependencias:** T-001 (plan aprobado), T-002 (FAB), T-004 (sheet/modal), T-005 (capas/tokens).
+
+**Criterios de finalización:**
+- No queda nada de notas en `shared/components/notes-workspace/`.
+- La vista Notas funciona igual que antes (crear, editar, borrar, fijar, adjuntar, buscar, tarjetas compactas, escritorio y móvil, dos temas).
+- La preferencia de vista sobrevive a recargar.
+- `npm test`, `tsc`, `build` limpios.
+- Documentado en `decisiones.md` el plan de producto: switch futuro Todo/Checklists/Notas, `Todo` en `#/all`, el switch alterna entre las pages `board` y `notes` (planificado, no implementado).
+
+**Estado:** pendiente
