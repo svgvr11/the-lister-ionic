@@ -1,5 +1,14 @@
 # AGENTS.md — reglas permanentes del proyecto
 
+Este archivo es el punto de entrada para agentes. Antes de hacer cualquier cambio:
+
+1. Lea `harness/AGENTS.md` (orquestador completo del proyecto).
+2. Revise la tarea activa en `harness/tasks/actual.md`.
+3. Consulte la documentación relevante en `harness/docs/`.
+4. Respete las reglas de salida en `harness/checks/reglas-de-salida.md`.
+
+Las reglas esenciales se resumen a continuación; el detalle completo vive en el Harness.
+
 ## Versión (obligatorio)
 
 Versionado (formato `MAYOR.FEATURE.BUILD-a`, p. ej. `v1.9.5-a`). Al comienzo de cada petición del usuario que vaya a modificar código, ANTES de editar nada, pregunta al usuario qué tipo de subida de versión desea para esa tarea (usa la herramienta de preguntas con opciones cerradas):
