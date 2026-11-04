@@ -36,7 +36,6 @@ import { WelcomeModalComponent } from '../../shared/components/welcome-modal/wel
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
 import { pickOnAccent, onAccentToken } from '../../core/ui/edit-contrast/edit-contrast';
 import { APP_VERSION_LABEL } from '../../core/app-version';
-import { FEEDBACK_FAB_ENABLED } from '../../core/feedback/feedback-core/feedback-core';
 import { isListComplete, MAX_BOARD_LISTS, purgeExpiredArchivedLists, purgeExpiredLists } from '../../core/list/list-retention/list-retention';
 import { MAX_LIST_TITLE_LENGTH, normalizeListTitle } from '../../core/platform/limits/limits';
 import { ARCHIVE_RETENTION_DAYS } from '../../core/list/archive/archive';
@@ -307,6 +306,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
   readonly donationMessage = '¡Me gusta la app!';
   readonly donationUrl = 'https://ko-fi.com/M4M62R6XT';
+
+  openDonationUrl(): void {
+    if (this.donationUrl) window.open(this.donationUrl, '_blank');
+  }
   private accountMenuNode: HTMLElement | null = null;
   private accountMenuOpener: HTMLElement | null = null;
   private newListOpener: HTMLElement | null = null;
@@ -556,24 +559,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** Elemento que tenía el foco al abrirse el recorrido, para devolvérselo al cerrar. */
   private welcomeTourOpener: HTMLElement | null = null;
   private deleteDialogOpener: HTMLElement | null = null;
-
-  /** Interruptor global de la función; el estado visual de la página no oculta el botón. */
-  readonly feedbackFabEnabled = FEEDBACK_FAB_ENABLED;
-
-  /**
-   * Un modal bloquea la interacción con el botón, pero no su renderizado. El menú de perfil
-   * no es modal: el botón queda sobre su scrim para poder abrir feedback desde allí.
-   */
-  get feedbackFabBlocked(): boolean {
-    return this.addingList
-      || (this.accountMenuOpen && this.accountMenuMobilePresentation)
-      || this.focusListId !== null
-      || this.listToRemove !== null
-      || this.deleteDialogOpen
-      || this.feedbackOpen
-      || this.welcomeTourOpen
-      || this.sessionGuard.blocked() !== null;
-  }
 
   get accountMenuPopupType(): 'dialog' | 'menu' {
     return this.accountMenuOpen

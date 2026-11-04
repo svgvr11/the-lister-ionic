@@ -161,15 +161,14 @@
   <!-- Botón de donación local: mismo enlace y estilo que el widget oficial de Ko-fi,
      sin depender de su script ni de fuentes externas. No se renderiza en la app
      nativa: Google Play no admite enlaces externos de donación dentro del APK. -->
-  <a
+  <button
     *ngIf="!isNative"
-    class="donation-button ion-activatable"
+    type="button"
+    class="donation-button welcome-guide-link ion-activatable"
     [attr.role]="accountMenuMobilePresentation ? null : 'menuitem'"
     [style.--donation-color]="activeTheme.donation"
     [attr.aria-label]="donationMessage + ' — apoyar al desarrollo de la app en Ko-fi'"
-    [href]="donationUrl"
-    target="_blank"
-    rel="noopener noreferrer"
+    (click)="openDonationUrl()"
   >
     <svg class="donation-cup" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
       <path
@@ -194,7 +193,18 @@
     </svg>
     <span class="donation-label">{{ donationMessage }}</span>
     <ion-ripple-effect></ion-ripple-effect>
-  </a>
+  </button>
+  <button
+    type="button"
+    class="menu-feedback welcome-guide-link ion-activatable"
+    [attr.role]="accountMenuMobilePresentation ? null : 'menuitem'"
+    [disabled]="!feedbackEnabled"
+    (click)="openFeedback()"
+  >
+    <ion-icon name="megaphone-outline" aria-hidden="true"></ion-icon>
+    <span>Enviar comentarios</span>
+    <ion-ripple-effect></ion-ripple-effect>
+  </button>
   <!-- Guía de bienvenida: abre el recorrido (3 slides en móvil/nativo, 4 en escritorio)
        sin consumir la marca de "una vez por dispositivo". Va fuera de la rejilla de
        acciones, a ancho completo, para que quepa igual en el diálogo de escritorio y en
@@ -209,9 +219,6 @@
     <span>Guía de bienvenida</span>
     <ion-ripple-effect></ion-ripple-effect>
   </button>
-  <!-- Acciones de la cuenta: basurero a la izquierda y cierre de sesión a la derecha.
-       Se quita "Enviar comentarios" (ahora solo el botón flotante). El menú no tiene huecos
-       porque la rejilla se adapta con flex-wrap. -->
   <div class="account-menu-actions">
     <button class="menu-action menu-trash ion-activatable" [attr.role]="accountMenuMobilePresentation ? null : 'menuitem'" (click)="openTrash()">
       <ion-icon name="trash-bin-outline"></ion-icon>
@@ -299,17 +306,17 @@
       </div>
       <div class="content-view-switch" role="group" aria-label="Vista del tablero">
         <button type="button" class="content-view-option ion-activatable"
-          [class.selected]="contentView === 'notes'"
-          [attr.aria-pressed]="contentView === 'notes'"
-          (click)="setContentView('notes')">
-          <span>Notas</span>
-          <ion-ripple-effect></ion-ripple-effect>
-        </button>
-        <button type="button" class="content-view-option ion-activatable"
           [class.selected]="contentView === 'checklists'"
           [attr.aria-pressed]="contentView === 'checklists'"
           (click)="setContentView('checklists')">
           <span>Checklists</span>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button type="button" class="content-view-option ion-activatable"
+          [class.selected]="contentView === 'notes'"
+          [attr.aria-pressed]="contentView === 'notes'"
+          (click)="setContentView('notes')">
+          <span>Notas</span>
           <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
@@ -742,25 +749,6 @@
 <div *ngIf="boardError" class="board-error" role="alert">{{ boardError }}</div>
 <div *ngIf="saveError" class="board-save-error" role="alert">{{ saveError }}</div>
 <div *ngIf="busy" class="saving-indicator">Guardando…</div>
-
-<!-- El FAB permanece fijo y en el DOM; los modales que lo cubren también lo sacan del foco. -->
-<button
-  *ngIf="feedbackFabEnabled"
-  #feedbackFab
-  class="feedback-fab ion-activatable"
-  type="button"
-  (click)="openFeedback(feedbackFab)"
-  aria-label="Enviar comentarios"
-  title="Enviar comentarios"
-  aria-haspopup="dialog"
-  [disabled]="!feedbackEnabled"
-  [attr.aria-hidden]="feedbackFabBlocked ? 'true' : null"
-  [attr.tabindex]="feedbackFabBlocked ? -1 : 0"
-  [attr.inert]="feedbackFabBlocked ? '' : null"
->
-  <ion-icon name="megaphone-outline" aria-hidden="true"></ion-icon>
-  <ion-ripple-effect></ion-ripple-effect>
-</button>
 
 <ng-container *ngIf="!loadingBoard && !boardError">
   <!-- ✨ Botón flotante (FAB) para añadir lista -->

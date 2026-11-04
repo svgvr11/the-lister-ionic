@@ -107,7 +107,7 @@
 }
 
 .note-card h3 {
-  margin: 0 34px 12px 0;
+  margin: 0 0 12px 34px;
   color: #172236;
   font-size: 16px;
   line-height: 1.35;
@@ -129,20 +129,71 @@
 .note-pin-button {
   position: absolute;
   top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
+  left: 10px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   display: grid;
   place-items: center;
+  padding: 0;
   border: 0;
-  border-radius: 9px;
-  color: #7d8798;
+  border-radius: 6px;
   background: transparent;
+  color: #9fa4a7;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
 }
 
-.note-pin-button.pinned { color: var(--accent, #8870ad); }
-.note-pin-button ion-icon { font-size: 18px; }
+.note-card:hover .note-pin-button,
+.note-card:focus-within .note-pin-button,
+.note-pin-button.pinned,
+.note-pin-button:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.note-pin-button:hover {
+  background: #f1f4fa;
+}
+
+.note-pin-button.pinned {
+  color: var(--on-accent, #fff);
+
+  &::before {
+    content: "";
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    background: var(--accent, #8870ad);
+    border-radius: 50%;
+    z-index: 0;
+    transition: background 0.15s ease;
+  }
+
+  .pin-icon {
+    position: relative;
+    z-index: 1;
+    color: var(--on-accent, #fff);
+  }
+}
+
+/* En pantallas táctiles no hay hover: el pin se muestra siempre para poder fijarlo. */
+@media (hover: none) {
+  .note-pin-button {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.pin-icon {
+  width: 17px;
+  height: 17px;
+  background-color: currentColor;
+  -webkit-mask: url('../../../../assets/pin-svgrepo-com.svg') center / contain no-repeat;
+  mask: url('../../../../assets/pin-svgrepo-com.svg') center / contain no-repeat;
+}
 
 .note-attachment-count {
   display: flex;
@@ -199,8 +250,9 @@
   position: fixed;
   inset: 0;
   z-index: 1200;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 24px;
   background: rgba(15, 23, 42, 0.42);
 }
@@ -312,6 +364,7 @@
 .note-attachment a { min-width: 0; flex: 1; overflow: hidden; color: #4456b5; text-overflow: ellipsis; white-space: nowrap; }
 .note-attachment span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-attachment button { width: 30px; height: 30px; }
+.note-attachment button ion-icon { font-size: 16px; }
 .attachment-hint { margin: 5px 0 0; color: #7a8495; font-size: 11px; }
 .note-editor-error { margin: 0; color: #b42318; font-size: 13px; }
 

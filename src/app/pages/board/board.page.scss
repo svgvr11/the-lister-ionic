@@ -691,43 +691,23 @@ ion-header {
 .theme-option ion-icon { font-size: 18px; }
 
 /* Botón de donación de Ko-fi, implementado localmente para no depender del
-   script ni de las fuentes que carga el widget oficial. El color lo fija el
-   tema activo mediante la variable --donation-color. Solo existe en la web, así
-   que su separación respectiva (margin-top) vive aquí y no en el contenedor:
-   al no renderizarse en nativo no deja ningún hueco en el menú. */
-.donation-button {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  margin-top: 14px;
-  margin-bottom: 16px;
-  padding: 0 16px;
-  color: var(--accent, #8870ad);
+   script ni de las fuentes que carga el widget oficial. Usa la misma base de
+   proporciones que welcome-guide-link y sobreescribe solo el color de fondo,
+   el ripple y la taza animada. Solo existe en la web. */
+.donation-button.welcome-guide-link {
   background: var(--donation-color);
-  border-radius: 10px;
-  /* El texto es blanco sobre un pastel claro: un ripple currentColor sería
-     invisible. Se usa el tinta de la app para que el feedback se vea. */
   --ripple-color: #172236;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-  text-decoration: none;
   text-shadow: 0 1px 1px rgba(34, 34, 34, 0.12);
-  transition: filter 0.15s ease;
-}
+  margin-top: 15px;
 
-.donation-button:hover,
-.donation-button:focus-visible {
-  filter: brightness(0.93);
-}
+  &:hover {
+    filter: brightness(0.93);
+  }
 
-.donation-button:focus-visible {
-  outline: 2px solid #536782;
-  outline-offset: 2px;
+  &:focus-visible {
+    outline: 2px solid #536782;
+    outline-offset: 2px;
+  }
 }
 
 .donation-label {
@@ -740,8 +720,8 @@ ion-header {
 /* Mismo balanceo de la taza que usaba el widget original (kofi-wiggle). */
 .donation-cup {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   animation: donation-wiggle 3s infinite;
   transform-origin: 50% 80%;
 }
@@ -885,6 +865,47 @@ ion-header {
 .welcome-guide-link ion-icon {
   flex: 0 0 auto;
   font-size: 15px;
+}
+
+/* Enviar comentarios: mismo estilo que Guía de bienvenida. */
+.menu-feedback {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  color: var(--accent, #8870ad);
+  background: color-mix(in srgb, var(--accent, #8870ad) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 28%, #fff);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.menu-feedback:hover {
+  background: color-mix(in srgb, var(--accent, #8870ad) 20%, #fff);
+}
+
+.menu-feedback:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+.menu-feedback ion-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
+.menu-feedback:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Eliminar cuenta: enlace discreto de peligro FUERA de la rejilla de acciones, para no
@@ -1836,60 +1857,6 @@ ion-header {
 
 .fab-add-list.open ion-icon {
   transform: rotate(45deg);
-}
-
-/* Botón flotante de comentarios. Conserva su posición encima del FAB de nueva lista y no
-   participa en el flujo ni en el masonry. Comparte su nivel de apilado: el scrim de perfil y
-   los backdrops de modal cubren ambos, como el FAB de nueva lista. */
-.feedback-fab {
-  position: fixed;
-  /* El ripple es bounded: sin esto se sale del círculo. */
-  overflow: hidden;
-  right: 32px;
-  bottom: calc(90px + var(--app-safe-area-bottom));
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--accent, #8870ad) 28%, #fff);
-  /* Transparente con el borde del tema: se distingue del FAB sólido sin competir con él. */
-  background: color-mix(in srgb, var(--accent, #8870ad) 10%, #fff);
-  color: var(--accent, #8870ad);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(20, 29, 48, 0.16);
-  transition: transform 0.2s ease, background 0.2s ease;
-  /* Mantiene la posición sobre Nueva lista y queda pulsable encima del scrim de perfil. */
-  z-index: var(--z-feedback-fab, 399);
-}
-
-.feedback-fab[aria-hidden="true"] {
-  pointer-events: none;
-}
-
-.feedback-fab:hover {
-  background: color-mix(in srgb, var(--accent, #8870ad) 20%, #fff);
-  transform: scale(1.06);
-}
-
-.feedback-fab:active { transform: scale(0.95); }
-
-.feedback-fab ion-icon { font-size: 21px; }
-
-.feedback-fab:focus-visible {
-  outline: 2px solid var(--accent, #8870ad);
-  outline-offset: 2px;
-}
-
-/* En móvil el botón de feedback conserva su ubicación encima del FAB de nueva lista. */
-@media (max-width: 700px) {
-  .feedback-fab {
-    right: 21px;
-    bottom: calc(80px + var(--app-safe-area-bottom));
-    width: 42px;
-    height: 42px;
-  }
-  .feedback-fab ion-icon { font-size: 20px; }
 }
 
 /* Respeta la preferencia del sistema de reducir animaciones. */

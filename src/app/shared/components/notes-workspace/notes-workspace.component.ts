@@ -3,7 +3,7 @@ import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input
 import { DomSanitizer } from '@angular/platform-browser';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { add, attachOutline, close, imageOutline, listOutline, pin, pinOutline, trash } from 'ionicons/icons';
+import { add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash } from 'ionicons/icons';
 import { BoardNote, BoardNoteAttachment } from '../../../models/board.model';
 import { orderedNotes, setPinnedNote } from '../../../core/board/note-rules/note-rules';
 import { MasonryController, MASONRY_GAP, resolveBoardFlowMode } from '../../../core/ui/masonry-layout/masonry-layout';
@@ -72,7 +72,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   private editorOpener: HTMLElement | null = null;
 
   constructor() {
-    addIcons({ add, attachOutline, close, imageOutline, listOutline, pin, pinOutline, trash });
+    addIcons({ add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash });
   }
 
   ngOnChanges(): void {
@@ -228,6 +228,26 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
       attachments: this.draft.attachments.filter((item) => item.id !== attachment.id)
     };
     delete this.attachmentUrls[attachment.id];
+  }
+
+  async downloadAttachment(attachment: BoardNoteAttachment): Promise<void> {
+    const url = this.attachmentUrls[attachment.id];
+    if (!url) return;
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = attachment.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('No se pudo descargar el adjunto', error);
+      this.editorError = 'No se pudo descargar el archivo. Inténtalo de nuevo.';
+    }
   }
 
   async saveNote(): Promise<void> {

@@ -31,7 +31,7 @@
         [attr.aria-label]="isPinned(note) ? 'Desfijar nota' : 'Fijar nota al inicio'"
         [attr.aria-pressed]="isPinned(note)"
         (click)="togglePin(note, $event)">
-        <ion-icon [name]="isPinned(note) ? 'pin' : 'pin-outline'" aria-hidden="true"></ion-icon>
+        <span class="pin-icon" aria-hidden="true"></span>
         <ion-ripple-effect></ion-ripple-effect>
       </button>
       <h3>{{ note.title }}</h3>
@@ -94,6 +94,10 @@
         <a *ngIf="attachmentUrls[attachment.id]" [href]="attachmentUrls[attachment.id]"
           target="_blank" rel="noopener noreferrer">{{ attachment.name }}</a>
         <span *ngIf="!attachmentUrls[attachment.id]">{{ attachment.name }}</span>
+        <button type="button" [attr.aria-label]="'Descargar ' + attachment.name"
+          [disabled]="editorBusy" (click)="downloadAttachment(attachment)">
+          <ion-icon name="download-outline"></ion-icon>
+        </button>
         <button type="button" [attr.aria-label]="'Quitar ' + attachment.name"
           [disabled]="editorBusy" (click)="removeAttachment(attachment)">
           <ion-icon name="close"></ion-icon>
