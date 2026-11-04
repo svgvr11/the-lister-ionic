@@ -10,7 +10,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 
 **Descripción:** Confirmar la auditoría (hallazgos H1-H9) contra el código y el navegador, y proponer un plan de implementación que el usuario apruebe antes de tocar código.
 
-**Contexto:** Base `claude/01-auditoria-ui-fab-y-modales.md` (snapshot v1.64.5-a, 2026-11-04). El FAB de Notas no gira y queda sobre el modal; el modal de Nueva nota es otra implementación del bottom sheet. Causa del FAB sobre el modal: `<app-notes-workspace>` vive dentro de `<ion-content>` y su `position: fixed; z-index: 1200` queda atrapado en el contexto de apilamiento del scroller de Ionic.
+**Contexto:** Base `docs/claude/01-auditoria-ui-fab-y-modales.md` (snapshot v1.64.5-a, 2026-11-04). El FAB de Notas no gira y queda sobre el modal; el modal de Nueva nota es otra implementación del bottom sheet. Causa del FAB sobre el modal: `<app-notes-workspace>` vive dentro de `<ion-content>` y su `position: fixed; z-index: 1200` queda atrapado en el contexto de apilamiento del scroller de Ionic.
 
 **Dependencias:** Ninguna (tarea inicial de la serie).
 
