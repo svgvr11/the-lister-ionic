@@ -16,7 +16,14 @@ export class NoteAttachmentService {
 
     const client = this.auth.supabaseClient;
     const session = this.auth.session ?? await this.auth.getSession();
-    if (!client || !session) {
+    if (!client) {
+      throw new Error(
+        this.auth.mockMode
+          ? 'Los adjuntos no están disponibles en modo demo.'
+          : 'Configura Supabase Storage para adjuntar archivos.'
+      );
+    }
+    if (!session) {
       throw new Error('Inicia sesión para adjuntar archivos a una nota.');
     }
 

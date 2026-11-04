@@ -61,6 +61,10 @@
 
 .notes-grid {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
   min-height: 1px;
 }
 
@@ -74,7 +78,8 @@
 
 .note-card {
   box-sizing: border-box;
-  position: absolute;
+  position: relative;
+  width: min(100%, 520px);
   overflow: hidden;
   padding: 20px;
   border: 1px solid rgba(48, 61, 88, 0.1);

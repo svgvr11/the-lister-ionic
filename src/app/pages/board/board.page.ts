@@ -664,7 +664,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.boardGridElement = ref?.nativeElement ?? null;
     if (this.boardGridElement) {
       this.masonry.observe(this.boardGridElement);
-      this.scheduleMasonryLayout();
+      // El setter corre durante la detección de cambios. Diferir evita que
+      // refreshFlowMode cambie `board--flow` a mitad del mismo ciclo al volver de Notas.
+      requestAnimationFrame(() => this.scheduleMasonryLayout());
     } else {
       this.masonry.release();
     }
@@ -1666,7 +1668,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   ngAfterViewInit(): void {
-    this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
+    this.boardItems.changes.subscribe(() => requestAnimationFrame(() => this.scheduleMasonryLayout()));
     this.scheduleMasonryLayout();
   }
 

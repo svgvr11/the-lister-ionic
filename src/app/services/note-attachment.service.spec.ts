@@ -13,6 +13,7 @@ describe('NoteAttachmentService', () => {
         { provide: AuthService, useValue: {
           supabaseClient: { storage: { from } },
           session: { user: { id: 'user-id' } },
+          mockMode: false,
           getSession: vi.fn()
         } }
       ]
@@ -37,6 +38,7 @@ describe('NoteAttachmentService', () => {
         { provide: AuthService, useValue: {
           supabaseClient: { storage: { from: vi.fn(() => ({ upload: vi.fn().mockResolvedValue({ error: new Error('Storage unavailable') }) })) } },
           session: null,
+          mockMode: false,
           getSession: vi.fn().mockResolvedValue(null)
         } }
       ]
@@ -47,6 +49,26 @@ describe('NoteAttachmentService', () => {
     await expect(service.upload(file, 'board-id', 'note-id')).rejects.toThrow('Inicia sesión');
   });
 
+  it('explica que los adjuntos no están habilitados en modo demo', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        NoteAttachmentService,
+        { provide: AuthService, useValue: {
+          supabaseClient: null,
+          session: { user: { id: 'mock-user-id' } },
+          mockMode: true,
+          getSession: vi.fn()
+        } }
+      ]
+    });
+
+    const service = TestBed.inject(NoteAttachmentService);
+    const file = new File(['contenido'], 'nota.pdf', { type: 'application/pdf' });
+    await expect(service.upload(file, 'board-id', 'note-id')).rejects.toThrow(
+      'Los adjuntos no están disponibles en modo demo.'
+    );
+  });
+
   it('propaga errores del almacenamiento al subir', async () => {
     const upload = vi.fn().mockResolvedValue({ error: new Error('Storage unavailable') });
     TestBed.configureTestingModule({
@@ -55,6 +77,7 @@ describe('NoteAttachmentService', () => {
         { provide: AuthService, useValue: {
           supabaseClient: { storage: { from: vi.fn(() => ({ upload })) } },
           session: { user: { id: 'user-id' } },
+          mockMode: false,
           getSession: vi.fn()
         } }
       ]

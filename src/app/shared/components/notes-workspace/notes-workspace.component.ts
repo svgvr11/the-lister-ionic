@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, QueryList, SecurityContext, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, Output, QueryList, SecurityContext, ViewChild, ViewChildren, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -76,6 +76,13 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   }
 
   ngOnChanges(): void {
+    this.refreshFlowMode();
+    this.scheduleLayout();
+  }
+
+  @HostListener('window:resize')
+  onViewportResize(): void {
+    this.refreshFlowMode();
     this.scheduleLayout();
   }
 
@@ -324,6 +331,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     if (this.layoutFrame) cancelAnimationFrame(this.layoutFrame);
     this.layoutFrame = requestAnimationFrame(() => {
       this.layoutFrame = 0;
+      this.refreshFlowMode();
       this.masonry.scheduleLayout();
     });
   }
