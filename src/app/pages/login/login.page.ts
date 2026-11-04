@@ -32,6 +32,7 @@ export class LoginPage implements OnInit, OnDestroy {
   readonly appVersionLabel = APP_VERSION_LABEL;
 
   private readonly auth = inject(AuthService);
+  readonly mockMode = this.auth.mockMode;
   private readonly router = inject(Router);
   private readonly zone = inject(NgZone);
   private readonly subscription = new Subscription();

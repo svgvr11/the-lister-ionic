@@ -15,8 +15,11 @@
         <p *ngIf="errorMessage" class="form-message error" role="alert">{{ errorMessage }}</p>
         <ion-button class="google-button" expand="block" [disabled]="busy" (click)="signInWithGoogle()">
           <ion-spinner *ngIf="busy" name="crescent"></ion-spinner>
-          <span *ngIf="!busy" slot="start" class="google-mark" aria-hidden="true">G</span>
-          <span class="google-button-label">{{ busy ? 'Conectando con Google…' : 'Continuar con Google' }}</span>
+          <span *ngIf="!busy && !mockMode" slot="start" class="google-mark" aria-hidden="true">G</span>
+          <span class="google-button-label">{{
+            busy ? (mockMode ? 'Entrando en modo demo…' : 'Conectando con Google…')
+              : (mockMode ? 'Entrar en modo demo' : 'Continuar con Google')
+          }}</span>
         </ion-button>
       </div>
 

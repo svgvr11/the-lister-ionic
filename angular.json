@@ -55,6 +55,18 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "mock": {
+              "browser": "src/main.mock.ts",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.mock.ts"
+                }
+              ],
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
@@ -63,7 +75,8 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": { "buildTarget": "the-lister-ionic:build:production" },
-            "development": { "buildTarget": "the-lister-ionic:build:development" }
+            "development": { "buildTarget": "the-lister-ionic:build:development" },
+            "mock": { "buildTarget": "the-lister-ionic:build:mock" }
           },
           "defaultConfiguration": "development"
         },

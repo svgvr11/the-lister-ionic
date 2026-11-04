@@ -5,6 +5,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:mock": "ng serve --configuration mock",
+    "build:mock": "ng build --configuration mock",
     "build": "ng build",
     "test:feedback": "node --experimental-strip-types scripts/test-feedback.mjs",
     "test:delete-account": "node --experimental-strip-types scripts/test-delete-account.mjs",
