@@ -8,6 +8,7 @@ Clon funcional del tablero mostrado en la referencia, construido con Angular + I
 - Cada lista tiene un **pin** con el color del tema elegido. La lista fijada se dibuja siempre en la primera posición del tablero (arriba a la izquierda) y su pin queda siempre visible; en las demás el pin aparece al pasar el mouse (o al navegar con el teclado) y al pulsarlo reemplaza a la lista fijada. Una lista creada con **Ubicar al inicio del tablero** también arranca fijada.
 - **Reordenar las listas arrastrándolas**, solo en la vista de lista de escritorio web (>700px, no nativo): al pasar el mouse por una tarjeta, el badge de tareas (p. ej. 3/7) se convierte en un handle de arrastre. Se arrastra desde ese handle (la tarjeta entera es la imagen de arrastre) y se suelta delante de la tarjeta de destino, o al final si se suelta en el espacio vacío del tablero. Con el teclado: handle enfocado y **Alt + flecha** arriba/abajo (o izquierda/derecha) mueve la lista una posición; **Escape** cancela un arrastre en curso. La lista fijada no se arrastra ni se puede pasar, y nada se coloca delante de ella. El reorden se guarda en `position`, así que es el mismo orden en todos los dispositivos.
 - Crear tareas dentro de cada lista.
+- Alternar junto al título del tablero entre **Checklists** y **Notas**. Las notas admiten texto enriquecido, imágenes y documentos privados (máximo 10 MB por archivo); se fijan al inicio y se presentan en masonry en escritorio. En Android se adaptan a las vistas Tarjetas/Lista del menú.
 - Marcar/desmarcar tareas.
 - Las tareas completadas se tachan y pasan al final.
 - Después de 3 tareas completadas aparece **Mostrar más**.
@@ -57,7 +58,7 @@ La autenticación y la sincronización se activan cuando `supabase.url` y `supab
 Para habilitar el acceso con Google:
 
 1. Crea un proyecto en Supabase.
-2. Ejecuta `supabase/schema.sql` en el SQL Editor. El script crea `boards` con `owner_id` y `board_data`, aplica RLS por usuario, deja un tablero por usuario con la restricción única `boards_owner_id_key` y publica la tabla en `supabase_realtime`.
+2. Ejecuta `supabase/schema.sql` en el SQL Editor. El script crea `boards` con `owner_id` y `board_data`, aplica RLS por usuario, deja un tablero por usuario con la restricción única `boards_owner_id_key`, crea el bucket privado `note-attachments` con políticas por usuario y publica la tabla en `supabase_realtime`.
 3. Confirma `supabase.url` y `supabase.anonKey` en `src/environments/environment.ts` con los valores de ese proyecto.
 4. En Supabase, habilita Google en Authentication > Sign In / Providers y configura las credenciales OAuth de Google.
 5. En Google Cloud, agrega como URI de redirección autorizada la URL de callback que muestra Supabase para el proveedor Google.

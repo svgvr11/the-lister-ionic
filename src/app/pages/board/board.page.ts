@@ -26,10 +26,11 @@ import {
 } from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
-import { ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
+import { BoardNote, ChecklistBoard, ChecklistList, ChecklistTask } from '../../models/board.model';
 import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
 import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
 import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
+import { NotesWorkspaceComponent } from '../../shared/components/notes-workspace/notes-workspace.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
@@ -107,6 +108,7 @@ import {
 } from '../../core/board/board-task-rules/board-task-rules';
 import { focusListRemovalMessage, type FocusListRemovalCause } from '../../core/ui/focus-notice/focus-notice';
 import { BoardViewMode, readStoredBoardView, storeBoardView } from '../../core/board/board-view/board-view';
+import { BoardContentView, readBoardContentView, storeBoardContentView } from '../../core/board/board-content-view/board-content-view';
 import {
   isMacOsBrowser,
   markWelcomeSeen,
@@ -143,6 +145,7 @@ interface CdkScrollStrategyShape {
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
     FeedbackModalComponent, InlineEditComponent, AddTaskInputComponent, WelcomeModalComponent,
+    NotesWorkspaceComponent,
     // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
     // que el CDK aterrice solo en el chunk del tablero.
     CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
@@ -216,6 +219,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
    *  botón de Ko-fi solo se renderiza en la web. */
   readonly isNative = Capacitor.isNativePlatform();
   boardViewMode: BoardViewMode = readStoredBoardView(this.isNative);
+  contentView: BoardContentView = readBoardContentView();
 
   setBoardViewMode(mode: BoardViewMode): void {
     if (this.boardViewMode === mode) return;
@@ -229,6 +233,26 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     } else {
       this.scheduleMasonryLayout();
     }
+  }
+
+  setContentView(mode: BoardContentView): void {
+    if (this.contentView === mode) return;
+    if (this.addingList) this.cancelAddList();
+    this.contentView = mode;
+    this.searching = false;
+    this.searchQuery = '';
+    storeBoardContentView(mode);
+    this.scheduleMasonryLayout();
+  }
+
+  updateNotes(notes: BoardNote[]): void {
+    this.board = { ...this.board, notes };
+    void this.persist();
+  }
+
+  updatePinnedNoteId(noteId: string | null): void {
+    this.board = { ...this.board, pinnedNoteId: noteId };
+    void this.persist();
   }
 
   private clearMasonryStyles(): void {
@@ -640,7 +664,9 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.boardGridElement = ref?.nativeElement ?? null;
     if (this.boardGridElement) {
       this.masonry.observe(this.boardGridElement);
-      this.scheduleMasonryLayout();
+      // El setter corre durante la detección de cambios. Diferir evita que
+      // refreshFlowMode cambie `board--flow` a mitad del mismo ciclo al volver de Notas.
+      requestAnimationFrame(() => this.scheduleMasonryLayout());
     } else {
       this.masonry.release();
     }
@@ -1642,7 +1668,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
 
   ngAfterViewInit(): void {
-    this.boardItems.changes.subscribe(() => this.scheduleMasonryLayout());
+    this.boardItems.changes.subscribe(() => requestAnimationFrame(() => this.scheduleMasonryLayout()));
     this.scheduleMasonryLayout();
   }
 

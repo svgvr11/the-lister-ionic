@@ -9,13 +9,13 @@
         <span class="version-badge" [attr.aria-label]="'Versión ' + appVersionLabel">{{ appVersionLabel }}</span>
       </div>
 
-      <label class="search-box" aria-label="Buscar listas o tareas">
+      <label class="search-box" aria-label="Buscar listas, tareas o notas">
         <ion-icon class="search-icon" name="search"></ion-icon>
         <ion-input
           #searchInput
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()"
-          placeholder="Buscar listas o tareas..."
+          placeholder="Buscar listas, tareas o notas..."
           class="search-input"
           (keyup.escape)="closeSearch()"
         ></ion-input>
@@ -271,33 +271,51 @@
     </div>
 
     <div class="board-title-block">
-      <div *ngIf="!editingTitle" class="title-display">
-        <ion-title class="board-title">{{ board.title }}</ion-title>
-        <button class="edit-title-btn ion-activatable" (click)="startEditTitle()" aria-label="Editar título">
-          <ion-icon name="pencil"></ion-icon>
+      <div class="board-title-main">
+        <div *ngIf="!editingTitle" class="title-display">
+          <ion-title class="board-title">{{ board.title }}</ion-title>
+          <button class="edit-title-btn ion-activatable" (click)="startEditTitle()" aria-label="Editar título">
+            <ion-icon name="pencil"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
+        </div>
+
+        <div *ngIf="editingTitle" class="title-edit">
+          <app-inline-edit
+            variant="title"
+            label="Editar título del tablero"
+            [fieldName]="'board-title'"
+            [value]="titleDraft"
+            [maxlength]="maxListTitleLength"
+            [showCount]="true"
+            [count]="titleDraftCount"
+            [atLimit]="titleDraftCount >= maxListTitleLength"
+            [saveDisabled]="!titleDraft.trim()"
+            (valueChange)="onTitleDraftInput($event)"
+            (save)="confirmEditTitle()"
+            (cancel)="cancelEditTitle()"
+          ></app-inline-edit>
+        </div>
+      </div>
+      <div class="content-view-switch" role="group" aria-label="Vista del tablero">
+        <button type="button" class="content-view-option ion-activatable"
+          [class.selected]="contentView === 'notes'"
+          [attr.aria-pressed]="contentView === 'notes'"
+          (click)="setContentView('notes')">
+          <span>Notas</span>
+          <ion-ripple-effect></ion-ripple-effect>
+        </button>
+        <button type="button" class="content-view-option ion-activatable"
+          [class.selected]="contentView === 'checklists'"
+          [attr.aria-pressed]="contentView === 'checklists'"
+          (click)="setContentView('checklists')">
+          <span>Checklists</span>
           <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
-
-      <div *ngIf="editingTitle" class="title-edit">
-        <app-inline-edit
-          variant="title"
-          label="Editar título del tablero"
-          [fieldName]="'board-title'"
-          [value]="titleDraft"
-          [maxlength]="maxListTitleLength"
-          [showCount]="true"
-          [count]="titleDraftCount"
-          [atLimit]="titleDraftCount >= maxListTitleLength"
-          [saveDisabled]="!titleDraft.trim()"
-          (valueChange)="onTitleDraftInput($event)"
-          (save)="confirmEditTitle()"
-          (cancel)="cancelEditTitle()"
-        ></app-inline-edit>
-      </div>
     </div>
 
-    <div *ngIf="board.lists.length === 0" class="board-empty-state">
+    <div *ngIf="contentView === 'checklists' && board.lists.length === 0" class="board-empty-state">
       Añade una lista para comenzar
     </div>
 
@@ -309,7 +327,7 @@
       son exclusivos y nunca comparten elemento (ver `resolveReorderEngine`).
     -->
     <div
-      *ngIf="visibleLists.length > 0"
+      *ngIf="contentView === 'checklists' && visibleLists.length > 0"
       class="board"
       [class.board-cards]="cardsViewActive"
       [class.board--flow]="usesFlowLayout"
@@ -689,13 +707,26 @@
     </div>
 
     <!-- Mensaje cuando no hay resultados de búsqueda -->
-    <div *ngIf="searching && visibleLists.length === 0" class="no-results">
+    <div *ngIf="contentView === 'checklists' && searching && visibleLists.length === 0" class="no-results">
       <ion-icon name="search" class="no-results-icon" aria-hidden="true"></ion-icon>
       <p>No se encontraron listas que coincidan con &ldquo;<strong>{{ searchQuery }}</strong>&rdquo;</p>
     </div>
 
     <!-- Anuncios del reordenamiento con teclado (Alt + flechas sobre el handle). -->
     <div class="visually-hidden" role="status" aria-live="polite">{{ listAnnouncement }}</div>
+
+    <app-notes-workspace
+      *ngIf="contentView === 'notes'"
+      [notes]="board.notes ?? []"
+      [pinnedNoteId]="board.pinnedNoteId ?? null"
+      [boardId]="board.id"
+      [isNative]="isNative"
+      [compactCards]="cardsViewActive"
+      [searchQuery]="searchQuery"
+      [themeAccent]="themeAccent"
+      (notesChange)="updateNotes($event)"
+      (pinnedNoteIdChange)="updatePinnedNoteId($event)"
+    ></app-notes-workspace>
   </div>
   </ng-container>
 
@@ -735,6 +766,7 @@
   <!-- ✨ Botón flotante (FAB) para añadir lista -->
   <button
     #newListFab
+    *ngIf="contentView === 'checklists'"
     class="fab-add-list ion-activatable"
     type="button"
     [class.open]="addingList"

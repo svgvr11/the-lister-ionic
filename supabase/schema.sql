@@ -79,6 +79,52 @@ create policy boards_delete_own
   on public.boards for delete to authenticated
   using (owner_id = (select auth.uid()));
 
+-- Adjuntos privados de las notas. La primera carpeta del objeto siempre es el id
+-- del usuario; Storage aplica la misma propiedad en las tres operaciones permitidas.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'note-attachments',
+  'note-attachments',
+  false,
+  10485760,
+  array[
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif',
+    'application/pdf', 'text/plain', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ]
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists note_attachments_read_own on storage.objects;
+create policy note_attachments_read_own
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'note-attachments'
+    and split_part(name, '/', 1) = (select auth.uid()::text)
+  );
+
+drop policy if exists note_attachments_upload_own on storage.objects;
+create policy note_attachments_upload_own
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'note-attachments'
+    and split_part(name, '/', 1) = (select auth.uid()::text)
+  );
+
+drop policy if exists note_attachments_delete_own on storage.objects;
+create policy note_attachments_delete_own
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'note-attachments'
+    and split_part(name, '/', 1) = (select auth.uid()::text)
+  );
+
 -- La app escucha los INSERT/UPDATE de boards para sincronizar entre dispositivos
 -- (SupabaseBoardRepository.startSynchronization). Sin esta línea el canal se
 -- suscribe bien pero nunca recibe eventos. Es idempotente porque volver a agregar
