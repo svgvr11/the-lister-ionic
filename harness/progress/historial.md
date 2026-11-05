@@ -30,6 +30,17 @@ No es un duplicado de Git ni un registro de cada archivo modificado.
 - Playwright escritorio (1280px) y móvil (600px): AMBOS FABs verificados — Listas abre Nueva lista y devuelve foco al cerrar; Notas abre el editor, gira y devuelve foco al cerrar.
 - Archivos: `fab-button.component.ts` (output renombrado), `board.page.html` (click → activated).
 
+## 2026-11-05 — T-004a Sheet/modal compartido (componente + specs)
+
+- Creado `shared/components/sheet-dialog/`: portal CDK a `document.body`, backdrop con tokens, diálogo centrado en escritorio y bottom sheet con asa en móvil, animación con reduced-motion, `role="dialog"`/`aria-modal`/`aria-labelledby`, slots de título/acciones/divisor/cuerpo/pie, cierre por botón/Escape/backdrop solo si `dismissible`, foco inicial y trampa de Tab, devolución de foco al opener y auto-registro en `OverlayStackService`.
+- Fuente única del modo móvil: `core/ui/mobile-presentation` + `MobilePresentationService` (valor vivo para refresher/masonry, `snapshot()` para overlays). `board.page` dejó su `matchMedia` local y estrena getter/effect.
+- `core/ui/overlay-stack` y `overlay-stack.service` admiten `setDismissible(id, dismissible)` sin reordenar; Nuevo helper `core/ui/theme-variables` reconstruye las variables del tema en la raíz portada.
+- `styles.css`: contenedor CDK en `--z-page-overlay` y backdrop con blur; sin `angular.json` ni `overlay-prebuilt.css`.
+- Versión subida a build `1.64.10-a` (`npm run version:bump -- --build`).
+- Validación: sheet-dialog 18/18, mobile-presentation 4/4, mobile-presentation.service 2/2, theme-variables 3/3, overlay-stack 6/6; `npm test` 691/692 (único fallo preexistente en notes-workspace); `tsc --noEmit -p tsconfig.app.json` limpio; `npm run build` limpio (solo warnings CSS preexistentes).
+- Playwright temporal: escritorio 680 px centrado sobre FAB/backdrop, foco y Tab/Escape correctos, snapshot móvil al redimensionar; móvil 390 px bottom sheet pegado abajo con asa; dos temas cambian acento/fondo. Página temporal retirada.
+- Archivos: `shared/components/sheet-dialog/*`, `core/ui/mobile-presentation/*`, `services/mobile-presentation.service.*`, `core/ui/theme-variables/*` (nuevos); `overlay-stack.*`, `board.page.ts`, `styles.css` (editados); `core/app-version.ts` (script).
+
 ## 2026-11-05 — T-003 Botones y campos de formulario compartidos
 
 - Creado `shared/components/action-button/` (variantes primary/secondary/danger, ícono opcional, `ion-ripple-effect`, output `click`, `nativeElement`/`focus()`), `shared/components/close-button/` (cabecera, 32×32) y `shared/components/text-field/` (etiqueta, foco, contador opcional, error, outputs valueChange/enter/paste).

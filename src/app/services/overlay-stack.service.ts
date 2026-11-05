@@ -40,6 +40,11 @@ export class OverlayStackService {
     return this.stack.register(overlay.id, overlay.close, overlay.dismissible ?? true);
   }
 
+  /** Cambia si la capa se puede cerrar sin alterar su posición en la pila. */
+  setDismissible(id: string, dismissible: boolean): boolean {
+    return this.stack.setDismissible(id, dismissible);
+  }
+
   closeTop() {
     return this.stack.closeTop();
   }

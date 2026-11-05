@@ -77,12 +77,13 @@ Excepción: `core/app-version.ts` vive en la raíz de `core/` (única fuente de 
 - `supabase-board.repository.ts`: sincronización con Supabase, realtime, coalescing de guardados, versión optimista.
 - `feedback.service.ts`: envía feedback a Edge Function.
 - `session-guard.service.ts`: bloqueo de pestaña por cambio de sesión en otra pestaña.
-- `overlay-stack.service.ts`: gestión de overlays modales.
+- `overlay-stack.service.ts`: gestión de overlays modales; permite actualizar `dismissible` sin reordenar la pila.
+- `mobile-presentation.service.ts`: fuente única del modo móvil (señal viva y `snapshot()` para overlays).
 - `connectivity.service.ts`, `diagnostics.service.ts`, `note-attachment.service.ts`, `mock-board.session.service.ts`, `mock-auth.service.ts`.
 
 ### `shared/components/` — Componentes standalone reutilizables
 
-`app-footer`, `add-task-input`, `inline-edit`, `feedback-modal`, `notes-workspace`, `welcome-modal`, `legal-page`.
+`app-footer`, `add-task-input`, `inline-edit`, `feedback-modal`, `notes-workspace`, `welcome-modal`, `legal-page`, `fab-button`, `action-button`, `close-button`, `text-field`, `sheet-dialog`.
 
 ## Datos y persistencia
 
@@ -122,6 +123,8 @@ Excepción: `core/app-version.ts` vive en la raíz de `core/` (única fuente de 
 - Flujo normal en una columna (masonry desactivado).
 - Vista Tarjetas solo en nativo.
 - Menú de perfil: popover en escritorio, bottom sheet en móvil.
+- `sheet-dialog`: portal CDK a `document.body`; diálogo centrado en escritorio y bottom sheet con asa en móvil. Usa `--z-page-overlay`, backdrop con blur y variables del tema reconstruidas para el portal.
+- Umbral móvil único (700 px) en `core/ui/mobile-presentation`; refresher/masonry lo leen en vivo y los overlays capturan una instantánea al abrirse.
 - Botón flotante de feedback siempre visible, inerte bajo modales.
 - Colores solo desde variables del tema.
 

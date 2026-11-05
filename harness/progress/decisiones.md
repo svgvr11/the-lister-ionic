@@ -43,6 +43,33 @@ Decisiones duraderas del proyecto. Cada decisión incluye identificador, fecha, 
 - **Consecuencias**: `sheet-dialog` auto-registra en `OverlayStackService`; FABs permanecen en board.page; T-004 fraccionado.
 - **Estado**: vigente
 
+### D-016 — Fuente única de la presentación móvil
+
+- **Fecha**: 2026-11-05
+- **Contexto**: T-004a necesita una sola definición del umbral móvil para board, overlays y el nuevo sheet. Antes cada overlay capturaba su valor desde un `matchMedia('(max-width: 700px)')` local de board.page.
+- **Decisión adoptada**: `core/ui/mobile-presentation` define el umbral 700 y `MobilePresentationService` (root) expone el valor vivo como señal. Refresher/masonry consumen `isMobile()` en vivo; los overlays capturan `snapshot()` al abrirse y no cambian si se redimensiona mientras están abiertos. El `isMobilePresentation` de board.page pasa a ser un getter del servicio.
+- **Alternativas consideradas**: mantener un `matchMedia` por overlay (duplicaba el umbral y el ciclo de vida); usar el valor vivo dentro de los overlays (cambiaba la variante a mitad de uso).
+- **Consecuencias**: un solo lugar para el umbral; board.page ya no registra listeners propios; los specs del servicio/helper cubren el umbral y el fallback sin `matchMedia`.
+- **Estado**: vigente
+
+### D-017 — Título del sheet y variables de tema del portal
+
+- **Fecha**: 2026-11-05
+- **Contexto**: el sheet vive bajo `document.body`, así que no hereda las variables CSS del `:host` de board.page; además había que fijar la jerarquía tipográfica del título.
+- **Decisión adoptada**: el título del sheet usa 20 px / 700 (más estándar que 750 y coherente con el modal de foco). `core/ui/theme-variables` reconstruye desde `BoardTheme` las variables que board.page declara en su `:host` (`--board-bg`, `--topbar-bg`, `--accent`, `--on-accent`, `--fab-color`, `--fab-hover`, `--card-surface`, `--focus-muted-text`) y el sheet las aplica en su raíz portada; se limpian al cambiar o quitar el tema.
+- **Alternativas consideradas**: 750 (demasiado pesado); dejar que el sheet herede del `:host` (imposible bajo el portal); duplicar valores hex en el componente (se desincroniza del tema).
+- **Consecuencias**: el sheet respeta el tema activo sin acoplarse a la página; el helper es puro y testeable.
+- **Estado**: vigente
+
+### D-018 — Estilos base del overlay CDK
+
+- **Fecha**: 2026-11-05
+- **Contexto**: CDK Overlay se monta fuera del árbol de board.page y necesita contenedor/backdrop con la capa correcta.
+- **Decisión adoptada**: CDK 20 ya inyecta los estilos base del contenedor, pane y backdrop en la capa `cdk-overlay`; solo se añaden en `styles.css` la capa del proyecto (`--z-page-overlay`, 1000) y los tokens del backdrop (`--overlay-backdrop-color`, `--overlay-backdrop-blur`). No se añade `overlay-prebuilt.css` ni se toca `angular.json`.
+- **Alternativas consideradas**: importar la hoja prebuilt de CDK (duplicaba estilos y requería tocar `angular.json`); fijar un z-index literal en el componente (rompía el mapa de capas).
+- **Consecuencias**: el sheet queda sobre el FAB (200) y bajo el bloqueo de sesión (10000) usando tokens; T-005 podrá revisar el resto de literales.
+- **Estado**: vigente
+
 
 ## Decisiones sustituidas
 

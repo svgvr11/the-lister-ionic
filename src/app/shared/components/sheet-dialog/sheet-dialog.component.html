@@ -1,0 +1,42 @@
+<ng-template #sheetTemplate>
+  <section
+    class="sheet-dialog"
+    [class.sheet-dialog--sm]="size === 'sm'"
+    [class.sheet-dialog--md]="size === 'md'"
+    [class.sheet-dialog--mobile]="mobileMode"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="labelledBy || titleId"
+    (keydown)="onSheetKeydown($event)"
+    (animationend)="onAnimationEnd($event)"
+  >
+    <span *ngIf="mobileMode" class="sheet-dialog__handle" aria-hidden="true"></span>
+
+    <header class="sheet-dialog__header">
+      <div class="sheet-dialog__title" [id]="titleId">
+        <ng-content select="[sheet-title]"></ng-content>
+      </div>
+      <div class="sheet-dialog__header-actions">
+        <ng-content select="[sheet-header-actions]"></ng-content>
+        <app-close-button
+          *ngIf="showCloseButton"
+          [label]="closeLabel"
+          (activated)="requestClose()"
+        ></app-close-button>
+      </div>
+    </header>
+
+    <div class="sheet-dialog__divider">
+      <ng-content select="[sheet-divider]"></ng-content>
+    </div>
+
+    <div class="sheet-dialog__body">
+      <ng-content></ng-content>
+    </div>
+
+    <footer class="sheet-dialog__footer">
+      <ng-content select="[sheet-footer]"></ng-content>
+    </footer>
+  </section>
+</ng-template>

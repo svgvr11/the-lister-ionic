@@ -27,6 +27,18 @@ export class OverlayStack {
     this.entries = this.entries.filter((entry) => !entry.id.startsWith(prefix));
   }
 
+  /**
+   * Actualiza si una capa puede cerrarse sin sacarla de la pila. Se usa cuando el
+   * estado cambia mientras el overlay sigue abierto (p. ej., una operación en curso
+   * bloquea Atrás/Escape). No reordena la capa.
+   */
+  setDismissible(id: string, dismissible: boolean): boolean {
+    const entry = this.entries.find((item) => item.id === id);
+    if (!entry) return false;
+    entry.dismissible = dismissible;
+    return true;
+  }
+
   closeTop(): OverlayCloseResult {
     const top = this.entries[this.entries.length - 1];
     if (!top) return 'empty';

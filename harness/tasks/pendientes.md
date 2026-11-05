@@ -65,6 +65,8 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 
 **Descripción:** Crear `shared/components/sheet-dialog/` (diálogo centrado en escritorio, bottom sheet en móvil) con CDK Portal a `document.body`, backdrop con `--overlay-backdrop-color` y blur, asa superior en móvil, animación de entrada (con reduced-motion), `role="dialog"` + `aria-modal` + `aria-labelledby`, trampa de Tab, foco inicial tras la animación, devolución de foco al opener, cierre por backdrop solo si `dismissible`, Escape. Auto-registro en `OverlayStackService` (`dismissible = !editorBusy`). Slots: cabecera, cuerpo, acciones. Fuente única del modo móvil (snapshot al abrir, como `newListMobilePresentation`). Tokens de `styles.css`; crear los que falten con comentario.
 
+**Implementado:** componente y specs completos, sin migrar aún Nueva lista ni Nueva nota. Incluye `MobilePresentationService`, helper de tema, `setDismissible` en la pila y estilos globales del overlay. Ver detalle en `harness/tasks/actual.md`.
+
 **Contexto:** Resuelve H3, H4, H5. `board.page` ya registra `board:new-list` en `syncOverlayStack()`; al asumir el sheet, retirar ese id del sync de board.
 
 **Dependencias:** T-001 (plan aprobado C1-C5, C7-C8), T-002 (FAB), T-003 (botones/campos).
@@ -73,7 +75,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - Componente `sheet-dialog` standalone con specs: apertura/cierre, Escape, backdrop, registro/desregistro en overlay-stack, foco, trampa de Tab, modo móvil, `dismissible = !editorBusy`.
 - No queda CSS de sheet duplicado.
 
-**Estado:** pendiente
+**Estado:** terminado
 
 ---
 
@@ -136,3 +138,5 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 1. **Spec roto `notes-workspace.component.spec.ts:78`:** el test "guarda una nueva nota con el texto enriquecido y emite los datos" falla con `TypeError: Cannot read properties of null (reading 'click')` porque busca `.new-note-button` que no existe en el DOM. Es **pre-existente a T-002** (sus archivos `.ts`/`.spec.ts` no fueron tocados; `git diff --stat` vacío). Se arregla o reescribe en **T-006** (al mover notas a `pages/notes`, el spec se traslada y reescribe junto al componente).
 
 2. **Uso completo de `editorOpen` (condición C3 de T-001):** `board.page.ts` ya tiene el getter `notesEditorOpen` que lee `notesWorkspace.editorOpen` y hace girar el FAB de notas, pero `boardModalOpen`, `setContentView`, los guards y `[open]` del FAB aún no lo consumen plenamente. Eso se completa en **T-004/T-006** (sheet/modal compartido y page `pages/notes`).
+
+3. **Foco inicial de Nueva lista roto desde T-003:** `board.page.ts:619` conserva `@ViewChild('newListTitleInput', { read: IonInput })`, pero el template ya usa `app-text-field` y no existe ese template ref; el modal abre con el foco en el FAB. Detectado en la regresión Playwright de T-004a. Se corrige en **T-004b** al migrar Nueva lista al `sheet-dialog` (o antes, si el usuario lo pide).

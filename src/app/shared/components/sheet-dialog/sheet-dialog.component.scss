@@ -1,0 +1,161 @@
+/* El componente en sí no pinta nada en su posición original: todo su contenido vive
+   en un portal de CDK bajo document.body. */
+:host {
+  display: contents;
+}
+
+.sheet-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100vw - 32px), 680px);
+  max-height: min(88dvh, 860px);
+  min-height: 0;
+  padding: 20px;
+  color: #172236;
+  background: var(--card-surface, #fff);
+  border: 1px solid #e9ecf2;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(20, 29, 48, 0.22);
+  overflow: hidden;
+  animation: sheetDialogEnter 0.16s ease-out;
+}
+
+.sheet-dialog--sm {
+  width: min(calc(100vw - 32px), 440px);
+}
+
+.sheet-dialog--md {
+  width: min(calc(100vw - 32px), 680px);
+}
+
+.sheet-dialog:focus-visible {
+  outline: none;
+}
+
+.sheet-dialog__handle {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  background: color-mix(in srgb, var(--accent, #8870ad) 24%, #dce1e8);
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.sheet-dialog__header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-dialog__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #172236;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.sheet-dialog__title :is(h1, h2, h3, p) {
+  margin: 0;
+  font: inherit;
+}
+
+.sheet-dialog__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.sheet-dialog__divider {
+  flex: 0 0 auto;
+}
+
+.sheet-dialog__divider:empty {
+  display: none;
+}
+
+.sheet-dialog__divider :is(hr, [sheet-divider]) {
+  width: 100%;
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--accent, #8870ad) 16%, transparent);
+}
+
+.sheet-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-dialog__footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  padding-top: 12px;
+}
+
+.sheet-dialog__footer:empty {
+  display: none;
+}
+
+.sheet-dialog--mobile {
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - var(--app-safe-area-top) - 12px);
+  padding: 26px 16px calc(16px + var(--app-safe-area-bottom));
+  border-width: 1px 0 0;
+  border-radius: 18px 18px 0 0;
+  animation: sheetDialogEnterMobile 0.18s ease-out;
+}
+
+@keyframes sheetDialogEnter {
+  from {
+    opacity: 0.9;
+    transform: translateY(5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sheetDialogEnterMobile {
+  from {
+    opacity: 0.8;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-dialog {
+    animation: none;
+  }
+}
+
+@supports not (height: 100dvh) {
+  .sheet-dialog {
+    max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
+  }
+
+  .sheet-dialog--mobile {
+    max-height: calc(100vh - var(--app-safe-area-top) - 12px);
+  }
+}

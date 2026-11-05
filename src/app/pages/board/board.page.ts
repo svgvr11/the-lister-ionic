@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, DoCheck, ElementRef, HostBinding, HostListener, NgZone, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, HostBinding, HostListener, NgZone, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonIcon, IonInput, IonRefresher, IonRefresherContent,
@@ -51,6 +51,7 @@ import { DELETE_CONFIRM_TEXT, isDeleteConfirmText } from '../../core/auth/delete
 import { SessionGuardService } from '../../services/session-guard.service';
 import { BoardSessionService } from '../../services/board-session.service';
 import { OverlayStackService, type RegisteredOverlay } from '../../services/overlay-stack.service';
+import { MobilePresentationService } from '../../services/mobile-presentation.service';
 import { FeedbackService } from '../../services/feedback.service';
 import {
   listDragKeyOffset,
@@ -207,16 +208,17 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   activeTheme: BoardTheme = migrateLegacyTheme(this.auth.session?.user.id ?? null);
   accountMenuOpen = false;
   accountMenuClosing = false;
-  isMobilePresentation = false;
   accountMenuMobilePresentation = false;
   newListMobilePresentation = false;
   focusListMobilePresentation = false;
+  private readonly mobilePresentation = inject(MobilePresentationService);
+  private mobilePresentationEffectReady = false;
   private accountMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
-  private mobilePresentationQuery: MediaQueryList | null = null;
-  private readonly onMobilePresentationChange = (event: MediaQueryListEvent): void => {
-    this.isMobilePresentation = event.matches;
-    this.scheduleMasonryLayout();
-  };
+
+  /** Valor vivo de la presentación móvil; los overlays usan `snapshot()` al abrirse. */
+  get isMobilePresentation(): boolean {
+    return this.mobilePresentation.isMobile();
+  }
   private newListTitleFocusTimer: ReturnType<typeof setTimeout> | null = null;
   private newListViewportTimer: ReturnType<typeof setTimeout> | null = null;
   private newListViewportResizeHandler: (() => void) | null = null;
@@ -705,10 +707,20 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   constructor() {
     addIcons({search,close,personCircle,personRemoveOutline,checkmark,logOut,pencil,trash,trashBinOutline,reorderThree,reorderTwo,add,layersOutline,returnDownBack,checkmarkCircle,chevronDown,chevronForward,archiveOutline,megaphoneOutline,schoolOutline});
+    // El masonry se recalcula cuando la fuente única cambia de móvil a escritorio.
+    // La primera pasada solo deja lista la marca: la maquetación inicial la hace
+    // ngAfterViewInit, igual que antes.
+    effect(() => {
+      this.mobilePresentation.isMobile();
+      if (!this.mobilePresentationEffectReady) {
+        this.mobilePresentationEffectReady = true;
+        return;
+      }
+      this.scheduleMasonryLayout();
+    });
   }
 
   ngOnInit(): void {
-    this.initializeMobilePresentation();
     void this.initializeBoard();
   }
 
@@ -838,7 +850,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.focusOpener = null;
       return;
     }
-    this.focusListMobilePresentation = this.isMobilePresentation;
+    this.focusListMobilePresentation = this.mobilePresentation.snapshot();
     // La zona horaria se lee del dispositivo cada vez que se abre el modal.
     this.dispositivoZonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
     this.closeFocusUpdatedAtTooltip();
@@ -1245,7 +1257,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     }
     if (this.focusListId || this.feedbackOpen || this.deleteDialogOpen || this.listToRemove) return;
     if (this.addingList) this.cancelAddList(false);
-    this.accountMenuMobilePresentation = this.isMobilePresentation;
+    this.accountMenuMobilePresentation = this.mobilePresentation.snapshot();
     this.accountMenuOpener = this.accountButton?.nativeElement ?? null;
     this.accountMenuOpen = true;
   }
@@ -1676,8 +1688,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.cancelCdkDrag();
     this.clearCdkSafetyTimer();
     this.overlayStack.unregisterOwner('board');
-    this.mobilePresentationQuery?.removeEventListener('change', this.onMobilePresentationChange);
-    this.mobilePresentationQuery = null;
     this.subscription?.unsubscribe();
     this.masonry.disconnect();
     if (this.accountMenuCloseTimer !== null) clearTimeout(this.accountMenuCloseTimer);
@@ -1685,12 +1695,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.clearFocusUpdatedAtTooltipTimer();
     this.clearNewListInputFocusWork();
     this.feedbackOpen = false;
-  }
-
-  private initializeMobilePresentation(): void {
-    this.mobilePresentationQuery = window.matchMedia('(max-width: 700px)');
-    this.isMobilePresentation = this.mobilePresentationQuery.matches;
-    this.mobilePresentationQuery.addEventListener('change', this.onMobilePresentationChange);
   }
 
   // ✏️ Edición de título
@@ -1829,7 +1833,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     if (!this.addingList && this.accountMenuOpen) {
       this.closeAccountMenu(true, false);
     }
-    if (!this.addingList) this.newListMobilePresentation = this.isMobilePresentation;
+    if (!this.addingList) this.newListMobilePresentation = this.mobilePresentation.snapshot();
     this.addingList = !this.addingList;
     if (this.addingList) {
       this.newListOpener = this.newListFab?.nativeElement ?? null;

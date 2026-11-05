@@ -87,3 +87,20 @@ ion-textarea .native-textarea {
   caret-color: var(--ion-text-color, #172236);
   user-select: text;
 }
+
+/* ── CDK Overlay (sheet-dialog) ─────────────────────────────────────────────
+   El overlay se monta en document.body. CDK 20 ya inyecta los estilos base del
+   contenedor/pane/backdrop en la capa `cdk-overlay`; aquí solo se fijan la capa
+   real del proyecto y los tokens del backdrop. No hace falta añadir
+   `overlay-prebuilt.css` a angular.json.
+   La capa queda por encima del FAB (--z-content-fab) y por debajo del bloqueo
+   de sesión (--z-session-lock). */
+.cdk-overlay-container {
+  z-index: var(--z-page-overlay, 1000);
+}
+
+.sheet-dialog-backdrop {
+  background: var(--overlay-backdrop-color);
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+}

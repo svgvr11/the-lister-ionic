@@ -63,4 +63,18 @@ describe('overlay-stack', () => {
     stack.unregisterPrefix('board:');
     expect(stack.size).toBe(0);
   });
+
+  it('setDismissible cambia el bloqueo sin reordenar ni sacar la capa', () => {
+    const stack = new OverlayStack();
+    const closed: string[] = [];
+
+    stack.register('sheet', () => closed.push('sheet'));
+    expect(stack.setDismissible('sheet', false)).toBe(true);
+    expect(stack.topId).toBe('sheet');
+    expect(stack.closeTop()).toBe('blocked');
+    expect(stack.setDismissible('sheet', true)).toBe(true);
+    expect(stack.closeTop()).toBe('closed');
+    expect(closed).toEqual(['sheet']);
+    expect(stack.setDismissible('missing', true)).toBe(false);
+  });
 });
