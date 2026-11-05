@@ -20,11 +20,6 @@
   cursor: not-allowed;
 }
 
-.action-button:disabled:hover {
-  background: inherit;
-  box-shadow: inherit;
-}
-
 /* ── Primario ── */
 .action-button--primary {
   background: var(--fab-color, #4f46e5);

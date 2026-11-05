@@ -62,6 +62,11 @@ export class SheetDialogComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Si es false, Atrás/Escape/backdrop no cierran (operación en curso). */
   @Input() dismissible = true;
   /**
+   * Si es false, el clic en el backdrop no cierra, pero Escape y el botón de cerrar sí.
+   * Permite proteger cambios escritos sin bloquear las demás salidas.
+   */
+  @Input() backdropDismissible = true;
+  /**
    * Variante móvil. Si no se pasa, se captura del servicio al abrir. Cualquier
    * cambio posterior del input se ignora a propósito: la variante no cambia en vivo.
    */
@@ -155,7 +160,7 @@ export class SheetDialogComponent implements AfterViewInit, OnChanges, OnDestroy
     this.applyThemeVariables();
     this.document.addEventListener('keydown', this.onDocumentKeydown, true);
     this.backdropSubscription = this.overlayRef.backdropClick().subscribe(() => {
-      if (this.dismissible) this.requestClose();
+      if (this.dismissible && this.backdropDismissible) this.requestClose();
     });
     this.initialFocusTimer = setTimeout(() => this.focusInitial(), FOCUS_DELAY_MS);
   }

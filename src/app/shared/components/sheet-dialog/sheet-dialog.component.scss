@@ -62,10 +62,6 @@
   overflow-wrap: anywhere;
 }
 
-.sheet-dialog__title :is(h1, h2, h3, p) {
-  margin: 0;
-  font: inherit;
-}
 
 .sheet-dialog__header-actions {
   display: flex;

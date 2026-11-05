@@ -775,83 +775,77 @@
     (activated)="createNoteFromFab()"
   ></app-fab-button>
 
-  <!-- Modal de creación: conserva el disparador flotante, con tarjeta y backdrop de diálogo. -->
-  <div
+  <!-- Modal de creación sobre el sheet compartido: portal a body, backdrop, foco y teclado. -->
+  <app-sheet-dialog
     *ngIf="addingList"
-    class="delete-list-overlay new-list-overlay modal-backdrop"
-    [class.mobile-sheet]="newListMobilePresentation"
-    (click)="onAddListBackdropClick()"
+    size="sm"
+    [theme]="activeTheme"
+    [mobile]="newListMobilePresentation"
+    [opener]="newListOpener"
+    [restoreFocus]="false"
+    [backdropDismissible]="!newListTitle.trim()"
+    labelledBy="new-list-dialog-title"
+    initialFocusSelector=".new-list-title-field input"
+    (closed)="cancelAddList()"
   >
-    <section
-      class="delete-list-dialog new-list-dialog overlay-card"
-      [class.mobile-sheet]="newListMobilePresentation"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="new-list-dialog-title"
-      (click)="$event.stopPropagation()"
-      (keydown)="keepFocusInsideDialog($event)"
-      (animationend)="onNewListEntranceAnimationEnd($event)"
-    >
-      <div class="new-list-header">
-        <h2 id="new-list-dialog-title">Nueva lista</h2>
-        <app-close-button label="Cerrar" (activated)="cancelAddList()"></app-close-button>
-      </div>
-      <form (ngSubmit)="addList()" class="new-list-form">
-        <app-text-field
-          label="Nombre de la lista"
-          placeholder="Escribe el nombre de la lista..."
-          [(value)]="newListTitle"
-          [attr.maxlength]="maxListTitleLength"
-          autocapitalize="sentences"
-          [showCounter]="true"
-          [counterMax]="maxListTitleLength"
-          (enter)="submitNewListFromInput($event)"
-          (pasteFired)="onNewListTitlePaste($event)"
-        ></app-text-field>
+    <h2 sheet-title id="new-list-dialog-title">Nueva lista</h2>
+    <form (ngSubmit)="addList()" class="new-list-form">
+      <app-text-field
+        #newListTitleField
+        class="new-list-title-field"
+        label="Nombre de la lista"
+        placeholder="Escribe el nombre de la lista..."
+        [(value)]="newListTitle"
+        [attr.maxlength]="maxListTitleLength"
+        autocapitalize="sentences"
+        [showCounter]="true"
+        [counterMax]="maxListTitleLength"
+        (enter)="submitNewListFromInput($event)"
+        (pasteFired)="onNewListTitlePaste($event)"
+      ></app-text-field>
 
-        <fieldset class="visual-color-field">
-          <legend>Identificador visual</legend>
-          <div class="visual-color-options">
-            <button
-              *ngFor="let color of visualColors"
-              type="button"
-              class="visual-color-option ion-activatable"
-              [class.selected]="selectedVisualColor === color.value"
-              [style.--visual-color]="color.value"
-              [attr.aria-label]="color.name"
-              [attr.aria-pressed]="selectedVisualColor === color.value"
-              [title]="color.name"
-              (click)="selectedVisualColor = color.value"
-            >
-              <ion-icon *ngIf="selectedVisualColor === color.value" name="checkmark"></ion-icon>
-              <ion-ripple-effect></ion-ripple-effect>
-            </button>
-          </div>
-        </fieldset>
-
-        <label class="place-first-option">
-          <span class="place-first-copy">
-            <ion-icon name="layers-outline" aria-hidden="true"></ion-icon>
-            <span>Anclar al inicio del tablero</span>
-          </span>
-          <input type="checkbox" name="placeAtStart" [(ngModel)]="placeNewListAtStart" />
-        </label>
-
-        <div class="new-list-actions">
-          <app-action-button variant="secondary" label="Cancelar" (activated)="cancelAddList()"></app-action-button>
-          <app-action-button
-            variant="primary"
-            label="Crear lista"
-            [icon]="'add'"
-            iconPosition="start"
-            type="submit"
-            [disabled]="!newListTitle.trim() || isAtListLimit"
-            (activated)="addList()"
-          ></app-action-button>
+      <fieldset class="visual-color-field">
+        <legend>Identificador visual</legend>
+        <div class="visual-color-options">
+          <button
+            *ngFor="let color of visualColors"
+            type="button"
+            class="visual-color-option ion-activatable"
+            [class.selected]="selectedVisualColor === color.value"
+            [style.--visual-color]="color.value"
+            [attr.aria-label]="color.name"
+            [attr.aria-pressed]="selectedVisualColor === color.value"
+            [title]="color.name"
+            (click)="selectedVisualColor = color.value"
+          >
+            <ion-icon *ngIf="selectedVisualColor === color.value" name="checkmark"></ion-icon>
+            <ion-ripple-effect></ion-ripple-effect>
+          </button>
         </div>
-      </form>
-    </section>
-  </div>
+      </fieldset>
+
+      <label class="place-first-option">
+        <span class="place-first-copy">
+          <ion-icon name="layers-outline" aria-hidden="true"></ion-icon>
+          <span>Anclar al inicio del tablero</span>
+        </span>
+        <input type="checkbox" name="placeAtStart" [(ngModel)]="placeNewListAtStart" />
+      </label>
+
+      <div class="new-list-actions">
+        <app-action-button variant="secondary" label="Cancelar" (activated)="cancelAddList()">Cancelar</app-action-button>
+        <app-action-button
+          variant="primary"
+          label="Crear lista"
+          [icon]="'add'"
+          iconPosition="start"
+          type="submit"
+          [disabled]="!newListTitle.trim() || isAtListLimit"
+          (activated)="addList()"
+        >Crear lista</app-action-button>
+      </div>
+    </form>
+  </app-sheet-dialog>
 </ng-container>
 
 <div

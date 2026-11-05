@@ -20,6 +20,7 @@ addIcons({ close });
       *ngIf="open"
       [size]="size"
       [dismissible]="dismissible"
+      [backdropDismissible]="backdropDismissible"
       [mobile]="mobile"
       [theme]="theme"
       [opener]="openerBtn"
@@ -37,6 +38,7 @@ class SheetDialogHostComponent {
   open = true;
   size: 'sm' | 'md' = 'md';
   dismissible = true;
+  backdropDismissible = true;
   mobile: boolean | null = false;
   theme: BoardTheme | null = null;
   bodyFocusable = true;
@@ -254,6 +256,23 @@ describe('sheet-dialog: Escape y backdrop', () => {
     fixture.detectChanges();
     backdropElement()?.click();
     expect(host.closedCount).toBe(1);
+  });
+
+  it('backdropDismissible=false protege el fondo, pero Escape sigue cerrando', () => {
+    host.backdropDismissible = false;
+    fixture.detectChanges();
+    backdropElement()?.click();
+    expect(host.closedCount).toBe(0);
+    expect(sheetElement()).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(host.closedCount).toBe(1);
+    fixture.detectChanges();
+    expect(sheetElement()).toBeNull();
   });
 });
 

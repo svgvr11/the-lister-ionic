@@ -41,6 +41,16 @@ No es un duplicado de Git ni un registro de cada archivo modificado.
 - Playwright temporal: escritorio 680 px centrado sobre FAB/backdrop, foco y Tab/Escape correctos, snapshot móvil al redimensionar; móvil 390 px bottom sheet pegado abajo con asa; dos temas cambian acento/fondo. Página temporal retirada.
 - Archivos: `shared/components/sheet-dialog/*`, `core/ui/mobile-presentation/*`, `services/mobile-presentation.service.*`, `core/ui/theme-variables/*` (nuevos); `overlay-stack.*`, `board.page.ts`, `styles.css` (editados); `core/app-version.ts` (script).
 
+## 2026-11-05 — T-004b fase 1 — Nueva lista al sheet-dialog
+
+- Migrada Nueva lista de `board.page` a `app-sheet-dialog` (`size="sm"`, `restoreFocus="false"`, `backdropDismissible="!newListTitle.trim()"`, foco en el campo de título, botones con texto proyectado). Se retira `board:new-list` de `syncOverlayStack()` (el sheet se auto-registra) y el `@ViewChild('newListTitleInput', { read: IonInput })` huérfano que causaba la regresión de foco de T-003 (foco quedaba en el FAB).
+- `sheet-dialog` gana el input `backdropDismissible`; `action-button` deja de quitar el fondo al botón deshabilitado tras un toque en móvil; `styles.css` gana una regla global para que el `h2` proyectado herede 20 px / 700.
+- Versión subida a build `1.64.11-a` (`npm run version:bump -- --build`).
+- Validación: sheet-dialog 18/18; `npm test` 692/693 (único fallo preexistente en notes-workspace); `tsc --noEmit -p tsconfig.app.json` limpio; `npm run build` limpio (solo warnings CSS preexistentes).
+- Playwright en `/#/board` (mock, 1280×900 y 390×844, dos temas): foco inicial en título, Tab/Shift+Tab atrapados, backdrop con texto no cierra, Escape/backdrop vacío cierran y devuelven foco al FAB, creación de lista verificada, botones "Cancelar"/"Crear lista" visibles, móvil con asa pegada abajo. Capturas antes/después guardadas fuera del repo.
+- Fase 2 (Nueva nota) pendiente confirmación del usuario.
+- Archivos: `sheet-dialog/*` (editado), `action-button.component.scss` (editado), `board.page.html/scss/ts` (editados), `styles.css` (editado), `core/app-version.ts` (script).
+
 ## 2026-11-05 — T-003 Botones y campos de formulario compartidos
 
 - Creado `shared/components/action-button/` (variantes primary/secondary/danger, ícono opcional, `ion-ripple-effect`, output `click`, `nativeElement`/`focus()`), `shared/components/close-button/` (cabecera, 32×32) y `shared/components/text-field/` (etiqueta, foco, contador opcional, error, outputs valueChange/enter/paste).

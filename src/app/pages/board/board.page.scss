@@ -1815,79 +1815,10 @@ ion-header {
   .feedback-fab:hover, .feedback-fab:active { transform: none; }
 }
 
-.new-list-overlay {
-  align-items: center;
-  padding-block: max(16px, var(--app-safe-area-top)) max(16px, var(--app-safe-area-bottom));
-}
-
-.new-list-dialog {
-  width: min(100%, 440px);
-  max-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  text-align: left;
-}
-
-.new-list-overlay.mobile-sheet {
-  align-items: end;
-  padding: var(--app-safe-area-top) 0 0;
-}
-
-.new-list-dialog.mobile-sheet {
-  position: relative;
-  width: 100%;
-  max-width: none;
-  max-height: calc(100dvh - var(--app-safe-area-top) - 12px);
-  padding: 26px 16px calc(16px + var(--app-safe-area-bottom));
-  border-width: 1px 0 0;
-  border-radius: 18px 18px 0 0;
-  animation: newListSheetEnter 0.18s ease-out;
-}
-
-.new-list-dialog.mobile-sheet::before {
-  position: absolute;
-  top: 9px;
-  left: 50%;
-  width: 36px;
-  height: 4px;
-  content: "";
-  background: color-mix(in srgb, var(--accent) 24%, #dce1e8);
-  border-radius: 999px;
-  transform: translateX(-50%);
-}
-
-@keyframes newListSheetEnter {
-  from { opacity: 0.8; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.new-list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.new-list-header h2 {
-  min-width: 0;
-  margin: 0;
-  color: #172236;
-  font-size: 17px;
-  font-weight: 750;
-  text-align: left;
-}
-
 .new-list-form {
   display: flex;
   flex-direction: column;
   gap: 9px;
-}
-
-.new-list-form > .title-char-count {
-  position: static;
-  align-self: flex-end;
-  margin-top: -5px;
 }
 
 .visual-color-field legend {
@@ -2401,10 +2332,6 @@ ion-header {
   }
 }
 
-.focus-list-footer .new-list-submit {
-  min-width: 90px;
-}
-
 .focus-list-notice {
   position: fixed;
   z-index: var(--z-page-overlay, 1000);
@@ -2770,8 +2697,7 @@ ion-header {
   .account-menu.mobile-modal,
   .account-menu.mobile-modal.closing,
   .account-menu-scrim.mobile-modal,
-  .account-menu-scrim.mobile-modal.closing,
-  .new-list-dialog.mobile-sheet {
+  .account-menu-scrim.mobile-modal.closing {
     animation: none;
   }
 }
@@ -2881,12 +2807,6 @@ ion-header {
   .account-menu { max-height: calc(100vh - 24px); }
   .account-menu.mobile-modal {
     max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);
-  }
-  .new-list-dialog {
-    max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 32px);
-  }
-  .new-list-dialog.mobile-sheet {
-    max-height: calc(100vh - var(--app-safe-area-top) - 12px);
   }
   .focus-list-dialog.mobile-card {
     max-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom) - 24px);

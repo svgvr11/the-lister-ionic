@@ -104,3 +104,10 @@ ion-textarea .native-textarea {
   -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
   backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
+
+/* El título del sheet es contenido proyectado: conserva el scope de la página, así que
+   su tipografía se normaliza desde global para que el slot no dependa de la página. */
+.sheet-dialog__title :is(h1, h2, h3, p) {
+  margin: 0;
+  font: inherit;
+}

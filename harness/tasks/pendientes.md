@@ -90,7 +90,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - Nueva nota: idéntica a Nueva lista; FAB debajo del modal.
 - Specs existentes de notes-workspace actualizadas, no borradas.
 
-**Estado:** pendiente
+**Estado:** fase 1 completada (Nueva lista migrada al sheet-dialog y verificada); fase 2 (Nueva nota) pendiente confirmación del usuario.
 
 ---
 
@@ -139,4 +139,4 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 
 2. **Uso completo de `editorOpen` (condición C3 de T-001):** `board.page.ts` ya tiene el getter `notesEditorOpen` que lee `notesWorkspace.editorOpen` y hace girar el FAB de notas, pero `boardModalOpen`, `setContentView`, los guards y `[open]` del FAB aún no lo consumen plenamente. Eso se completa en **T-004/T-006** (sheet/modal compartido y page `pages/notes`).
 
-3. **Foco inicial de Nueva lista roto desde T-003:** `board.page.ts:619` conserva `@ViewChild('newListTitleInput', { read: IonInput })`, pero el template ya usa `app-text-field` y no existe ese template ref; el modal abre con el foco en el FAB. Detectado en la regresión Playwright de T-004a. Se corrige en **T-004b** al migrar Nueva lista al `sheet-dialog` (o antes, si el usuario lo pide).
+3. **Foco inicial de Nueva lista roto desde T-003:** corregido en **T-004b fase 1**. `board.page.ts` ya no usa el `@ViewChild('newListTitleInput', { read: IonInput })` huérfano; usa `@ViewChild('newListTitleField') TextFieldComponent` con `focusInput()`, y el foco inicial cae en el campo de título (verificado con Playwright en escritorio y móvil).

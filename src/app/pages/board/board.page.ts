@@ -33,8 +33,8 @@ import { AddTaskInputComponent } from '../../shared/components/add-task-input/ad
 import { NotesWorkspaceComponent } from '../../shared/components/notes-workspace/notes-workspace.component';
 import { FabButtonComponent } from '../../shared/components/fab-button/fab-button.component';
 import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
-import { CloseButtonComponent } from '../../shared/components/close-button/close-button.component';
 import { TextFieldComponent } from '../../shared/components/text-field/text-field.component';
+import { SheetDialogComponent } from '../../shared/components/sheet-dialog/sheet-dialog.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
@@ -152,8 +152,8 @@ interface CdkScrollStrategyShape {
     NotesWorkspaceComponent,
     FabButtonComponent,
     ActionButtonComponent,
-    CloseButtonComponent,
     TextFieldComponent,
+    SheetDialogComponent,
     // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
     // que el CDK aterrice solo en el chunk del tablero.
     CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
@@ -220,8 +220,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     return this.mobilePresentation.isMobile();
   }
   private newListTitleFocusTimer: ReturnType<typeof setTimeout> | null = null;
-  private newListViewportTimer: ReturnType<typeof setTimeout> | null = null;
-  private newListViewportResizeHandler: (() => void) | null = null;
   /** Id de la lista nueva por la que se debe hacer scroll tras el próximo maquetado. */
   private pendingScrollListId: string | null = null;
   /** Google Play no admite enlaces externos de donación dentro del APK, así que el
@@ -322,7 +320,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   }
   private accountMenuNode: HTMLElement | null = null;
   private accountMenuOpener: HTMLElement | null = null;
-  private newListOpener: HTMLElement | null = null;
+  /** Elemento que abrió Nueva lista; el sheet lo usa como referencia de foco. */
+  newListOpener: HTMLElement | null = null;
   private pageActive = false;
   focusListId: string | null = null;
   focusNotice = '';
@@ -616,8 +615,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     });
   }
   @ViewChild('newListFab') private newListFab?: FabButtonComponent;
-  @ViewChild('newListTitleInput', { read: IonInput })
-  private newListTitleInput?: IonInput;
+  @ViewChild('newListTitleField')
+  private newListTitleField?: TextFieldComponent;
   @ViewChild('focusListTasks', { read: ElementRef })
   private focusListTasks?: ElementRef<HTMLElement>;
   @ViewChild('focusDialog', { read: ElementRef })
@@ -756,9 +755,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     const overlays: RegisteredOverlay[] = [];
     if (this.accountMenuOpen && !this.accountMenuClosing) {
       overlays.push({ id: 'board:profile-menu', close: () => this.closeAccountMenu(true) });
-    }
-    if (this.addingList) {
-      overlays.push({ id: 'board:new-list', close: () => this.cancelAddList() });
     }
     if (this.focusListId) {
       overlays.push({ id: 'board:focus-list', close: () => this.closeFocusModal() });
@@ -1858,65 +1854,18 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     void this.addList();
   }
 
-  onAddListBackdropClick(): void {
-    if (!this.newListTitle.trim()) this.cancelAddList();
-  }
-
-  onNewListEntranceAnimationEnd(event: AnimationEvent): void {
-    if (event.target !== event.currentTarget || !this.addingList) return;
-    this.focusNewListTitleAfterEntrance();
-  }
-
   private focusNewListTitleAfterEntrance(): void {
-    if (!this.addingList || !this.newListTitleInput) return;
+    if (!this.addingList) return;
     if (this.newListTitleFocusTimer !== null) {
       clearTimeout(this.newListTitleFocusTimer);
       this.newListTitleFocusTimer = null;
     }
-    void this.focusNewListTitleInput();
-  }
-
-  private async focusNewListTitleInput(): Promise<void> {
-    const input = this.newListTitleInput;
-    if (!this.addingList || !input) return;
-    await input.setFocus();
-    if (!this.addingList || input !== this.newListTitleInput) return;
-    const nativeInput = await input.getInputElement();
-    const scrollIfNeeded = (): void => {
-      if (!this.addingList || !nativeInput.isConnected) return;
-      const viewport = window.visualViewport;
-      const viewportTop = viewport?.offsetTop ?? 0;
-      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
-      const bounds = nativeInput.getBoundingClientRect();
-      if (bounds.top < viewportTop || bounds.bottom > viewportBottom) {
-        nativeInput.scrollIntoView({ block: 'nearest' });
-      }
-    };
-    this.newListViewportResizeHandler = () => {
-      window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler!);
-      this.newListViewportResizeHandler = null;
-      scrollIfNeeded();
-    };
-    window.visualViewport?.addEventListener('resize', this.newListViewportResizeHandler, { once: true });
-    this.newListViewportTimer = setTimeout(() => {
-      if (this.newListViewportResizeHandler) {
-        window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler);
-        this.newListViewportResizeHandler = null;
-      }
-      this.newListViewportTimer = null;
-      scrollIfNeeded();
-    }, 250);
+    this.newListTitleField?.focusInput();
   }
 
   private clearNewListInputFocusWork(): void {
     if (this.newListTitleFocusTimer !== null) clearTimeout(this.newListTitleFocusTimer);
-    if (this.newListViewportTimer !== null) clearTimeout(this.newListViewportTimer);
-    if (this.newListViewportResizeHandler) {
-      window.visualViewport?.removeEventListener('resize', this.newListViewportResizeHandler);
-    }
     this.newListTitleFocusTimer = null;
-    this.newListViewportTimer = null;
-    this.newListViewportResizeHandler = null;
   }
 
   // 🔍 Búsqueda
