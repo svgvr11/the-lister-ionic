@@ -54,6 +54,9 @@
   .fab-button {
     transition: none;
   }
+  .fab-button ion-icon {
+    transition: none;
+  }
   .fab-button:hover,
   .fab-button:active {
     transform: none;

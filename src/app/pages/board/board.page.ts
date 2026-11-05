@@ -32,6 +32,9 @@ import { FeedbackModalComponent } from '../../shared/components/feedback-modal/f
 import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
 import { NotesWorkspaceComponent } from '../../shared/components/notes-workspace/notes-workspace.component';
 import { FabButtonComponent } from '../../shared/components/fab-button/fab-button.component';
+import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
+import { CloseButtonComponent } from '../../shared/components/close-button/close-button.component';
+import { TextFieldComponent } from '../../shared/components/text-field/text-field.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
@@ -147,6 +150,9 @@ interface CdkScrollStrategyShape {
     FeedbackModalComponent, InlineEditComponent, AddTaskInputComponent, WelcomeModalComponent,
     NotesWorkspaceComponent,
     FabButtonComponent,
+    ActionButtonComponent,
+    CloseButtonComponent,
+    TextFieldComponent,
     // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
     // que el CDK aterrice solo en el chunk del tablero.
     CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
@@ -1763,13 +1769,12 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.titleDraftCount = Array.from(value).length;
   }
 
-  /** Normaliza el texto pegado en el editor de título del tablero y actualiza el contador. */
-  onTitleDraftPaste(event: ClipboardEvent): void {
-    const pasted = event.clipboardData?.getData('text') ?? '';
+  /** Normaliza el texto pegado en el campo de título y actualiza el contador. */
+  onNewListTitlePaste(event: Event): void {
+    const pasted = (event as ClipboardEvent).clipboardData?.getData('text') ?? '';
     const normalized = normalizeListTitle(pasted);
-    this.titleDraft = normalized;
-    this.titleDraftCount = Array.from(normalized).length;
-    event.preventDefault();
+    this.newListTitle = normalized;
+    this.newListTitleCount = Array.from(normalized).length;
   }
 
   /** Actualiza el borrador de tarea al escribir en el editor (lo llama el componente). */
@@ -1780,15 +1785,6 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   /** El autosize del editor cambió la altura: remaqueta masonry en el tablero. */
   onEditHeightChange(): void {
     this.scheduleMasonryLayout();
-  }
-
-  /** Normaliza el texto pegado en el input de nueva lista y actualiza el contador. */
-  onNewListTitlePaste(event: ClipboardEvent): void {
-    const pasted = event.clipboardData?.getData('text') ?? '';
-    const normalized = normalizeListTitle(pasted);
-    this.newListTitle = normalized;
-    this.newListTitleCount = Array.from(normalized).length;
-    event.preventDefault();
   }
 
   startEditTask(task: ChecklistTask, event: Event): void {

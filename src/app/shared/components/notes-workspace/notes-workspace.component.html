@@ -55,20 +55,21 @@
     (keydown.escape)="cancelEditing()">
     <header class="note-editor-header">
       <h2 id="note-editor-title">{{ editingExistingNote ? 'Editar nota' : 'Nueva nota' }}</h2>
-      <button class="note-editor-close ion-activatable" type="button" aria-label="Cerrar"
-        [disabled]="editorBusy" (click)="cancelEditing()">
-        <ion-icon name="close"></ion-icon>
-      </button>
+      <app-close-button label="Cerrar" [disabled]="editorBusy" (activated)="cancelEditing()"></app-close-button>
     </header>
 
-    <label class="note-title-label" for="note-title">Título</label>
-    <input id="note-title" class="note-title-input" maxlength="160" [value]="draft?.title ?? ''"
-      (input)="onTitleInput($any($event.target).value)" placeholder="Título de la nota">
+    <app-text-field
+      label="Título"
+      placeholder="Título de la nota"
+      [attr.maxlength]="160"
+      [value]="draft?.title ?? ''"
+      (valueChange)="onTitleInput($event)"
+    ></app-text-field>
 
     <div class="rich-text-toolbar" role="toolbar" aria-label="Formato del texto">
-      <button type="button" aria-label="Negrita" title="Negrita" (mousedown)="$event.preventDefault()" (click)="format('bold')"><strong>B</strong></button>
-      <button type="button" aria-label="Cursiva" title="Cursiva" (mousedown)="$event.preventDefault()" (click)="format('italic')"><em>I</em></button>
-      <button type="button" aria-label="Lista con viñetas" title="Lista con viñetas" (mousedown)="$event.preventDefault()" (click)="format('insertUnorderedList')"><ion-icon name="list-outline"></ion-icon></button>
+      <button type="button" aria-label="Negrita" title="Negrita" (mousedown)="$event.preventDefault()" (click)="format('bold')"><strong>B</strong><ion-ripple-effect></ion-ripple-effect></button>
+      <button type="button" aria-label="Cursiva" title="Cursiva" (mousedown)="$event.preventDefault()" (click)="format('italic')"><em>I</em><ion-ripple-effect></ion-ripple-effect></button>
+      <button type="button" aria-label="Lista con viñetas" title="Lista con viñetas" (mousedown)="$event.preventDefault()" (click)="format('insertUnorderedList')"><ion-icon name="list-outline"></ion-icon><ion-ripple-effect></ion-ripple-effect></button>
     </div>
     <div class="note-rich-editor" contenteditable="true" role="textbox" aria-multiline="true"
       aria-label="Contenido de la nota" data-placeholder="Escribe tu nota..."
@@ -94,10 +95,12 @@
         <button type="button" [attr.aria-label]="'Descargar ' + attachment.name"
           [disabled]="editorBusy" (click)="downloadAttachment(attachment)">
           <ion-icon name="download-outline"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
         <button type="button" [attr.aria-label]="'Quitar ' + attachment.name"
           [disabled]="editorBusy" (click)="removeAttachment(attachment)">
           <ion-icon name="close"></ion-icon>
+          <ion-ripple-effect></ion-ripple-effect>
         </button>
       </div>
       <p class="attachment-hint">Imágenes o documentos de hasta 10 MB. Se guardan de forma privada.</p>
@@ -105,15 +108,18 @@
 
     <p *ngIf="editorError" class="note-editor-error" role="alert">{{ editorError }}</p>
     <footer class="note-editor-footer">
-      <button *ngIf="editingExistingNote" type="button"
-        class="note-delete-button" [disabled]="editorBusy" (click)="deleteNote()">
-        <ion-icon name="trash"></ion-icon>
+      <app-action-button *ngIf="editingExistingNote" variant="danger" [icon]="'trash'" iconPosition="start"
+        [disabled]="editorBusy" (activated)="deleteNote()">
         {{ confirmDelete ? 'Confirmar eliminación' : 'Eliminar' }}
-      </button>
+      </app-action-button>
       <span class="note-editor-spacer"></span>
-      <button type="button" class="note-cancel-button" [disabled]="editorBusy" (click)="cancelEditing()">Cancelar</button>
-      <button type="button" class="note-save-button" [disabled]="editorBusy || !draft?.title?.trim()"
-        (click)="saveNote()">{{ editorBusy ? 'Guardando…' : 'Guardar nota' }}</button>
+      <app-action-button variant="secondary" label="Cancelar" [disabled]="editorBusy" (activated)="cancelEditing()">
+        Cancelar
+      </app-action-button>
+      <app-action-button variant="primary" [icon]="'add'" iconPosition="start"
+        [disabled]="editorBusy || !draft?.title?.trim()" (activated)="saveNote()">
+        {{ editorBusy ? 'Guardando…' : 'Guardar nota' }}
+      </app-action-button>
     </footer>
   </section>
 </div>

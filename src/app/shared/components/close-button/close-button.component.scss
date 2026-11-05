@@ -1,0 +1,47 @@
+.close-button {
+  position: relative;
+  overflow: hidden;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #5c6372;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+  min-width: 0;
+}
+
+.close-button:hover {
+  background: #f1f3f8;
+  color: #202d42;
+}
+
+.close-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.close-button:disabled:hover {
+  background: transparent;
+  color: #5c6372;
+}
+
+.close-button ion-icon {
+  font-size: 18px;
+}
+
+.close-button:focus-visible {
+  outline: 2px solid var(--accent, #8870ad);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .close-button {
+    transition: none;
+  }
+}

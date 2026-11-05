@@ -1,0 +1,19 @@
+<label class="text-field-label" [for]="resolvedInputId" *ngIf="label">{{ label }}</label>
+<div class="text-field" [class.focused]="focused" [class.has-error]="!!error">
+  <input
+    #input
+    [id]="resolvedInputId"
+    [value]="value"
+    [placeholder]="placeholder"
+    [attr.maxlength]="maxlength ?? null"
+    [disabled]="disabled"
+    [attr.autocapitalize]="autocapitalize"
+    (input)="onInput($event)"
+    (keyup.enter)="onEnter($event)"
+    (paste)="onPaste($event)"
+    (focus)="onFocus()"
+    (blur)="onBlur()"
+  />
+</div>
+<span *ngIf="showCounter" class="char-count" [class.at-limit]="atLimit">{{ charCount }} / {{ counterMax }}</span>
+<span *ngIf="error" class="text-field-error">{{ error }}</span>

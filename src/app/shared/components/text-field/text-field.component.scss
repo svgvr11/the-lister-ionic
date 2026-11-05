@@ -1,0 +1,77 @@
+.text-field-label {
+  padding: 0;
+  color: #25334a;
+  font-size: 13px;
+  font-weight: 650;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.text-field {
+  display: flex;
+  align-items: center;
+  background: #f1f3ff;
+  border: 1px solid #e9ecf6;
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  min-height: 46px;
+}
+
+.text-field.focused,
+.text-field:focus-within {
+  background: #fff;
+  border-color: var(--accent, #8870ad);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #8870ad) 35%, transparent);
+}
+
+.text-field.has-error {
+  border-color: #e11d48;
+}
+
+.text-field.has-error.focused,
+.text-field.has-error:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #e11d48 35%, transparent);
+}
+
+.text-field input {
+  --color: #172236;
+  --placeholder-color: #737b8c;
+  background: transparent;
+  color: #172236;
+  min-height: 46px;
+  flex: 1;
+  width: 100%;
+  font-size: 14px;
+  text-align: left;
+  outline: none;
+  border: 0;
+  padding: 0 12px;
+}
+
+.char-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9fa4a7;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+
+.char-count.at-limit {
+  color: #e11d48;
+}
+
+.text-field-error {
+  font-size: 12px;
+  color: #e11d48;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-field {
+    transition: none;
+  }
+  .char-count {
+    transition: none;
+  }
+}

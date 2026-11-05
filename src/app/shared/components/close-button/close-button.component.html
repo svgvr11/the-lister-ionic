@@ -1,0 +1,12 @@
+<button
+  #btn
+  type="button"
+  class="close-button"
+  [disabled]="disabled"
+  (click)="onClick()"
+  [attr.aria-label]="label"
+  [title]="label"
+>
+  <ion-icon name="close"></ion-icon>
+  <ion-ripple-effect></ion-ripple-effect>
+</button>

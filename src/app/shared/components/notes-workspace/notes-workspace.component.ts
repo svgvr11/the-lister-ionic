@@ -4,6 +4,9 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash } from 'ionicons/icons';
+import { ActionButtonComponent } from '../action-button/action-button.component';
+import { CloseButtonComponent } from '../close-button/close-button.component';
+import { TextFieldComponent } from '../text-field/text-field.component';
 import { BoardNote, BoardNoteAttachment } from '../../../models/board.model';
 import { orderedNotes, setPinnedNote } from '../../../core/board/note-rules/note-rules';
 import { MasonryController, MASONRY_GAP, resolveBoardFlowMode } from '../../../core/ui/masonry-layout/masonry-layout';
@@ -12,7 +15,7 @@ import { NoteAttachmentService } from '../../../services/note-attachment.service
 @Component({
   selector: 'app-notes-workspace',
   standalone: true,
-  imports: [CommonModule, IonIcon, IonRippleEffect],
+  imports: [CommonModule, IonIcon, IonRippleEffect, ActionButtonComponent, CloseButtonComponent, TextFieldComponent],
   templateUrl: './notes-workspace.component.html',
   styleUrls: ['./notes-workspace.component.scss']
 })

@@ -58,6 +58,16 @@ input {
   --z-session-lock: 10000;
 }
 
+/* Botones de acción compartidos (action-button): primario, secundario, peligro.
+   Los valores por defecto reusan hex ya presentes en el códigobase (no se añaden
+   hex literales nuevos). Los componentes leen --fab-color / --fab-hover / --accent
+   directamente y usan estos tokens como respaldo o override. */
+--btn-secondary-bg: transparent;
+--btn-secondary-bg-hover: #f1f3f8;
+--btn-secondary-text: #4e5668;
+--btn-danger-bg: #fff0f0;
+--btn-danger-text: #a3212a;
+
 /* Desactiva la raya inferior de foco (highlight) en todos los ion-input/ion-textarea.
    Usa selectores de clase de modo (`.md`/`.ios`) para ganar a .sc-ion-input-md-h/.sc-ion-input-ios-h
    que Ionic aplica con mayor especificidad. El foco visible se mantiene via

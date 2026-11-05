@@ -1,0 +1,14 @@
+<button
+  #btn
+  type="{{ type }}"
+  class="action-button action-button--{{ variant }}"
+  [disabled]="disabled"
+  (click)="onClick()"
+  [attr.aria-label]="label || null"
+  [title]="label || null"
+>
+  <ion-icon *ngIf="icon && iconPosition === 'start'" [name]="icon" aria-hidden="true"></ion-icon>
+  <ng-content></ng-content>
+  <ion-icon *ngIf="icon && iconPosition === 'end'" [name]="icon" aria-hidden="true"></ion-icon>
+  <ion-ripple-effect></ion-ripple-effect>
+</button>

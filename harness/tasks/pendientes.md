@@ -57,7 +57,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - No quedan familias de clases duplicadas en esos dos flujos.
 - Specs de los componentes; accesibilidad (labels, `aria-pressed`/`disabled`, foco visible).
 
-**Estado:** pendiente
+**Estado:** terminado
 
 ---
 
@@ -128,3 +128,11 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - Documentado en `decisiones.md` el plan de producto: switch futuro Todo/Checklists/Notas, `Todo` en `#/all`, el switch alterna entre las pages `board` y `notes` (planificado, no implementado).
 
 **Estado:** pendiente
+
+---
+
+### Notas post-T-002 (pendientes de cierre, no bloquean T-003)
+
+1. **Spec roto `notes-workspace.component.spec.ts:78`:** el test "guarda una nueva nota con el texto enriquecido y emite los datos" falla con `TypeError: Cannot read properties of null (reading 'click')` porque busca `.new-note-button` que no existe en el DOM. Es **pre-existente a T-002** (sus archivos `.ts`/`.spec.ts` no fueron tocados; `git diff --stat` vacío). Se arregla o reescribe en **T-006** (al mover notas a `pages/notes`, el spec se traslada y reescribe junto al componente).
+
+2. **Uso completo de `editorOpen` (condición C3 de T-001):** `board.page.ts` ya tiene el getter `notesEditorOpen` que lee `notesWorkspace.editorOpen` y hace girar el FAB de notas, pero `boardModalOpen`, `setContentView`, los guards y `[open]` del FAB aún no lo consumen plenamente. Eso se completa en **T-004/T-006** (sheet/modal compartido y page `pages/notes`).

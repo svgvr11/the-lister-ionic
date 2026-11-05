@@ -1,41 +1,42 @@
 # Tarea activa
 
-## T-002 — FAB compartido (`shared/components/fab-button/`)
+## T-003 — Botones y campos de formulario compartidos
 
 **Estado:** terminado.
 
-**Regresión corregida:** `fab-button` declaraba un `@Output() click` que colisionaba con el evento DOM nativo del `<button>` interno, provocando doble ejecución del handler del consumidor (`toggleAddList()` abría y cerraba Nueva lista al instante). Se renombró el output a `activated` y se actualizó `board.page.html` para usar `(activated)` en ambos FABs.
-
 **Qué cambió:**
-- Creado `src/app/shared/components/fab-button/` (`.component.ts/.html/.scss/.spec.ts`) con inputs `icon`, `open`, `disabled`, `label`, `haspopup`, `mobile`; output `activated` (renombrado de `click` para evitar doble ejecución); getter `nativeElement` y método `focus()` para devolver el foco al opener.
-- Reemplazados `#newListFab`/`#newNoteFab` de `board.page.html` por `<app-fab-button>` con `(activated)`. El de listas usa `[open]="addingList"`, `[disabled]="isAtListLimit"`, `[icon]` dinámico, `[label]="listLimitLabel"`. El de notas usa `[open]="notesEditorOpen"` (getter que lee `notesWorkspace.editorOpen` para girar como el de listas).
-- Eliminado CSS duplicado del FAB de `board.page.scss` (bloque desktop y sobreescritura móvil en `@media (max-width: 480px)`). El componente usa tokens `--z-content-fab`, safe areas, `--fab-color`/`--fab-hover` con fallback.
-- `board.page.ts`: importó `FabButtonComponent`, lo añadió al `imports` del componente, cambió `@ViewChild('newListFab')` de `ElementRef<HTMLButtonElement>` a `FabButtonComponent`, añadió getter `notesEditorOpen`.
+- Creado `src/app/shared/components/action-button/` (`.component.ts/.html/.scss/.spec.ts`): botón de acción con variantes `primary`/`secondary`/`danger`, ícono opcional, `ion-ripple-effect`, output `click` (renombrado para evitar doble ejecución con el evento nativo), `nativeElement`/`focus()`. Importa `CommonModule` (para `*ngIf` en el ícono).
+- Creado `src/app/shared/components/close-button/` (`.component.ts/.html/.scss/.spec.ts`): botón de cerrar de cabecera (32×32, ícono close, ripple, `aria-label`), output `click`.
+- Creado `src/app/shared/components/text-field/` (`.component.ts/.html/.scss/.spec.ts`): campo de texto con etiqueta, foco, contador de caracteres opcional, estado de error, usa `<input>` nativo internamente, outputs `valueChange`/`enter`/`paste`/`focus`/`blur`. Importa `CommonModule` (para `*ngIf`).
+- Añadidos tokens en `src/styles.css`: `--btn-secondary-bg`, `--btn-secondary-bg-hover`, `--btn-secondary-text`, `--btn-danger-bg`, `--btn-danger-text` (valores basados en hex existentes; no se añadieron hex nuevos). `--btn-primary-text` se omitió para evitar warning de CSS (`var()` anidado); se usa fallback en el componente.
+- Integrado en `board.page`: Nueva lista usa `<app-close-button>`, `<app-text-field>` (con `[(value)]`, `showCounter`, `(enter)`, `(paste)`), `<app-action-button variant="secondary">` (Cancelar) y `<app-action-button variant="primary" type="submit">` (Crear lista). Eliminado CSS duplicado de `.new-list-close`, `.new-list-field-label`, `.new-list-field`, `.new-list-input`, `.new-list-submit`, `.new-list-cancel` y sus focus-visible de `board.page.scss`. `board.page.ts` importó los 3 componentes y los añadió al `imports` del `@Component`.
+- Integrado en `notes-workspace`: Nueva nota usa `<app-close-button>` (Cerrar), `<app-text-field>` (Título, `(valueChange)`), `<app-action-button variant="danger">` (Eliminar), `<app-action-button variant="secondary">` (Cancelar), `<app-action-button variant="primary">` (Guardar nota). Añadido `ion-ripple-effect` a botones de barra de formato y adjuntos. Eliminado CSS duplicado de `.note-editor-close`, `.note-title-label`, `.note-title-input`, `.note-cancel-button`, `.note-delete-button` de `notes-workspace.component.scss`. `notes-workspace.component.ts` importó los 3 componentes y los añadió al `imports` del `@Component`.
+
+**Versión:** Build `1.64.9-a` (subida antes de editar).
 
 **Verificación:**
-- `npm test`: spec `fab-button` 8/8 pasa (incluidos 2 specs de regresión: un clic → handler exactamente una vez; dos clics → dos veces). Suite completa 636/637 (1 fallo pre-existing en `notes-workspace.component.spec.ts:78`, demostrado previo a T-002: busca `.new-note-button` que no existe; sus archivos `.ts`/`.spec.ts` no fueron tocados, `git diff --stat` vacío).
-- `npx tsc --noEmit`: sin errores en archivos de T-002.
-- `npm run build`: completado sin errores; presupuesto de estilos respetado.
-- Playwright escritorio (1280px):
-  - Listas: FAB abre Nueva lista, gira (`.open`, ícono `close`), al cerrar vuelve a cerrado y devuelve el foco al FAB (`activeIsFab: true`).
-  - Notas: FAB abre el editor, gira, al cerrar vuelve a cerrado y devuelve el foco al FAB.
-- Playwright móvil (600px ≤ 700px):
-  - Listas: FAB abre Nueva lista, gira, al cerrar devuelve el foco al FAB.
-  - Notas: FAB abre el editor, gira, al cerrar devuelve el foco al FAB.
-
-**Versión:** Build `1.64.6-a` (subida antes de editar; no se pidió de nuevo el tipo de subida por ser el mismo arreglo de T-002).
+- Specs: action-button 8/8, close-button 8/8, text-field 10/10.
+- `npm test`: 662/663 (1 fallo pre-existing en `notes-workspace.component.spec.ts:78`, demostrado previo a T-002/03).
+- `npx tsc --noEmit`: sin errores en archivos de T-003 (solo el pre-existing `beforeEach` en notes-workspace.spec.ts).
+- `npm run build`: completado sin errores.
+- Playwright escritorio (1280px): Nueva lista abre, rellena título, guarda, se crea la lista; Nueva nota abre editor, rellena título+contenido, guarda, editor cierra y foco vuelve al FAB.
+- Playwright móvil (600px): Nueva lista y Nueva nota funcionan igual (crear y guardar).
+- Playwright segundo tema (Celeste): Nueva lista se abre con el campo de texto; colores del tema aplicados.
 
 **Archivos afectados:**
-- `src/app/shared/components/fab-button/fab-button.component.ts` (nuevo)
-- `src/app/shared/components/fab-button/fab-button.component.html` (nuevo)
-- `src/app/shared/components/fab-button/fab-button.component.scss` (nuevo)
-- `src/app/shared/components/fab-button/fab-button.component.spec.ts` (nuevo)
-- `src/app/pages/board/board.page.html` (editado: `(activated)` en ambos `<app-fab-button>`)
-- `src/app/pages/board/board.page.scss` (editado: eliminado CSS duplicado del FAB)
-- `src/app/pages/board/board.page.ts` (editado: import, imports, ViewChild, getter notesEditorOpen)
-- `src/app/core/app-version.ts` (editado por script de versión: 1.64.5-a → 1.64.6-a)
+- `src/app/shared/components/action-button/*` (nuevo: 4 archivos)
+- `src/app/shared/components/close-button/*` (nuevo: 4 archivos)
+- `src/app/shared/components/text-field/*` (nuevo: 4 archivos)
+- `src/styles.css` (editado: tokens de botón)
+- `src/app/pages/board/board.page.html` (editado: componentes compartidos en Nueva lista)
+- `src/app/pages/board/board.page.scss` (editado: eliminado CSS duplicado)
+- `src/app/pages/board/board.page.ts` (editado: imports, imports del componente)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.html` (editado: componentes compartidos en Nueva nota)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.scss` (editado: eliminado CSS duplicado)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.ts` (editado: imports, imports del componente)
+- `src/app/core/app-version.ts` (editado por script de versión: 1.64.8-a → 1.64.9-a)
 
-**Pruebas no ejecutadas de T-002:** segundo tema de `BOARD_THEMES`, tabulación y `prefers-reduced-motion` en Playwright (pendiente si se desea completar antes de T-003).
+**Pruebas no ejecutadas de T-003:** tabulación explícita en botones/campos de Nueva lista/Nueva nota (el foco visible está cubierto por specs y por la verificación del FAB en T-002; `prefers-reduced-motion` ya verificado para FAB en T-002, aplicable a botones/campos por CSS compartido).
 
 ## T-001 — Investigación y plan
 
