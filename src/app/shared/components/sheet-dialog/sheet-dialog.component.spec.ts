@@ -26,6 +26,7 @@ addIcons({ close });
       [opener]="openerBtn"
       labelledBy="test-sheet-title"
       (closed)="onClosed()"
+      (backdropClick)="onBackdropClick()"
     >
       <h2 sheet-title id="test-sheet-title">Título de prueba</h2>
       <button sheet-header-actions type="button" class="header-action">Acción</button>
@@ -43,9 +44,15 @@ class SheetDialogHostComponent {
   theme: BoardTheme | null = null;
   bodyFocusable = true;
   closedCount = 0;
+  backdropClickCount = 0;
 
   onClosed(): void {
     this.closedCount++;
+    this.open = false;
+  }
+
+  onBackdropClick(): void {
+    this.backdropClickCount++;
     this.open = false;
   }
 }
@@ -251,11 +258,15 @@ describe('sheet-dialog: Escape y backdrop', () => {
     fixture.detectChanges();
     backdropElement()?.click();
     expect(host.closedCount).toBe(0);
+    expect(host.backdropClickCount).toBe(0);
 
     host.dismissible = true;
     fixture.detectChanges();
     backdropElement()?.click();
-    expect(host.closedCount).toBe(1);
+    fixture.detectChanges();
+    expect(host.backdropClickCount).toBe(1);
+    expect(host.closedCount).toBe(0);
+    expect(sheetElement()).toBeNull();
   });
 
   it('backdropDismissible=false protege el fondo, pero Escape sigue cerrando', () => {

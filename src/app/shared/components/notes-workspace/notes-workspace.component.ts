@@ -75,6 +75,8 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   editorError = '';
   draft: BoardNote | null = null;
   confirmDelete = false;
+  /** Espera confirmación para descartar cambios sin guardar (diálogo sobre el editor). */
+  confirmDiscard = false;
   attachmentUrls: Record<string, string> = {};
   private removedAttachments: BoardNoteAttachment[] = [];
   private uploadedDuringEdit: BoardNoteAttachment[] = [];
@@ -318,6 +320,40 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
       console.error('No se pudieron limpiar adjuntos de la nota descartada', error);
       this.editorError = 'No se pudieron limpiar los adjuntos. Inténtalo de nuevo antes de cerrar.';
     }
+  }
+
+  /** El usuario pide cerrar el editor (X, Escape, Atrás o Cancelar). Con cambios sin
+   *  guardar se abre el diálogo de confirmación y el editor se queda abierto. Sin
+   *  cambios, o guardando, se descarta directo sin confirmar. */
+  onCloseRequested(): void {
+    if (this.editorBusy) return;
+    if (this.hasUnsavedChanges) {
+      this.confirmDiscard = true;
+      return;
+    }
+    this.cancelEditing();
+  }
+
+  /** Clic en el fondo: con cambios sin guardar y sin operación en curso abre el diálogo
+   *  de confirmación (seguir editando / descartar). Sin cambios cierra directo. */
+  onBackdropClick(): void {
+    if (this.editorBusy) return;
+    if (this.hasUnsavedChanges) {
+      this.confirmDiscard = true;
+      return;
+    }
+    this.cancelEditing();
+  }
+
+  /** Cierra el diálogo de confirmación y vuelve al editor con el texto intacto. */
+  closeConfirm(): void {
+    this.confirmDiscard = false;
+  }
+
+  /** Descarta los cambios y cierra el editor. */
+  discardChanges(): void {
+    this.confirmDiscard = false;
+    this.cancelEditing();
   }
 
   async deleteNote(): Promise<void> {

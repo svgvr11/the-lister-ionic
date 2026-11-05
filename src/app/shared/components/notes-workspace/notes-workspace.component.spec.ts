@@ -176,4 +176,109 @@ describe('NotesWorkspaceComponent', () => {
     component.onTitleInput('Título');
     expect(component.hasUnsavedChanges).toBe(true);
   });
+
+  it('cierra directo si no hay cambios sin guardar', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onCloseRequested();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('con cambios sin guardar, pedir cerrar abre la confirmación y deja el editor abierto', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onTitleInput('Título');
+    expect(component.hasUnsavedChanges).toBe(true);
+
+    component.onCloseRequested();
+
+    expect(component.confirmDiscard).toBe(true);
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.title).toBe('Título');
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('el clic en el fondo con cambios sin guardar abre la confirmación y deja el editor abierto', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onTitleInput('Título');
+    expect(component.hasUnsavedChanges).toBe(true);
+    component.onBackdropClick();
+
+    expect(component.confirmDiscard).toBe(true);
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.title).toBe('Título');
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('el clic en el fondo sin cambios cierra directo', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onBackdropClick();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('editorBusy no confirma ni cierra el editor', () => {
+    const { component } = mount();
+    component.createNote();
+    component.onTitleInput('Título');
+    component.editorBusy = true;
+
+    component.onCloseRequested();
+    component.onBackdropClick();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.title).toBe('Título');
+  });
+
+  it('seguir editando cierra la confirmación y deja el editor y el texto intactos', () => {
+    const { component } = mount();
+    component.createNote();
+    component.onTitleInput('Título');
+    component.onCloseRequested();
+    expect(component.confirmDiscard).toBe(true);
+
+    component.closeConfirm();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.title).toBe('Título');
+  });
+
+  it('descartar cambios cierra el editor y limpia el borrador', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onTitleInput('Título');
+    component.onCloseRequested();
+    component.discardChanges();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
 });

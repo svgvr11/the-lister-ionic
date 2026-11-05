@@ -87,6 +87,8 @@ export class SheetDialogComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Se emite cuando el usuario pide cerrar (botón, Escape, backdrop) o lo pide la pila. */
   readonly closed = output<void>();
+  /** Se emite solo al hacer clic en el backdrop (descarte directo del fondo). */
+  readonly backdropClick = output<void>();
 
   /** Id único en la pila de overlays; expuesto para diagnóstico y pruebas. */
   readonly overlayId = `sheet-dialog:${++nextSheetId}`;
@@ -114,6 +116,8 @@ export class SheetDialogComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private readonly onDocumentKeydown = (event: KeyboardEvent): void => {
     if (!this.sheetRoot || event.defaultPrevented) return;
+    // Solo el overlay superior cierra con Escape/Tab; los sheets debajo no lo tocan.
+    if (this.overlays.topId !== this.overlayId) return;
     // Si el foco está dentro, el manejador del propio sheet decide en fase de burbuja
     // (así los controles internos pueden consumir Escape antes, p. ej. un tooltip).
     if (this.sheetRoot.contains(event.target as Node)) return;
@@ -160,7 +164,7 @@ export class SheetDialogComponent implements AfterViewInit, OnChanges, OnDestroy
     this.applyThemeVariables();
     this.document.addEventListener('keydown', this.onDocumentKeydown, true);
     this.backdropSubscription = this.overlayRef.backdropClick().subscribe(() => {
-      if (this.dismissible && this.backdropDismissible) this.requestClose();
+      if (this.dismissible && this.backdropDismissible) this.backdropClick.emit();
     });
     this.initialFocusTimer = setTimeout(() => this.focusInitial(), FOCUS_DELAY_MS);
   }

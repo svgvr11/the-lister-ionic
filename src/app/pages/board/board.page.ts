@@ -368,6 +368,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     return this.notesWorkspace?.editorOpen ?? false;
   }
   newListTitle = '';
+  /** Espera confirmación para descartar cambios sin guardar en Nueva lista. */
+  confirmDiscardList = false;
   readonly visualColors = [
     { name: 'Índigo', value: '#5145e8' },
     { name: 'Menta', value: '#5be9b0' },
@@ -2267,6 +2269,27 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
     this.newListTitleCount = 0;
     if (restoreFocus) this.restoreNewListFocus();
     else this.newListOpener = null;
+  }
+
+  /** El usuario pide cerrar Nueva lista (X, Escape, Atrás o Cancelar). Con texto en el
+   *  título se pide confirmación; sin texto se descarta directo. */
+  onListCloseRequested(): void {
+    if (this.newListTitle.trim()) {
+      this.confirmDiscardList = true;
+      return;
+    }
+    this.cancelAddList();
+  }
+
+  /** Cierra el diálogo de confirmación y vuelve al editor de lista con el texto intacto. */
+  closeConfirmList(): void {
+    this.confirmDiscardList = false;
+  }
+
+  /** Descarta los cambios y cierra Nueva lista. */
+  discardChangesList(): void {
+    this.confirmDiscardList = false;
+    this.cancelAddList();
   }
 
   private restoreNewListFocus(): void {

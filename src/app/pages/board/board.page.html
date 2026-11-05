@@ -784,10 +784,11 @@
     [mobile]="newListMobilePresentation"
     [opener]="newListOpener"
     [restoreFocus]="false"
-    [backdropDismissible]="!newListTitle.trim()"
+    [backdropDismissible]="true"
     labelledBy="new-list-dialog-title"
     initialFocusSelector=".new-list-title-field input"
-    (closed)="cancelAddList()"
+    (closed)="onListCloseRequested()"
+    (backdropClick)="onListCloseRequested()"
   >
     <h2 sheet-title id="new-list-dialog-title">Nueva lista</h2>
     <form (ngSubmit)="addList()" class="new-list-form">
@@ -834,7 +835,7 @@
       </label>
 
       <div class="new-list-actions">
-        <app-action-button variant="secondary" label="Cancelar" (activated)="cancelAddList()">Cancelar</app-action-button>
+        <app-action-button variant="secondary" label="Cancelar" [disabled]="confirmDiscardList" (activated)="onListCloseRequested()">Cancelar</app-action-button>
         <app-action-button
           variant="primary"
           label="Crear lista"
@@ -846,6 +847,28 @@
         >Crear lista</app-action-button>
       </div>
     </form>
+  </app-sheet-dialog>
+
+  <app-sheet-dialog
+    *ngIf="confirmDiscardList && addingList"
+    size="sm"
+    [theme]="activeTheme"
+    [mobile]="newListMobilePresentation"
+    [opener]="newListOpener"
+    [restoreFocus]="false"
+    [dismissible]="true"
+    [backdropDismissible]="true"
+    labelledBy="discard-list-confirm-title"
+    initialFocusSelector="button"
+    (closed)="closeConfirmList()"
+    (backdropClick)="closeConfirmList()"
+  >
+    <h2 sheet-title id="discard-list-confirm-title">Descartar cambios</h2>
+    <p id="discard-list-confirm-message">Tienes cambios sin guardar en el nombre de la lista. ¿Los descartas o sigues editando?</p>
+    <ng-container sheet-footer>
+      <app-action-button variant="secondary" label="Seguir editando" (activated)="closeConfirmList()">Seguir editando</app-action-button>
+      <app-action-button variant="danger" label="Descartar cambios" (activated)="discardChangesList()">Descartar cambios</app-action-button>
+    </ng-container>
   </app-sheet-dialog>
 </ng-container>
 

@@ -57,9 +57,10 @@
   [opener]="editorOpener"
   [restoreFocus]="false"
   [dismissible]="!editorBusy"
-  [backdropDismissible]="!hasUnsavedChanges"
+  [backdropDismissible]="!editorBusy"
   initialFocusSelector=".note-editor-title input"
-  (closed)="cancelEditing()"
+  (closed)="onCloseRequested()"
+  (backdropClick)="onBackdropClick()"
 >
   <h2 sheet-title id="note-editor-title">{{ editingExistingNote ? 'Editar nota' : 'Nueva nota' }}</h2>
 
@@ -120,12 +121,38 @@
       {{ confirmDelete ? 'Confirmar eliminación' : 'Eliminar' }}
     </app-action-button>
     <span class="note-editor-spacer"></span>
-    <app-action-button variant="secondary" label="Cancelar" [disabled]="editorBusy" (activated)="cancelEditing()">
+    <app-action-button variant="secondary" label="Cancelar" [disabled]="editorBusy || confirmDiscard" (activated)="onCloseRequested()">
       Cancelar
     </app-action-button>
     <app-action-button variant="primary" [icon]="'add'" iconPosition="start"
       [disabled]="editorBusy || !draft?.title?.trim()" (activated)="saveNote()">
       {{ editorBusy ? 'Guardando…' : 'Guardar nota' }}
+    </app-action-button>
+  </ng-container>
+</app-sheet-dialog>
+
+<app-sheet-dialog
+  *ngIf="confirmDiscard && editorOpen"
+  size="sm"
+  [theme]="theme"
+  [mobile]="noteMobilePresentation"
+  [opener]="editorOpener"
+  [restoreFocus]="false"
+  [dismissible]="true"
+  [backdropDismissible]="true"
+  labelledBy="discard-confirm-title"
+  initialFocusSelector="button"
+  (closed)="closeConfirm()"
+  (backdropClick)="closeConfirm()"
+>
+  <h2 sheet-title id="discard-confirm-title">Descartar cambios</h2>
+  <p id="discard-confirm-message">Tienes cambios sin guardar. ¿Los descartas o sigues editando?</p>
+  <ng-container sheet-footer>
+    <app-action-button variant="secondary" label="Seguir editando" (activated)="closeConfirm()">
+      Seguir editando
+    </app-action-button>
+    <app-action-button variant="danger" label="Descartar cambios" (activated)="discardChanges()">
+      Descartar cambios
     </app-action-button>
   </ng-container>
 </app-sheet-dialog>

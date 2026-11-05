@@ -71,6 +71,9 @@ Decisiones duraderas del proyecto. Cada decisión incluye identificador, fecha, 
 - **Estado**: vigente
 
 
+| D-019 | 2026-11-05 | T-004c D-B — descarte de cambios al hacer clic en el fondo | Clic en el fondo del editor de nota/lista con cambios sin guardar y sin `editorBusy` abre el diálogo “Descartar cambios / Seguir editando” (sheet-dialog sm, action-button) sobre el editor; sin cambios cierra directo. `editorBusy` no hace nada. Con el diálogo de confirmación abierto, el clic en su propio fondo significa “seguir editando”. Aplica a Nueva nota y Nueva lista (título con texto). | D-A: fondo descarta directo con cambios (descartada, no protege texto escrito) | Specs de notes-workspace y sheet-dialog actualizadas; Playwright desktop + 390px; T-007 visor de nota hereda el mismo comportamiento | Vigente |
+
+
 ## Decisiones sustituidas
 
 (Ninguna en este momento)
