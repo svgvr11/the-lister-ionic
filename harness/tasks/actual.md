@@ -1,21 +1,42 @@
 # Tarea activa
 
-## T-001 — Investigación y plan, sin cambios de código
+## T-002 — FAB compartido (`shared/components/fab-button/`)
 
-**Objetivo:** Confirmar la auditoría (hallazgos H1-H9) contra el código y el navegador, y proponer un plan de implementación que el usuario apruebe antes de tocar código.
+**Estado:** terminado.
 
-**Contexto:** Base `docs/claude/01-auditoria-ui-fab-y-modales.md` (snapshot v1.64.5-a, 2026-11-04). El FAB de Notas no gira y queda sobre el modal; el modal de Nueva nota es otra implementación del bottom sheet. Causa del FAB sobre el modal: `<app-notes-workspace>` vive dentro de `<ion-content>` y su `position: fixed; z-index: 1200` queda atrapado en el contexto de apilamiento del scroller de Ionic, mientras el FAB está fuera con `--z-content-fab` (200). `board.page.html` ya documenta esta restricción en el comentario sobre overlays a nivel de página.
+**Regresión corregida:** `fab-button` declaraba un `@Output() click` que colisionaba con el evento DOM nativo del `<button>` interno, provocando doble ejecución del handler del consumidor (`toggleAddList()` abría y cerraba Nueva lista al instante). Se renombró el output a `activated` y se actualizó `board.page.html` para usar `(activated)` en ambos FABs.
 
-**Alcance:** Confirmación o corrección de cada hallazgo H1-H9 con evidencia; descripción exacta del FAB de lista (ícono, giro, estado abierto) en escritorio y móvil; propuesta de arquitectura (dónde renderizan FAB y sheet respecto de `<ion-content>`, API del FAB/sheet/botones, registro en `OverlayStackService`, fuente única del modo móvil, cómo se monta `pages/notes` bajo el toggle y su contrato, división de `notes-workspace` en componentes compartidos); recomendación por decisión con alternativas y riesgos; decisiones que necesitan aprobación del usuario; orden y tamaño estimado de las tareas 2-6.
+**Qué cambió:**
+- Creado `src/app/shared/components/fab-button/` (`.component.ts/.html/.scss/.spec.ts`) con inputs `icon`, `open`, `disabled`, `label`, `haspopup`, `mobile`; output `activated` (renombrado de `click` para evitar doble ejecución); getter `nativeElement` y método `focus()` para devolver el foco al opener.
+- Reemplazados `#newListFab`/`#newNoteFab` de `board.page.html` por `<app-fab-button>` con `(activated)`. El de listas usa `[open]="addingList"`, `[disabled]="isAtListLimit"`, `[icon]` dinámico, `[label]="listLimitLabel"`. El de notas usa `[open]="notesEditorOpen"` (getter que lee `notesWorkspace.editorOpen` para girar como el de listas).
+- Eliminado CSS duplicado del FAB de `board.page.scss` (bloque desktop y sobreescritura móvil en `@media (max-width: 480px)`). El componente usa tokens `--z-content-fab`, safe areas, `--fab-color`/`--fab-hover` con fallback.
+- `board.page.ts`: importó `FabButtonComponent`, lo añadió al `imports` del componente, cambió `@ViewChild('newListFab')` de `ElementRef<HTMLButtonElement>` a `FabButtonComponent`, añadió getter `notesEditorOpen`.
 
-**Fuera de alcance:** cualquier cambio de código, versión o rutas.
+**Verificación:**
+- `npm test`: spec `fab-button` 8/8 pasa (incluidos 2 specs de regresión: un clic → handler exactamente una vez; dos clics → dos veces). Suite completa 636/637 (1 fallo pre-existing en `notes-workspace.component.spec.ts:78`, demostrado previo a T-002: busca `.new-note-button` que no existe; sus archivos `.ts`/`.spec.ts` no fueron tocados, `git diff --stat` vacío).
+- `npx tsc --noEmit`: sin errores en archivos de T-002.
+- `npm run build`: completado sin errores; presupuesto de estilos respetado.
+- Playwright escritorio (1280px):
+  - Listas: FAB abre Nueva lista, gira (`.open`, ícono `close`), al cerrar vuelve a cerrado y devuelve el foco al FAB (`activeIsFab: true`).
+  - Notas: FAB abre el editor, gira, al cerrar vuelve a cerrado y devuelve el foco al FAB.
+- Playwright móvil (600px ≤ 700px):
+  - Listas: FAB abre Nueva lista, gira, al cerrar devuelve el foco al FAB.
+  - Notas: FAB abre el editor, gira, al cerrar devuelve el foco al FAB.
 
-**Archivos o módulos relevantes:** `docs/claude/01-auditoria-ui-fab-y-modales.md`, `src/app/pages/board/board.page.*`, `src/app/shared/components/notes-workspace/notes-workspace.component.*`, `src/app/core/board/board-content-view`, `harness/docs/architecture.md`.
+**Versión:** Build `1.64.6-a` (subida antes de editar; no se pidió de nuevo el tipo de subida por ser el mismo arreglo de T-002).
 
-**Restricciones:** No se modifica código, no se pide tipo de subida de versión (no se modifica código), ninguna versión tocada.
+**Archivos afectados:**
+- `src/app/shared/components/fab-button/fab-button.component.ts` (nuevo)
+- `src/app/shared/components/fab-button/fab-button.component.html` (nuevo)
+- `src/app/shared/components/fab-button/fab-button.component.scss` (nuevo)
+- `src/app/shared/components/fab-button/fab-button.component.spec.ts` (nuevo)
+- `src/app/pages/board/board.page.html` (editado: `(activated)` en ambos `<app-fab-button>`)
+- `src/app/pages/board/board.page.scss` (editado: eliminado CSS duplicado del FAB)
+- `src/app/pages/board/board.page.ts` (editado: import, imports, ViewChild, getter notesEditorOpen)
+- `src/app/core/app-version.ts` (editado por script de versión: 1.64.5-a → 1.64.6-a)
 
-**Criterios de aceptación:** Plan entregado y aprobado por el usuario; `actual.md` y `pendientes.md` actualizados; nada más modificado.
+**Pruebas no ejecutadas de T-002:** segundo tema de `BOARD_THEMES`, tabulación y `prefers-reduced-motion` en Playwright (pendiente si se desea completar antes de T-003).
 
-**Pruebas requeridas:** Ninguna (tarea de documentación e investigación).
+## T-001 — Investigación y plan
 
-**Estado:** en curso
+**Estado:** terminado.

@@ -751,38 +751,29 @@
 <div *ngIf="busy" class="saving-indicator">Guardando…</div>
 
 <ng-container *ngIf="!loadingBoard && !boardError">
-  <!-- ✨ Botón flotante (FAB) para añadir lista -->
-  <button
+  <!-- ✨ Botón flotante (FAB) para añadir lista (componente compartido) -->
+  <app-fab-button
     #newListFab
     *ngIf="contentView === 'checklists'"
-    class="fab-add-list ion-activatable"
     type="button"
-    [class.open]="addingList"
+    [open]="addingList"
     [disabled]="isAtListLimit"
-    (click)="toggleAddList()"
-    [attr.aria-label]="listLimitLabel"
-    aria-haspopup="dialog"
-    [attr.aria-expanded]="addingList"
-    [title]="listLimitLabel"
-  >
-    <ion-icon [name]="addingList ? 'close' : 'add'"></ion-icon>
-    <ion-ripple-effect></ion-ripple-effect>
-  </button>
+    [icon]="addingList ? 'close' : 'add'"
+    [label]="listLimitLabel"
+    haspopup="dialog"
+    (activated)="toggleAddList()"
+  ></app-fab-button>
 
-  <!-- ✨ Botón flotante para añadir nota (vista Notas) -->
-  <button
-    #newNoteFab
+  <!-- ✨ Botón flotante para añadir nota (vista Notas, componente compartido) -->
+  <app-fab-button
     *ngIf="contentView === 'notes'"
-    class="fab-add-list ion-activatable"
     type="button"
-    (click)="createNoteFromFab()"
-    aria-label="Nueva nota"
-    aria-haspopup="dialog"
-    [title]="'Nueva nota'"
-  >
-    <ion-icon name="add" aria-hidden="true"></ion-icon>
-    <ion-ripple-effect></ion-ripple-effect>
-  </button>
+    [open]="notesEditorOpen"
+    [icon]="notesEditorOpen ? 'close' : 'add'"
+    label="Nueva nota"
+    haspopup="dialog"
+    (activated)="createNoteFromFab()"
+  ></app-fab-button>
 
   <!-- Modal de creación: conserva el disparador flotante, con tarjeta y backdrop de diálogo. -->
   <div

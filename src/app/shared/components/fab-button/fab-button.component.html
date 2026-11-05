@@ -1,0 +1,16 @@
+<button
+  #fabBtn
+  type="button"
+  class="fab-button"
+  [class.open]="open"
+  [class.mobile]="mobile"
+  [disabled]="disabled"
+  (click)="onClick()"
+  [attr.aria-label]="label || null"
+  [attr.aria-haspopup]="haspopup"
+  [attr.aria-expanded]="open ? 'true' : 'false'"
+  [title]="label || null"
+>
+  <ion-icon [name]="icon"></ion-icon>
+  <ion-ripple-effect></ion-ripple-effect>
+</button>

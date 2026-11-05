@@ -31,6 +31,7 @@ import { AppFooterComponent } from '../../shared/components/app-footer/app-foote
 import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
 import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
 import { NotesWorkspaceComponent } from '../../shared/components/notes-workspace/notes-workspace.component';
+import { FabButtonComponent } from '../../shared/components/fab-button/fab-button.component';
 import { InlineEditComponent } from '../../shared/components/inline-edit/inline-edit.component';
 import { WelcomeModalComponent } from '../../shared/components/welcome-modal/welcome-modal.component';
 import { BoardTheme, BOARD_THEMES, migrateLegacyTheme, storeTheme } from '../../core/board/board-themes/board-themes';
@@ -145,6 +146,7 @@ interface CdkScrollStrategyShape {
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
     FeedbackModalComponent, InlineEditComponent, AddTaskInputComponent, WelcomeModalComponent,
     NotesWorkspaceComponent,
+    FabButtonComponent,
     // Reordenamiento táctil de listas: directivas concretas, no el módulo entero, para
     // que el CDK aterrice solo en el chunk del tablero.
     CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle
@@ -354,6 +356,10 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   collapsed = new Set<string>();
   expandedCompleted = new Set<string>();
   addingList = false;
+  /** Refleja si el editor de notas está abierto, para que el FAB de Notas gire como el de listas. */
+  get notesEditorOpen(): boolean {
+    return this.notesWorkspace?.editorOpen ?? false;
+  }
   newListTitle = '';
   readonly visualColors = [
     { name: 'Índigo', value: '#5145e8' },
@@ -601,8 +607,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       this.accountMenuNode?.querySelector<HTMLElement>('.theme-option')?.focus();
     });
   }
-  @ViewChild('newListFab', { read: ElementRef })
-  private newListFab?: ElementRef<HTMLButtonElement>;
+  @ViewChild('newListFab') private newListFab?: FabButtonComponent;
   @ViewChild('newListTitleInput', { read: IonInput })
   private newListTitleInput?: IonInput;
   @ViewChild('focusListTasks', { read: ElementRef })

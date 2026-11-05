@@ -21,7 +21,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - Recomendación por cada decisión con alternativas y riesgos; lista de decisiones que necesitan aprobación del usuario.
 - Orden y tamaño estimado de las tareas 2-6 (puede proponer dividir una).
 
-**Estado:** pendiente
+**Estado:** terminado
 
 ---
 
@@ -39,7 +39,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - No queda CSS de FAB duplicado en `board.page.scss` ni en `notes-workspace`.
 - Spec del componente: render por inputs, estado abierto, disabled, emite clic, aria; foco devuelto al opener al cerrar el modal.
 
-**Estado:** pendiente
+**Estado:** terminado
 
 ---
 
@@ -61,19 +61,32 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 
 ---
 
-## T-004 — Sheet/modal compartido (corrige que el FAB tape el modal)
+## T-004a — Sheet/modal compartido: componente + specs (corrige que el FAB tape el modal)
 
-**Descripción:** Un único `shared/components/sheet-dialog/` que implemente diálogo centrado en escritorio y bottom sheet en móvil, usado por Nueva lista y Nueva nota. Resuelve H3, H4, H5.
+**Descripción:** Crear `shared/components/sheet-dialog/` (diálogo centrado en escritorio, bottom sheet en móvil) con CDK Portal a `document.body`, backdrop con `--overlay-backdrop-color` y blur, asa superior en móvil, animación de entrada (con reduced-motion), `role="dialog"` + `aria-modal` + `aria-labelledby`, trampa de Tab, foco inicial tras la animación, devolución de foco al opener, cierre por backdrop solo si `dismissible`, Escape. Auto-registro en `OverlayStackService` (`dismissible = !editorBusy`). Slots: cabecera, cuerpo, acciones. Fuente única del modo móvil (snapshot al abrir, como `newListMobilePresentation`). Tokens de `styles.css`; crear los que falten con comentario.
 
-**Contexto:** Debe renderizarse fuera del contexto de apilamiento de `<ion-content>` según lo aprobado en T-001. Incluye backdrop con `--overlay-backdrop-color` y blur, asa superior en móvil, animación de entrada (con reduced-motion), `role="dialog"` + `aria-modal` + `aria-labelledby`, trampa de Tab, foco inicial tras la animación, devolución de foco al opener, cierre por backdrop solo si no hay datos sin guardar, Escape. Registro en `OverlayStackService`. Una sola fuente del modo móvil. Slots: cabecera, cuerpo, acciones. Migrar Nueva lista y Nueva nota.
+**Contexto:** Resuelve H3, H4, H5. `board.page` ya registra `board:new-list` en `syncOverlayStack()`; al asumir el sheet, retirar ese id del sync de board.
 
-**Dependencias:** T-001 (plan aprobado), T-002 (FAB), T-003 (botones/campos).
+**Dependencias:** T-001 (plan aprobado C1-C5, C7-C8), T-002 (FAB), T-003 (botones/campos).
 
 **Criterios de finalización:**
-- Nueva lista: sin diferencias visibles ni de foco/teclado respecto de antes (capturas antes/después).
-- Nueva nota: mismo backdrop, asa, animación, botones y foco que Nueva lista; el FAB queda debajo del modal; Atrás de Android/Escape lo cierran vía overlay-stack (si no se puede probar Android, declarado pendiente de verificar en dispositivo).
-- Cerrar un modal con cambios sin guardar en nota mantiene el comportamiento actual.
-- Specs: apertura/cierre, Escape, backdrop, registro/desregistro en overlay-stack, foco, trampa de Tab, modo móvil. Specs existentes de notes-workspace actualizadas, no borradas.
+- Componente `sheet-dialog` standalone con specs: apertura/cierre, Escape, backdrop, registro/desregistro en overlay-stack, foco, trampa de Tab, modo móvil, `dismissible = !editorBusy`.
+- No queda CSS de sheet duplicado.
+
+**Estado:** pendiente
+
+---
+
+## T-004b — Sheet/modal compartido: migrar Nueva lista y Nueva nota
+
+**Descripción:** Migrar Nueva lista al `sheet-dialog` (comportamiento idéntico al actual; capturas antes/después) y luego Nueva nota (mismo backdrop, asa, animación, botones y foco que Nueva lista; el FAB queda debajo del modal). Atrás de Android/Escape lo cierran vía overlay-stack (si no se puede probar Android, declarado pendiente de verificar en dispositivo). Cerrar con cambios sin guardar en nota mantiene el comportamiento actual. Specs existentes de notes-workspace actualizadas, no borradas.
+
+**Dependencias:** T-004a.
+
+**Criterios de finalización:**
+- Nueva lista: sin diferencias visibles ni de foco/teclado respecto de antes.
+- Nueva nota: idéntica a Nueva lista; FAB debajo del modal.
+- Specs existentes de notes-workspace actualizadas, no borradas.
 
 **Estado:** pendiente
 
@@ -94,6 +107,10 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 **Estado:** pendiente
 
 ---
+
+## Nota de arquitectura (no es una tarea de código)
+
+`board.page` es el shell de facto de la app (hospeda Checklists y Notas, header común, FABs, overlays). Debe extraerse cuando llegue el estado Todo (`#/all`, hash routing), donde el switch alterna entre las pages `board` y `notes`. **Planificado, no implementado en esta serie.** No se toca ahora.
 
 ## T-006 — Mover Notas a `pages/notes/`
 

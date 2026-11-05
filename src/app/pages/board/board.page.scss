@@ -1807,59 +1807,9 @@ ion-header {
   z-index: 100;
 }
 
-/* ✨ FAB - Botón flotante para añadir lista */
-.fab-add-list {
-  position: fixed;
-  /* El ripple es bounded: sin esto se sale del círculo de 60px. */
-  overflow: hidden;
-  right: 24px;
-  bottom: calc(20px + var(--app-safe-area-bottom));
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--fab-color);
-  color: #fff;
-  font-size: 28px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(111, 155, 231, 0.4);
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  z-index: 200;
-}
+/* ✨ FAB ahora vive en shared/components/fab-button (token --z-content-fab, safe areas). */
 
-.fab-add-list:hover {
-  background: var(--fab-hover);
-  transform: scale(1.08);
-  box-shadow: 0 12px 32px rgba(111, 155, 231, 0.55);
-}
-
-.fab-add-list:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.fab-add-list:disabled:hover {
-  background: var(--fab-color);
-  box-shadow: 0 8px 24px rgba(111, 155, 231, 0.4);
-}
-
-.fab-add-list:active {
-  transform: scale(0.95);
-}
-
-.fab-add-list ion-icon {
-  font-size: 32px;
-  transition: transform 0.25s ease;
-}
-
-.fab-add-list.open ion-icon {
-  transform: rotate(45deg);
-}
-
-/* Respeta la preferencia del sistema de reducir animaciones. */
+/* Respeta la preferencia del sistema de reducir animaciones (feedback-fab, otro FAB fuera de alcance de esta tarea). */
 @media (prefers-reduced-motion: reduce) {
   .feedback-fab { transition: none; }
   .feedback-fab:hover, .feedback-fab:active { transform: none; }
@@ -3035,12 +2985,6 @@ ion-header {
     font-size: 10px;
   }
   .search-box { gap: 5px; padding-inline: 7px; }
-  .fab-add-list {
-    right: 16px;
-    bottom: calc(18px + var(--app-safe-area-bottom));
-    width: 54px;
-    height: 54px;
-  }
 }
 
 @supports not (height: 100dvh) {

@@ -25,6 +25,25 @@ Decisiones duraderas del proyecto. Cada decisión incluye identificador, fecha, 
 
 (Ninguna pendiente de revisión en este momento)
 
+### D-015 — Plan T-001 aprobado con condiciones (C1-C9)
+
+- **Fecha**: 2026-11-04
+- **Contexto**: Tarea T-001 (investigación y plan) aprobada con condiciones antes de iniciar T-002.
+- **Decisión adoptada**:
+  - C1: Portal CDK a `document.body` aprobado; variables de tema (`--accent`, `--card-surface`, `--fab-color`, `--fab-hover`, `--on-accent`) viven en `:host` de board.page y no llegan al portal → pasar al sheet vía helper puro en `core/ui` con spec.
+  - C2: CDK Overlay necesita estilos base y contenedor con z-index 1000 → resolver con tokens; avisar antes de tocar `angular.json`.
+  - C3: Modo móvil único aprobado; conserva snapshot al abrir (como `newListMobilePresentation`) y migra los otros usos de `isMobilePresentation` en board.page.
+  - C4: FABs se quedan en board.page fuera de `<ion-content>`; `pages/notes` emite `editorOpen` y board.page lo usa en `boardModalOpen` (inert), `setContentView`, guards y `[open]` del FAB.
+  - C5: Overlay-stack auto-registro aprobado, `dismissible = !editorBusy` (no "sin cambios sin guardar"); `closeTop()` saca entrada antes de llamar a close(); verificar orden frente a `syncOverlayStack` en `ngDoCheck` y retirar `board:new-list` cuando el sheet lo asuma.
+  - C6: T-005 propone token nuevo y espera validación, agrupando dudas en una sola pregunta.
+  - C7: Clic en fondo del editor de nota se alinea con Nueva lista (cierra solo si no hay título, texto ni adjuntos nuevos).
+  - C8: T-004 se divide en T-004a (componente + specs) y T-004b (migrar Nueva lista, verificar idéntica, luego Nueva nota). Ignorar estimados en días.
+  - C9: board.page es el shell de facto; extraerse al llegar estado Todo (#/all). Registrado como pendiente, no se hace ahora.
+- **Alternativas consideradas**: host de page para sheet (descartado por C1/C2); `dismissible` sin cambios sin guardar (descartado por C5).
+- **Consecuencias**: `sheet-dialog` auto-registra en `OverlayStackService`; FABs permanecen en board.page; T-004 fraccionado.
+- **Estado**: vigente
+
+
 ## Decisiones sustituidas
 
 (Ninguna en este momento)
