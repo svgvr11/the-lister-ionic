@@ -17,7 +17,7 @@
 
 ion-header {
   position: relative;
-  z-index: 300;
+  z-index: var(--z-page-header, 300);
   flex: 0 0 auto;
   height: auto;
   padding-top: var(--app-safe-area-top);

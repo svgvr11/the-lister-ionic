@@ -64,7 +64,7 @@ ion-toolbar.topbar {
 
 ion-header {
   position: relative;
-  z-index: 300;
+  z-index: var(--z-page-header, 300);
   overflow: visible;
   flex: 0 0 auto;
   height: auto;
@@ -1121,7 +1121,7 @@ ion-header {
 .board-error,
 .board-save-error {
   position: fixed;
-  z-index: 250;
+  z-index: var(--z-page-error, 250);
   left: 50%;
   width: min(560px, calc(100% - 32px));
   padding: 14px 16px;
@@ -1804,7 +1804,7 @@ ion-header {
   padding: 8px 12px;
   font-size: 12px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  z-index: 100;
+  z-index: var(--z-page-status, 100);
 }
 
 /* ✨ FAB ahora vive en shared/components/fab-button (token --z-content-fab, safe areas). */
@@ -2298,7 +2298,7 @@ ion-header {
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 1000;
+  z-index: var(--z-page-overlay, 1000);
   max-width: min(calc(100vw - 48px), 200px);
   min-width: max-content;
   padding: 5px 8px;

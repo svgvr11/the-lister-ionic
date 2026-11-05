@@ -24,7 +24,7 @@
 
 ion-header {
   position: relative;
-  z-index: 300;
+  z-index: var(--z-page-header, 300);
   flex: 0 0 auto;
   height: auto;
   padding-top: var(--app-safe-area-top);
@@ -741,7 +741,7 @@ ion-content.trash-content {
 
 .trash-error {
   position: fixed;
-  z-index: 250;
+  z-index: var(--z-page-error, 250);
   left: 50%;
   width: min(560px, calc(100% - 32px));
   padding: 14px 16px;
@@ -769,7 +769,7 @@ ion-content.trash-content {
   border-radius: 999px;
   font-size: 12px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  z-index: 100;
+  z-index: var(--z-page-status, 100);
 }
 
 /* Responsivo */

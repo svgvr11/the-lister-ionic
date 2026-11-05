@@ -55,6 +55,9 @@ input {
   --z-mobile-profile-dialog: 1001;
   --z-stacked-confirmation: 1100;
   --z-feedback-overlay: 1200;
+  --z-page-header: 300;
+  --z-page-error: 250;
+  --z-page-status: 100;
   --z-session-lock: 10000;
 }
 
