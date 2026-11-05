@@ -248,41 +248,10 @@
 .notes-empty ion-icon { font-size: 28px; color: var(--accent, #8870ad); }
 .notes-empty strong { color: #26334a; }
 
-.note-editor-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(15, 23, 42, 0.42);
-}
-
-.note-editor {
-  box-sizing: border-box;
-  width: min(680px, 100%);
-  max-height: min(88vh, 900px);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow: auto;
-  padding: 22px;
-  border-radius: 18px;
-  color: #26334a;
-  background: #fff;
-  box-shadow: 0 20px 70px rgba(15, 23, 42, 0.25);
-}
-
-.note-editor-header,
-.note-attachment-heading,
-.note-editor-footer {
+.note-attachment-heading {
   display: flex;
   align-items: center;
 }
-
-.note-editor-header { justify-content: space-between; }
-.note-editor-header h2 { margin: 0; font-size: 19px; }
 
 .note-attachment button {
   width: 36px;
@@ -359,10 +328,3 @@
 .note-editor-spacer { flex: 1; }
 
 button:disabled { opacity: 0.55; cursor: not-allowed; }
-
-@media (max-width: 700px) {
-  .notes-heading { padding-inline: 8px; }
-  .note-editor-backdrop { align-items: end; padding: 0; }
-  .note-editor { width: 100%; max-height: calc(92vh - var(--app-safe-area-top, 0px)); padding: 18px 16px calc(16px + var(--app-safe-area-bottom, 0px)); border-radius: 18px 18px 0 0; }
-  .note-editor-footer { flex-wrap: wrap; }
-}

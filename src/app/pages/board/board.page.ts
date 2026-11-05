@@ -792,6 +792,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private closePageOverlays(): void {
     this.closeAccountMenu(true, false);
     if (this.addingList) this.cancelAddList(false);
+    if (this.notesEditorOpen) this.notesWorkspace?.cancelEditing();
     if (this.focusListId) this.closeFocusModal(false);
     if (this.listToRemove) this.closeRemoveDialog(false);
     if (this.editingTitle) this.cancelEditTitle();

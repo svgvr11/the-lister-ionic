@@ -6,16 +6,19 @@ import { addIcons } from 'ionicons';
 import { add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash } from 'ionicons/icons';
 import { ActionButtonComponent } from '../action-button/action-button.component';
 import { CloseButtonComponent } from '../close-button/close-button.component';
+import { SheetDialogComponent } from '../sheet-dialog/sheet-dialog.component';
 import { TextFieldComponent } from '../text-field/text-field.component';
 import { BoardNote, BoardNoteAttachment } from '../../../models/board.model';
 import { orderedNotes, setPinnedNote } from '../../../core/board/note-rules/note-rules';
 import { MasonryController, MASONRY_GAP, resolveBoardFlowMode } from '../../../core/ui/masonry-layout/masonry-layout';
 import { NoteAttachmentService } from '../../../services/note-attachment.service';
+import { type BoardTheme } from '../../../core/board/board-themes/board-themes';
+import { MobilePresentationService } from '../../../services/mobile-presentation.service';
 
 @Component({
   selector: 'app-notes-workspace',
   standalone: true,
-  imports: [CommonModule, IonIcon, IonRippleEffect, ActionButtonComponent, CloseButtonComponent, TextFieldComponent],
+  imports: [CommonModule, IonIcon, IonRippleEffect, ActionButtonComponent, CloseButtonComponent, SheetDialogComponent, TextFieldComponent],
   templateUrl: './notes-workspace.component.html',
   styleUrls: ['./notes-workspace.component.scss']
 })
@@ -27,11 +30,14 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   @Input() compactCards = false;
   @Input() searchQuery = '';
   @Input() themeAccent = '#8870ad';
+  /** Tema del tablero para aplicarlo al sheet del editor (bajo el portal). */
+  @Input() theme: BoardTheme | null = null;
   @Output() notesChange = new EventEmitter<BoardNote[]>();
   @Output() pinnedNoteIdChange = new EventEmitter<string | null>();
 
   private readonly attachments = inject(NoteAttachmentService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly mobilePresentation = inject(MobilePresentationService);
   @ViewChild('notesGrid', { read: ElementRef })
   private set notesGrid(ref: ElementRef<HTMLElement> | undefined) {
     this.gridElement = ref?.nativeElement ?? null;
@@ -72,7 +78,23 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   attachmentUrls: Record<string, string> = {};
   private removedAttachments: BoardNoteAttachment[] = [];
   private uploadedDuringEdit: BoardNoteAttachment[] = [];
-  private editorOpener: HTMLElement | null = null;
+  /** Elemento que abrió el editor; el sheet devuelve el foco a él al cerrar. */
+  protected editorOpener: HTMLElement | null = null;
+  /** Variante móvil capturada al abrir el editor; no cambia mientras está abierto. */
+  noteMobilePresentation: boolean | null = null;
+
+  /** Cambios sin guardar que protegen el clic en el fondo (backdrop). Escape y el botón
+   *  de cerrar siguen funcionando. */
+  get hasUnsavedChanges(): boolean {
+    const draft = this.draft;
+    if (!draft) return false;
+    return Boolean(
+      draft.title.trim() ||
+      draft.contentHtml.trim() ||
+      this.uploadedDuringEdit.length > 0 ||
+      this.removedAttachments.length > 0
+    );
+  }
 
   constructor() {
     addIcons({ add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash });
@@ -130,6 +152,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
 
   createNote(): void {
     this.editorOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.noteMobilePresentation = this.mobilePresentation.snapshot();
     const now = new Date().toISOString();
     this.draft = {
       id: crypto.randomUUID(),
@@ -150,6 +173,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
 
   async editNote(note: BoardNote, opener?: EventTarget | null): Promise<void> {
     this.editorOpener = opener instanceof HTMLElement ? opener : null;
+    this.noteMobilePresentation = this.mobilePresentation.snapshot();
     this.draft = structuredClone(note);
     this.removedAttachments = [];
     this.uploadedDuringEdit = [];
@@ -339,6 +363,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
 
   private finishEditing(): void {
     this.editorOpen = false;
+    this.noteMobilePresentation = null;
     this.draft = null;
     this.removedAttachments = [];
     this.uploadedDuringEdit = [];

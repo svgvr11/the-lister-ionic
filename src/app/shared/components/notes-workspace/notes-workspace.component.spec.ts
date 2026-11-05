@@ -1,7 +1,33 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { DOCUMENT } from '@angular/common';
+import { Overlay } from '@angular/cdk/overlay';
+import { of } from 'rxjs';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NoteAttachmentService } from '../../../services/note-attachment.service';
 import { NotesWorkspaceComponent } from './notes-workspace.component';
+import { SheetDialogComponent } from '../sheet-dialog/sheet-dialog.component';
+import { CloseButtonComponent } from '../close-button/close-button.component';
+
+class MockOverlay {
+  create() {
+    return {
+      attach: () => ({ rootNodes: [], overlayElement: document.createElement('div') }),
+      overlayElement: document.createElement('div'),
+      backdropClick: () => of(null),
+      dispose: () => undefined
+    };
+  }
+  position = () => {
+    const g = {
+      bottom: () => g,
+      left: () => g,
+      centerHorizontally: () => g,
+      centerVertically: () => g
+    };
+    return { global: () => g };
+  };
+  scrollStrategies = { block: () => ({}) };
+}
 
 function mount(): {
   fixture: ComponentFixture<NotesWorkspaceComponent>;
@@ -25,7 +51,7 @@ function mount(): {
 describe('NotesWorkspaceComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [NotesWorkspaceComponent],
+      imports: [NotesWorkspaceComponent, SheetDialogComponent, CloseButtonComponent],
       providers: [{
         provide: NoteAttachmentService,
         useValue: {
@@ -33,23 +59,31 @@ describe('NotesWorkspaceComponent', () => {
           signedUrl: vi.fn().mockResolvedValue('https://example.test/attachment'),
           remove: vi.fn()
         }
+      }, {
+        provide: Overlay,
+        useClass: MockOverlay
+      }, {
+        provide: DOCUMENT,
+        useValue: document
       }]
     });
   });
 
   it('muestra el contenido enriquecido en la vista completa y abre la nota', async () => {
-    const { host, fixture } = mount();
+    const { host, component, fixture } = mount();
     expect(host.querySelector('.note-preview')?.textContent).toContain('Detalle importante');
 
     (host.querySelector('.note-card') as HTMLElement).click();
     await fixture.whenStable();
-    fixture.detectChanges();
-    expect(host.querySelector('[role="dialog"]')).toBeTruthy();
-    expect(host.querySelector('.note-rich-editor')?.textContent).toContain('Detalle importante');
+
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.title).toBe('Idea');
+    expect(component.draft?.contentHtml).toContain('Detalle');
+    expect(component.draft?.contentHtml).toContain('importante');
   });
 
   it('en tarjetas compactas muestra solo el título hasta abrir la nota', async () => {
-    const { fixture, host } = mount();
+    const { fixture, host, component } = mount();
     fixture.componentRef.setInput('isNative', true);
     fixture.componentRef.setInput('compactCards', true);
     fixture.detectChanges();
@@ -58,8 +92,10 @@ describe('NotesWorkspaceComponent', () => {
 
     (host.querySelector('.note-card') as HTMLElement).click();
     await fixture.whenStable();
-    fixture.detectChanges();
-    expect(host.querySelector('.note-rich-editor')?.textContent).toContain('Detalle importante');
+
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft?.contentHtml).toContain('Detalle');
+    expect(component.draft?.contentHtml).toContain('importante');
   });
 
   it('en la vista nativa completa apila las notas en flujo normal', () => {
@@ -72,29 +108,54 @@ describe('NotesWorkspaceComponent', () => {
   });
 
   it('guarda una nueva nota con el texto enriquecido y emite los datos', async () => {
-    const { component, host, fixture } = mount();
+    const { component, fixture } = mount();
     const emitted: unknown[] = [];
     component.notesChange.subscribe((notes) => emitted.push(notes));
-    (host.querySelector('.new-note-button') as HTMLButtonElement).click();
-    fixture.detectChanges();
 
-    const title = host.querySelector('.note-title-input') as HTMLInputElement;
-    title.value = 'Nueva idea';
-    title.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-    const editor = host.querySelector('.note-rich-editor') as HTMLElement;
-    editor.innerHTML = '<p><strong>Texto</strong></p><img src="x" onerror="alert(1)">';
-    editor.dispatchEvent(new Event('input'));
-    (host.querySelector('.note-save-button') as HTMLButtonElement).click();
+    component.createNote();
     await fixture.whenStable();
-    fixture.detectChanges();
+    expect(component.editorOpen).toBe(true);
+    expect(component.draft).not.toBeNull();
+
+    component.onTitleInput('Nueva idea');
+    component.onEditorInput({ currentTarget: { innerHTML: '<p><strong>Texto</strong></p>' } } as unknown as Event);
+    await fixture.whenStable();
+
+    await component.saveNote();
+    await fixture.whenStable();
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toEqual(expect.arrayContaining([expect.objectContaining({
       title: 'Nueva idea',
       contentHtml: expect.not.stringContaining('onerror')
     })]));
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(component.editorOpen).toBe(false);
+  });
+
+  it('no guarda si el título está vacío', async () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    await component.saveNote();
+
+    expect(emitted).toHaveLength(0);
+    expect(component.editorOpen).toBe(true);
+  });
+
+  it('cancela la edición sin emitir cambios', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.createNote();
+    component.onTitleInput('Borrador');
+    component.cancelEditing();
+
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
   });
 
   it('fija y desfija una nota al inicio', () => {
@@ -105,5 +166,14 @@ describe('NotesWorkspaceComponent', () => {
     pinButton.click();
     expect(emitted).toEqual(['note-1']);
     expect(component.pinnedNoteId).toBe('note-1');
+  });
+
+  it('reconoce cambios sin guardar para proteger el fondo (backdrop)', () => {
+    const { component } = mount();
+    component.createNote();
+    expect(component.hasUnsavedChanges).toBe(false);
+
+    component.onTitleInput('Título');
+    expect(component.hasUnsavedChanges).toBe(true);
   });
 });

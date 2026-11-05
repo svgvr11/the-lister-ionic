@@ -90,7 +90,7 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - Nueva nota: idéntica a Nueva lista; FAB debajo del modal.
 - Specs existentes de notes-workspace actualizadas, no borradas.
 
-**Estado:** fase 1 completada (Nueva lista migrada al sheet-dialog y verificada); fase 2 (Nueva nota) pendiente confirmación del usuario.
+**Estado:** terminado (fase 1 y fase 2 completadas y verificadas con Playwright en escritorio y móvil; capturas antes/después fuera del repo).
 
 ---
 

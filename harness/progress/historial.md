@@ -51,6 +51,16 @@ No es un duplicado de Git ni un registro de cada archivo modificado.
 - Fase 2 (Nueva nota) pendiente confirmación del usuario.
 - Archivos: `sheet-dialog/*` (editado), `action-button.component.scss` (editado), `board.page.html/scss/ts` (editados), `styles.css` (editado), `core/app-version.ts` (script).
 
+## 2026-11-05 — T-004b fase 2 — Nueva nota al sheet-dialog
+
+- Migrada Nueva nota de `notes-workspace` a `app-sheet-dialog` (`size="md"`, `dismissible="!editorBusy"` [D-A], `backdropDismissible="!hasUnsavedChanges"` para proteger cambios sin guardar, `restoreFocus="false"`, foco en el campo de título, captura del modo móvil al abrir).
+- `board.page` pasa `[theme]="activeTheme"` a notes-workspace y cancela el editor al salir de la página; `notes-workspace` gana `@Input() theme` y `editorOpener` `protected`.
+- Retirado CSS duplicado del editor (`.note-editor-backdrop`, `.note-editor`, media query móvil) y el media query móvil de `notes-workspace.component.scss`.
+- Versión subida a build `1.64.12-a` (`npm run version:bump -- --build`).
+- Validación: notes-workspace 8/8; `npm test` 696/696; `tsc --noEmit -p tsconfig.app.json` limpio; `npm run build` limpio (solo warnings CSS preexistentes).
+- Playwright en `/#/board` (mock, 1280×900 y 390×844, dos temas): título 20 px/700, foco inicial en título, Tab/Shift+Tab atrapados, backdrop con título escrito no cierra, Escape/backdrop vacío cierran y devuelven foco al FAB de notas, creación de nota verificada, botones Cancelar/Guardar nota (Guardar deshabilitado sin título, sin Eliminar en nota nueva), móvil con asa pegada abajo, modo móvil se decide al abrir y no cambia al redimensionar con sheet abierto. Capturas antes/después fuera del repo.
+- Archivos: `notes-workspace.component.ts/html/scss` (editados), `board.page.html/ts` (editados), `styles.css` (editado), `core/app-version.ts` (script).
+
 ## 2026-11-05 — T-003 Botones y campos de formulario compartidos
 
 - Creado `shared/components/action-button/` (variantes primary/secondary/danger, ícono opcional, `ion-ripple-effect`, output `click`, `nativeElement`/`focus()`), `shared/components/close-button/` (cabecera, 32×32) y `shared/components/text-field/` (etiqueta, foco, contador opcional, error, outputs valueChange/enter/paste).

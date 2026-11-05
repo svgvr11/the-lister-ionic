@@ -47,9 +47,9 @@
 - T-004b: migrar Nueva lista y Nueva nota al sheet, comparar antes/después y retirar su CSS duplicado. En T-004a los flujos existentes siguen con sus overlays actuales.
 - Atrás de Android en el nuevo sheet: no verificado en dispositivo; queda para T-004b.
 
-## T-004b — Sheet/modal compartido: migrar Nueva lista (fase 1)
+## T-004b — Sheet/modal compartido: migrar Nueva lista y Nueva nota
 
-**Estado:** fase 1 completada (verificada); fase 2 (Nueva nota) pendiente confirmación del usuario.
+**Estado:** terminado (fase 1 y fase 2 verificadas).
 
 **Qué cambió (fase 1 — Nueva lista):**
 - `sheet-dialog`: nuevo input `backdropDismissible` (`false` bloquea solo el cierre por clic en fondo; Escape y el botón de cerrar siguen funcionando). Spec nueva añadida; sheet-dialog 18/18.
@@ -59,32 +59,41 @@
 - `action-button.component.scss`: retirado `.action-button:disabled:hover { background: inherit; box-shadow: inherit; }` que dejaba el botón "Crear lista" sin fondo tras un toque/clic en móvil.
 - `styles.css`: regla global `.sheet-dialog__title :is(h1,h2,h3,p) { margin: 0; font: inherit; }` para que el `h2` proyectado herede los 20 px / 700 del sheet (el contenido proyectado conserva el scope de la página).
 
-**Versión:** Build `1.64.11-a` (subida antes de editar).
+**Qué cambió (fase 2 — Nueva nota):**
+- `notes-workspace.component.ts`: nueva entrada `@Input() theme: BoardTheme | null = null` y `noteMobilePresentation` (capturada al abrir con `mobilePresentation.snapshot()`); `createNote()`/`editNote()` capturan el modo móvil y el opener; `editorOpener` es `protected` para recibirlo el sheet; `hasUnsavedChanges` (título, contenido, adjuntos subidos/eliminados) protege el fondo: `backdropDismissible="!hasUnsavedChanges"`; `dismissible="!editorBusy"` (D-A aprobada); `restoreFocus="false"` para que board devuelva el foco al FAB de notas.
+- `notes-workspace.component.html`: editor migrado de `.note-editor-backdrop`/`.note-editor` a `<app-sheet-dialog size="md" [theme] [mobile] [opener] [restoreFocus]="false" [dismissible]="!editorBusy" [backdropDismissible]="!hasUnsavedChanges" initialFocusSelector=".note-editor-title input" (closed)="cancelEditing()">` con slots título/cuerpo/pie; retirados `.note-editor-backdrop`, `.note-editor`, `.note-editor-header` y el media query móvil de `notes-workspace.component.scss` (el sheet da el comportamiento móvil).
+- `board.page.html`: `<app-notes-workspace [theme]="activeTheme">` recibe el tema activo para aplicarlo al sheet bajo el portal.
+- `board.page.ts`: `closePageOverlays()` cancela el editor de notas al salir de la página (`this.notesWorkspace?.cancelEditing()` cuando `notesEditorOpen`).
+
+**Versión:** Build `1.64.12-a` (subida antes de editar).
 
 **Verificación:**
-- Specs: sheet-dialog 18/18 (incluye `backdropDismissible`); el resto de specs sin cambios.
-- `npm test`: 692/693; el único fallo es el preexistente `notes-workspace.component.spec.ts:78` (no relacionado).
+- Specs: sheet-dialog 18/18 (incluye `backdropDismissible`); notes-workspace 8/8 (sheet ya probado en su propio spec; el spec del workspace prueba lógica del componente: abrir/guardar/cancelar/protección de fondo). `npm test`: 696/696.
 - `npx tsc --noEmit -p tsconfig.app.json`: sin errores.
 - `npm run build`: completado (solo warnings CSS preexistentes de `--btn-*` fuera de `:root` en `styles.css:65`).
 - Playwright en `http://localhost:4200/#/board` (mock, 1280×900 y 390×844, dos temas):
-  - Escritorio: sheet 440×344, centrado, portado al CDK, overlay z-index 1000, FAB 200 bajo backdrop, título 20 px / 700, botones "Cancelar"/"Crear lista", foco inicial en el campo de título, Tab/Shift+Tab atrapados, backdrop con texto no cierra, Escape cierra y devuelve foco al FAB, backdrop vacío cierra y devuelve foco, creación de lista verificada en tablero.
-  - Móvil: bottom sheet 390×345 pegado al borde inferior, asa visible, foco en título, Tab atrapado, ambos botones visibles con fondo.
-- Capturas antes/después: escritorio tema 1, escritorio tema 2, móvil (archivos temporales fuera del repo: `/var/folders/2h/vpnldx5s3ssgbq00bvqr_5yc0000gn/T/opencode/t004b-before-*.png`, `t004b-after-*.png`).
+  - Escritorio: sheet 680×463, centrado, portado al CDK, overlay z-index 1000, FAB 200 bajo backdrop, título 20 px / 700, botones "Cancelar"/"Guardar nota" (Guardar deshabilitado sin título), sin botón Eliminar en nota nueva, foco inicial en el campo de título, Tab/Shift+Tab atrapados, backdrop con título escrito no cierra (protege cambios), Escape cierra y devuelve foco al FAB, backdrop vacío cierra y devuelve foco, creación de nota verificada en tablero.
+  - Móvil: bottom sheet 390×477 pegado al borde inferior, asa visible, foco en título, Tab atrapado, ambos botones visibles.
+  - Dos temas: acento `#8870ad` y `#5686ac` aplicados bajo el portal.
+  - Modo móvil se decide al abrir: abrir en móvil → bottom sheet; cerrar, redimensionar a desktop, reabrir → diálogo desktop (no sigue siendo móvil). Con el sheet abierto en móvil, redimensionar a desktop no cambia la variante (se mantiene mobile).
+- Capturas: desktop tema 1, desktop tema 2 y móvil (archivos temporales fuera del repo: `t004b-notes-desktop-theme*.png`, `t004b-notes-mobile.png`).
 
-**Diferencia intencionada vs. antes:** el diálogo pasa de 420×348 (variante antigua de board) a 440×344 (variante `sm` del sheet aprobada en T-004a); tamaño y asa se conservan según criterio de T-004a.
+**Diferencia intencionada vs. antes:** Nueva nota pasa de diálogo propio de `board.page` (680×~900vh, contenedor fijo en `<ion-content>`) al sheet compartido bajo portal (680×463 escritorio / 390 bottom sheet móvil), el FAB de notas queda debajo del backdrop y el modo móvil se captura al abrir.
 
 **Archivos afectados:**
 - `src/app/shared/components/sheet-dialog/sheet-dialog.component.ts` (input `backdropDismissible`) + `.spec.ts`
 - `src/app/shared/components/action-button/action-button.component.scss` (retirado disabled:hover)
-- `src/app/pages/board/board.page.html` (Nueva lista a sheet-dialog)
-- `src/app/pages/board/board.page.ts` (foco, opener, syncOverlayStack, limpieza de timers)
+- `src/app/pages/board/board.page.html` (Nueva lista y Nueva nota a sheet-dialog; `[theme]` a notes-workspace)
+- `src/app/pages/board/board.page.ts` (foco, opener, syncOverlayStack, limpieza de timers, cancelar editor al salir)
 - `src/app/pages/board/board.page.scss` (retirado CSS duplicado de Nueva lista)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.ts` (theme input, modo móvil, opener, backdropDismissible, dismissible)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.html` (editor a sheet-dialog)
+- `src/app/shared/components/notes-workspace/notes-workspace.component.scss` (retirado CSS del editor y media query móvil)
 - `src/styles.css` (regla global del título proyectado)
-- `src/app/core/app-version.ts` (script: 1.64.10-a → 1.64.11-a)
+- `src/app/core/app-version.ts` (script: 1.64.11-a → 1.64.12-a)
 
-**Pendiente / fuera de alcance:**
-- Fase 2 (Nueva nota al sheet, `editorOpen`, `dismissible=!editorBusy`, backdrop solo sin cambios, retirar CSS/markup antiguo) solo tras confirmación del usuario.
-- T-005 (capas/tokens), T-006 (mover Notas a `pages/notes/`), T-007: fuera de alcance.
+**Fuera de alcance:**
+- T-005 (capas/tokens), T-006 (mover Notas a `pages/notes/`), T-007.
 - Atrás de Android en el nuevo sheet: no verificado en dispositivo.
 
 ## T-003 — Botones y campos de formulario compartidos
