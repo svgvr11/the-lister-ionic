@@ -30,7 +30,7 @@ import { BoardNote, ChecklistBoard, ChecklistList, ChecklistTask } from '../../m
 import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
 import { FeedbackModalComponent } from '../../shared/components/feedback-modal/feedback-modal.component';
 import { AddTaskInputComponent } from '../../shared/components/add-task-input/add-task-input.component';
-import { NotesWorkspaceComponent } from '../../shared/components/notes-workspace/notes-workspace.component';
+import { NotesPageComponent } from '../notes/notes.page';
 import { FabButtonComponent } from '../../shared/components/fab-button/fab-button.component';
 import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
 import { TextFieldComponent } from '../../shared/components/text-field/text-field.component';
@@ -149,7 +149,7 @@ interface CdkScrollStrategyShape {
     CommonModule, FormsModule, IonContent, IonHeader, IonIcon, IonInput, IonRefresher,
     IonRefresherContent, IonRippleEffect, IonTitle, IonToolbar, AppFooterComponent,
     FeedbackModalComponent, InlineEditComponent, AddTaskInputComponent, WelcomeModalComponent,
-    NotesWorkspaceComponent,
+    NotesPageComponent,
     FabButtonComponent,
     ActionButtonComponent,
     TextFieldComponent,
@@ -245,6 +245,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   setContentView(mode: BoardContentView): void {
     if (this.contentView === mode) return;
     if (this.addingList) this.cancelAddList();
+    if (this.notesEditorOpen) this.notesPage?.cancelEditing();
     this.contentView = mode;
     this.searching = false;
     this.searchQuery = '';
@@ -363,9 +364,14 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   collapsed = new Set<string>();
   expandedCompleted = new Set<string>();
   addingList = false;
-  /** Refleja si el editor de notas está abierto, para que el FAB de Notas gire como el de listas. */
+  /** Refleja si el editor de notas está abierto, para que el FAB de Notas gire como el de listas.
+   * board.page lo lee del evento `editorOpenChange` emitido por `pages/notes` (condición C4 de T-001). */
+  private _notesEditorOpen = false;
   get notesEditorOpen(): boolean {
-    return this.notesWorkspace?.editorOpen ?? false;
+    return this._notesEditorOpen;
+  }
+  onNotesEditorOpen(open: boolean): void {
+    this._notesEditorOpen = open;
   }
   newListTitle = '';
   /** Espera confirmación para descartar cambios sin guardar en Nueva lista. */
@@ -589,6 +595,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       || this.deleteDialogOpen
       || this.feedbackOpen
       || this.welcomeTourOpen
+      || this.notesEditorOpen
       || this.sessionGuard.blocked() !== null;
   }
 
@@ -628,8 +635,8 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
       dialog.nativeElement.focus();
     });
   }
-  @ViewChild(NotesWorkspaceComponent)
-  private notesWorkspace?: NotesWorkspaceComponent;
+  @ViewChild(NotesPageComponent)
+  private notesPage?: NotesPageComponent;
   /** Etiqueta «Última actualización» del pie del modal. Solo existe con el modal abierto. */
   @ViewChild('updatedAtLabel', { read: ElementRef })
   private updatedAtLabel?: ElementRef<HTMLElement>;
@@ -794,7 +801,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
   private closePageOverlays(): void {
     this.closeAccountMenu(true, false);
     if (this.addingList) this.cancelAddList(false);
-    if (this.notesEditorOpen) this.notesWorkspace?.cancelEditing();
+    if (this.notesEditorOpen) this.notesPage?.cancelEditing();
     if (this.focusListId) this.closeFocusModal(false);
     if (this.listToRemove) this.closeRemoveDialog(false);
     if (this.editingTitle) this.cancelEditTitle();
@@ -1849,7 +1856,7 @@ export class BoardPage implements OnInit, OnDestroy, AfterViewInit, DoCheck {
 
   // ✨ Abre el editor de nueva nota desde el FAB flotante de la vista Notas
   createNoteFromFab(): void {
-    this.notesWorkspace?.createNote();
+    this.notesPage?.createNote();
   }
 
   submitNewListFromInput(event: Event): void {

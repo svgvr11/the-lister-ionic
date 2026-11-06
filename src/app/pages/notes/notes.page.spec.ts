@@ -3,10 +3,11 @@ import { DOCUMENT } from '@angular/common';
 import { Overlay } from '@angular/cdk/overlay';
 import { of } from 'rxjs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { NoteAttachmentService } from '../../../services/note-attachment.service';
-import { NotesWorkspaceComponent } from './notes-workspace.component';
-import { SheetDialogComponent } from '../sheet-dialog/sheet-dialog.component';
-import { CloseButtonComponent } from '../close-button/close-button.component';
+import { NoteAttachmentService } from '../../services/note-attachment.service';
+import { NotesPageComponent } from './notes.page';
+import { SheetDialogComponent } from '../../shared/components/sheet-dialog/sheet-dialog.component';
+import { CloseButtonComponent } from '../../shared/components/close-button/close-button.component';
+import { BoardNote, BoardNoteAttachment } from '../../models/board.model';
 
 class MockOverlay {
   create() {
@@ -29,13 +30,13 @@ class MockOverlay {
   scrollStrategies = { block: () => ({}) };
 }
 
-function mount(): {
-  fixture: ComponentFixture<NotesWorkspaceComponent>;
-  component: NotesWorkspaceComponent;
+function mount(notes?: BoardNote[]): {
+  fixture: ComponentFixture<NotesPageComponent>;
+  component: NotesPageComponent;
   host: HTMLElement;
 } {
-  const fixture = TestBed.createComponent(NotesWorkspaceComponent);
-  fixture.componentRef.setInput('notes', [{
+  const fixture = TestBed.createComponent(NotesPageComponent);
+  fixture.componentRef.setInput('notes', notes ?? [{
     id: 'note-1',
     title: 'Idea',
     contentHtml: '<p>Detalle <strong>importante</strong></p>',
@@ -48,10 +49,22 @@ function mount(): {
   return { fixture, component: fixture.componentInstance, host: fixture.nativeElement };
 }
 
-describe('NotesWorkspaceComponent', () => {
+function mountNotes(): BoardNote[] {
+  return [{
+    id: 'note-1',
+    title: 'Idea',
+    contentHtml: '<p>Detalle <strong>importante</strong></p>',
+    position: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    attachments: []
+  }];
+}
+
+describe('NotesPageComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [NotesWorkspaceComponent, SheetDialogComponent, CloseButtonComponent],
+      imports: [NotesPageComponent, SheetDialogComponent, CloseButtonComponent],
       providers: [{
         provide: NoteAttachmentService,
         useValue: {
@@ -279,6 +292,135 @@ describe('NotesWorkspaceComponent', () => {
     expect(component.confirmDiscard).toBe(false);
     expect(component.editorOpen).toBe(false);
     expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
+
+  // --- T-006 corrección: hasUnsavedChanges compara contra el snapshot original ---
+
+  it('abrir una nota guardada y cerrar sin cambios (X) cierra directo sin confirmar', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote(mountNotes()[0]);
+    expect(component.hasUnsavedChanges).toBe(false);
+
+    component.onCloseRequested();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('abrir una nota guardada y clic en el fondo sin cambios cierra directo', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote(mountNotes()[0]);
+    expect(component.hasUnsavedChanges).toBe(false);
+
+    component.onBackdropClick();
+
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(component.draft).toBeNull();
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('editar el título de una nota guardada pide confirmación', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote(mountNotes()[0]);
+    component.onTitleInput('Título modificado');
+
+    expect(component.hasUnsavedChanges).toBe(true);
+    component.onCloseRequested();
+    expect(component.confirmDiscard).toBe(true);
+    expect(component.editorOpen).toBe(true);
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('editar el texto de una nota guardada pide confirmación', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote(mountNotes()[0]);
+    component.onEditorInput({
+      currentTarget: { innerHTML: '<p>Detalle <strong>importante</strong></p><p>Nuevo párrafo</p>' }
+    } as unknown as Event);
+
+    expect(component.hasUnsavedChanges).toBe(true);
+    component.onCloseRequested();
+    expect(component.confirmDiscard).toBe(true);
+    expect(component.editorOpen).toBe(true);
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('volver al texto original de una nota guardada no pide confirmación', () => {
+    const { component } = mount();
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote(mountNotes()[0]);
+    component.onEditorInput({
+      currentTarget: { innerHTML: '<p>Detalle <strong>importante</strong></p><p>Nuevo párrafo</p>' }
+    } as unknown as Event);
+    expect(component.hasUnsavedChanges).toBe(true);
+
+    component.onEditorInput({
+      currentTarget: { innerHTML: '<p>Detalle <strong>importante</strong></p>' }
+    } as unknown as Event);
+
+    expect(component.hasUnsavedChanges).toBe(false);
+    component.onCloseRequested();
+    expect(component.confirmDiscard).toBe(false);
+    expect(component.editorOpen).toBe(false);
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('quitar un adjunto de una nota guardada pide confirmación', async () => {
+    const attachment: BoardNoteAttachment = {
+      id: 'adj-1',
+      path: 'notas/note-1/documento.pdf',
+      name: 'documento.pdf',
+      mimeType: 'application/pdf',
+      size: 1234
+    };
+    const { component, fixture } = mount([{
+      id: 'note-con-adjunto',
+      title: 'Con adjunto',
+      contentHtml: '<p>Texto</p>',
+      position: 0,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      attachments: [attachment]
+    }]);
+    const emitted: unknown[] = [];
+    component.notesChange.subscribe((notes) => emitted.push(notes));
+
+    component.editNote({
+      id: 'note-con-adjunto',
+      title: 'Con adjunto',
+      contentHtml: '<p>Texto</p>',
+      position: 0,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      attachments: [attachment]
+    });
+    await fixture.whenStable();
+
+    expect(component.hasUnsavedChanges).toBe(false);
+    await component.removeAttachment(attachment);
+
+    expect(component.hasUnsavedChanges).toBe(true);
+    component.onCloseRequested();
+    expect(component.confirmDiscard).toBe(true);
+    expect(component.editorOpen).toBe(true);
     expect(emitted).toHaveLength(0);
   });
 });

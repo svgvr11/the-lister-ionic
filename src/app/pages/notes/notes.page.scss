@@ -1,0 +1,89 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.notes-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.notes-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 15px;
+}
+
+.notes-heading h2 {
+  margin: 0;
+  color: #172236;
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.notes-heading p {
+  margin: 5px 0 0;
+  color: #707b8e;
+  font-size: 13px;
+}
+
+.notes-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  min-height: 1px;
+}
+
+.notes-grid--flow {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.notes-grid--flow .note-card {
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+.notes-grid--cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  position: static !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.notes-empty {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #707b8e;
+  text-align: center;
+}
+
+.notes-empty ion-icon { font-size: 28px; color: var(--accent, #8870ad); }
+.notes-empty strong { color: #26334a; }
+
+.note-editor-spacer { flex: 1; }
+.note-editor-error { margin: 0; color: #b42318; font-size: 13px; }
+
+button:disabled { opacity: 0.55; cursor: not-allowed; }

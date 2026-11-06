@@ -129,6 +129,89 @@ No inventar prioridades ni compromisos que el usuario no haya aprobado.
 - `npm test`, `tsc`, `build` limpios.
 - Documentado en `decisiones.md` el plan de producto: switch futuro Todo/Checklists/Notas, `Todo` en `#/all`, el switch alterna entre las pages `board` y `notes` (planificado, no implementado).
 
+**Estado:** terminado
+
+---
+
+## T-007 — Modal de foco y visor de nota sobre sheet-dialog
+
+**Descripción:** Extraer el modo vista/edición de la nota y el modal de foco como componentes propios basados en `app-sheet-dialog`. No forman parte del alcance de T-006 (que solo mueve Notas a `pages/notes` y deja el editor dentro de la page).
+
+**Contexto:** Se mantiene como tarea independiente. Se implementa después de T-006.
+
+**Dependencias:** T-006 (pages/notes/), T-004a (sheet-dialog compartido).
+
+**Estado:** pendiente
+
+---
+
+## T-008 — Reordenar notas manualmente con agarradera
+
+**Descripción:** Añadir reordenamiento por arrastre a las notas con una agarradera (asa) solamente, sin contador, igual que en las listas. Nota: hoy las notas no tienen reordenamiento por arrastre (solo fijadas y fecha); es una funcionalidad nueva que cambia el modelo de datos (campo `position` de las notas).
+
+**Contexto:** Pendiente de una decisión de producto del usuario. No implementar hasta que se apruebe. Se deja para el final, después de la rejilla masonry compartida y la vista Todo.
+
+**Dependencias:** T-006 (pages/notes/), T-009 (shell app-home), rejilla masonry y tarjeta base compartidas.
+
+**Criterios de finalización:** pendientes de definición por producto.
+
+**Estado:** pendiente
+
+---
+
+## T-009 — Plan (investigación, sin código) para shell app-home
+
+**Descripción:** Plan de investigación (sin implementar código) para extraer un shell `app-home` con `app-header`, buscador, switch Checklists/Notas y `app-footer`, con un outlet interno que alterne `app-checklists` y `app-notes`, a la manera del esquema `claude/04-arquitectura-objetivo-shell.md` del Project.
+
+**Cubre:**
+- Estado de `board.page` migrado a servicios.
+- Rutas hijas (`#/all`, `#/checklists`, `#/notes`, con `#/board` redirigiendo).
+- `router-outlet` plano frente a `ion-router-outlet`.
+- Scroll único.
+- Auth y deep links.
+
+**Contexto:** Esta decisión sustituye a "Notas como estado en localStorage, sin ruta propia". El switch ya no alterna entre vistas dentro de `board.page`, sino entre páginas bajo el shell `app-home`.
+
+**Dependencias:** T-006 (pages/notes/).
+
+**Estado:** pendiente
+
+---
+
+## T-010 y siguientes — Ejecución por fases del shell
+
+**Descripción:** Implementar el shell `app-home` por fases, según el plan aprobado en T-009.
+
+**Estado:** pendiente
+
+---
+
+## Rejilla masonry y tarjeta base compartidas
+
+**Descripción:** Extraer la rejilla masonry y la tarjeta base como componentes compartidos antes de la vista Todo. Antes se llamaba T-009 en el plan original; ahora se ejecuta después del shell.
+
+**Estado:** pendiente
+
+---
+
+## Vista Todo (#/all)
+
+**Descripción:** Vista Todo bajo el shell `app-home`.
+
+**Estado:** pendiente
+
+---
+
+### Notas post-T-002 (pendientes de cierre, no bloquean T-003)
+
+**Descripción:** Añadir reordenamiento por arrastre a las notas con una agarradera (asa) solamente, sin contador, igual que en las listas. Nota: hoy las notas no tienen reordenamiento por arrastre (solo fijadas y fecha); es una funcionalidad nueva que cambia el modelo de datos (campo `position` de las notas).
+
+**Contexto:** Pendiente de una decisión de producto del usuario. No implementar hasta que se apruebe.
+
+**Dependencias:** T-006 (pages/notes/).
+
+**Criterios de finalización:** pendientes de definición por producto.
+
 **Estado:** pendiente
 
 ---

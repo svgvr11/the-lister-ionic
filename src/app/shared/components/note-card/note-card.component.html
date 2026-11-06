@@ -1,0 +1,22 @@
+<article class="note-card" [class.note-card--pinned]="pinned"
+  role="button" tabindex="0" [attr.aria-label]="'Abrir nota: ' + note.title"
+  (click)="onClick($event)">
+  <div class="note-card-head">
+    <div class="note-card-head-row">
+      <button class="note-pin-button ion-activatable" type="button"
+        [class.pinned]="pinned"
+        [attr.aria-label]="pinned ? 'Desfijar nota' : 'Fijar nota al inicio'"
+        [attr.aria-pressed]="pinned"
+        (click)="onPinToggle($event)">
+        <span class="pin-icon" aria-hidden="true"></span>
+        <ion-ripple-effect></ion-ripple-effect>
+      </button>
+      <h3 class="note-card-title">{{ note.title }}</h3>
+    </div>
+  </div>
+  <div *ngIf="!compact && note.contentHtml" class="note-preview" [innerHTML]="note.contentHtml"></div>
+  <div *ngIf="!compact && note.attachments.length" class="note-attachment-count">
+    <ion-icon name="attach-outline" aria-hidden="true"></ion-icon>
+    {{ note.attachments.length }} adjunto{{ note.attachments.length === 1 ? '' : 's' }}
+  </div>
+</article>

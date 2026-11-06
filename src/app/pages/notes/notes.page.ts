@@ -1,28 +1,28 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, Output, QueryList, SecurityContext, ViewChild, ViewChildren, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { IonIcon, IonRippleEffect } from '@ionic/angular/standalone';
+import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { add, attachOutline, close, downloadOutline, imageOutline, listOutline, pin, pinOutline, trash } from 'ionicons/icons';
-import { ActionButtonComponent } from '../action-button/action-button.component';
-import { CloseButtonComponent } from '../close-button/close-button.component';
-import { SheetDialogComponent } from '../sheet-dialog/sheet-dialog.component';
-import { TextFieldComponent } from '../text-field/text-field.component';
-import { BoardNote, BoardNoteAttachment } from '../../../models/board.model';
-import { orderedNotes, setPinnedNote } from '../../../core/board/note-rules/note-rules';
-import { MasonryController, MASONRY_GAP, resolveBoardFlowMode } from '../../../core/ui/masonry-layout/masonry-layout';
-import { NoteAttachmentService } from '../../../services/note-attachment.service';
-import { type BoardTheme } from '../../../core/board/board-themes/board-themes';
-import { MobilePresentationService } from '../../../services/mobile-presentation.service';
+import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
+import { NoteCardComponent } from '../../shared/components/note-card/note-card.component';
+import { NoteEditorContentComponent } from '../../shared/components/note-editor-content/note-editor-content.component';
+import { SheetDialogComponent } from '../../shared/components/sheet-dialog/sheet-dialog.component';
+import { BoardNote, BoardNoteAttachment } from '../../models/board.model';
+import { orderedNotes, setPinnedNote } from '../../core/board/note-rules/note-rules';
+import { MasonryController, MASONRY_GAP, resolveBoardFlowMode } from '../../core/ui/masonry-layout/masonry-layout';
+import { NoteAttachmentService } from '../../services/note-attachment.service';
+import { type BoardTheme } from '../../core/board/board-themes/board-themes';
+import { MobilePresentationService } from '../../services/mobile-presentation.service';
 
 @Component({
-  selector: 'app-notes-workspace',
+  selector: 'app-notes-page',
   standalone: true,
-  imports: [CommonModule, IonIcon, IonRippleEffect, ActionButtonComponent, CloseButtonComponent, SheetDialogComponent, TextFieldComponent],
-  templateUrl: './notes-workspace.component.html',
-  styleUrls: ['./notes-workspace.component.scss']
+  imports: [CommonModule, IonIcon, ActionButtonComponent, NoteCardComponent, NoteEditorContentComponent, SheetDialogComponent],
+  templateUrl: './notes.page.html',
+  styleUrls: ['./notes.page.scss']
 })
-export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDestroy {
+export class NotesPageComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() notes: BoardNote[] = [];
   @Input() pinnedNoteId: string | null = null;
   @Input() boardId = '';
@@ -34,6 +34,8 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   @Input() theme: BoardTheme | null = null;
   @Output() notesChange = new EventEmitter<BoardNote[]>();
   @Output() pinnedNoteIdChange = new EventEmitter<string | null>();
+  /** Emite si el editor de nota está abierto; board.page lo consume (inert, FAB, guards). Condición C4 de T-001. */
+  @Output() readonly editorOpenChange = new EventEmitter<boolean>();
 
   private readonly attachments = inject(NoteAttachmentService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -49,12 +51,6 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     }
   }
   @ViewChildren('noteCard', { read: ElementRef }) private noteCards!: QueryList<ElementRef<HTMLElement>>;
-  @ViewChild('richEditor', { read: ElementRef })
-  private set richEditor(ref: ElementRef<HTMLElement> | undefined) {
-    if (ref && this.draft) {
-      ref.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, this.draft.contentHtml) ?? '';
-    }
-  }
   private gridElement: HTMLElement | null = null;
   private cardsSubscription?: { unsubscribe(): void };
   private layoutFrame = 0;
@@ -80,22 +76,43 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
   attachmentUrls: Record<string, string> = {};
   private removedAttachments: BoardNoteAttachment[] = [];
   private uploadedDuringEdit: BoardNoteAttachment[] = [];
+  /** Snapshot de la nota original al abrir una existente (null para nota nueva). Se usa
+   *  para saber si realmente hay cambios sin guardar, y no solo contenido escrito. */
+  private originalNote: BoardNote | null = null;
   /** Elemento que abrió el editor; el sheet devuelve el foco a él al cerrar. */
   protected editorOpener: HTMLElement | null = null;
   /** Variante móvil capturada al abrir el editor; no cambia mientras está abierto. */
   noteMobilePresentation: boolean | null = null;
 
   /** Cambios sin guardar que protegen el clic en el fondo (backdrop). Escape y el botón
-   *  de cerrar siguen funcionando. */
+   *  de cerrar siguen funcionando. Se compara contra el snapshot de la nota original
+   *  (`originalNote`) cuando se abre una nota existente; para una nota nueva se mantiene
+   *  el criterio actual (hay algo escrito o adjuntado). */
   get hasUnsavedChanges(): boolean {
     const draft = this.draft;
     if (!draft) return false;
-    return Boolean(
-      draft.title.trim() ||
-      draft.contentHtml.trim() ||
-      this.uploadedDuringEdit.length > 0 ||
-      this.removedAttachments.length > 0
-    );
+    // Nota nueva: hay cambio si hay algo escrito o adjuntado (comportamiento actual).
+    if (!this.originalNote) {
+      return Boolean(
+        draft.title.trim() ||
+        draft.contentHtml.trim() ||
+        this.uploadedDuringEdit.length > 0 ||
+        this.removedAttachments.length > 0
+      );
+    }
+    // Nota existente: compara título, contenido normalizado y adjuntos contra el original.
+    if (draft.title.trim() !== this.originalNote.title.trim()) return true;
+    if (
+      this.normalizeHtml(draft.contentHtml) !== this.normalizeHtml(this.originalNote.contentHtml)
+    ) {
+      return true;
+    }
+    const draftIds = new Set(draft.attachments.map((a) => a.id));
+    const originalIds = new Set(this.originalNote.attachments.map((a) => a.id));
+    if (draftIds.size !== originalIds.size || [...draftIds].some((id) => !originalIds.has(id))) {
+      return true;
+    }
+    return false;
   }
 
   constructor() {
@@ -144,6 +161,10 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     return Boolean(this.draft && this.notes.some((note) => note.id === this.draft?.id));
   }
 
+  get notesFlowMode(): boolean {
+    return this.flowMode;
+  }
+
   isPinned(note: BoardNote): boolean {
     return this.pinnedNoteId === note.id;
   }
@@ -165,17 +186,20 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
       updatedAt: now,
       attachments: []
     };
+    this.originalNote = null;
     this.removedAttachments = [];
     this.uploadedDuringEdit = [];
     this.attachmentUrls = {};
     this.editorError = '';
     this.confirmDelete = false;
     this.editorOpen = true;
+    this.editorOpenChange.emit(true);
   }
 
   async editNote(note: BoardNote, opener?: EventTarget | null): Promise<void> {
     this.editorOpener = opener instanceof HTMLElement ? opener : null;
     this.noteMobilePresentation = this.mobilePresentation.snapshot();
+    this.originalNote = structuredClone(note);
     this.draft = structuredClone(note);
     this.removedAttachments = [];
     this.uploadedDuringEdit = [];
@@ -183,6 +207,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     this.editorError = '';
     this.confirmDelete = false;
     this.editorOpen = true;
+    this.editorOpenChange.emit(true);
     await this.loadAttachmentUrls(this.draft.attachments);
   }
 
@@ -291,7 +316,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
       const saved = {
         ...draft,
         title: draft.title.trim(),
-        contentHtml: this.sanitizer.sanitize(SecurityContext.HTML, draft.contentHtml) ?? '',
+        contentHtml: this.sanitizeHtml(draft.contentHtml),
         updatedAt: new Date().toISOString()
       };
       const existing = this.notes.some((note) => note.id === saved.id);
@@ -327,6 +352,7 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
    *  cambios, o guardando, se descarta directo sin confirmar. */
   onCloseRequested(): void {
     if (this.editorBusy) return;
+    this.editorError = '';
     if (this.hasUnsavedChanges) {
       this.confirmDiscard = true;
       return;
@@ -385,6 +411,19 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     return attachment.mimeType.startsWith('image/');
   }
 
+  /** Sanitiza el HTML del contenido para mostrarlo en el editor. */
+  private sanitizeHtml(html: string): string {
+    return this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
+  }
+
+  /** Normaliza el HTML a texto plano para comparar contenido sin falsos positivos
+   *  (saltos de línea finales, <br>, etiquetas contenedor, espacios repetidos). */
+  private normalizeHtml(html: string): string {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html ?? '';
+    return (tmp.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }
+
   private async loadAttachmentUrls(items: BoardNoteAttachment[]): Promise<void> {
     try {
       const entries = await Promise.all(items.map(async (item) =>
@@ -399,7 +438,9 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
 
   private finishEditing(): void {
     this.editorOpen = false;
+    this.editorOpenChange.emit(false);
     this.noteMobilePresentation = null;
+    this.originalNote = null;
     this.draft = null;
     this.removedAttachments = [];
     this.uploadedDuringEdit = [];
@@ -426,10 +467,6 @@ export class NotesWorkspaceComponent implements OnChanges, AfterViewInit, OnDest
     if (next === this.flowMode) return;
     this.flowMode = next;
     if (next) this.clearMasonryStyles();
-  }
-
-  get notesFlowMode(): boolean {
-    return this.flowMode;
   }
 
   private clearMasonryStyles(): void {

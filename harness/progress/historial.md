@@ -75,9 +75,23 @@ No es un duplicado de Git ni un registro de cada archivo modificado.
 
 ---
 
+## 2026-11-05 — T-006 Mover Notas a pages/notes/ y corregir hasUnsavedChanges
+
+- `notes-workspace` eliminado; Notas vive en `pages/notes/notes.page.*` con componentes `shared/components/note-card/` y `shared/components/note-editor-content/`. `board.page` usa `<app-notes-page>` y consume `editorOpenChange` (C4 T-001).
+- `hasUnsavedChanges` compara contra snapshot del estado original (`originalNote`) al abrir una nota existente; para nota nueva se mantiene el criterio anterior. HTML normalizado a texto plano para comparar; quitar/añadir adjunto cuenta como cambio; volver al valor original, no.
+- Añadidos 6 specs de regresión en `notes.page.spec.ts`: abrir+cerrar sin cambios (X y fondo) no pide confirmación; editar título o texto sí; volver al original no; quitar adjunto sí.
+- `styles.css`: `--highlight-height: 0px` extendido a `ion-input`/`ion-textarea` sin clase de modo. El usuario corrigió además la barra verde bajo "Añadir tarea" sobreescribiendo `ion-valid.sc-ion-input-md-h` con `--highlight-color: none` en `shared/components/add-task-input/add-task-input.component.scss` (causa raíz: Ionic aplica `--highlight-height` por defecto en `ion-input:valid` con mayor especificidad que el selector de modo). Verificado que cubre "Añadir tarea"; `text-field` y Nueva lista usan `<input>` nativo (no `ion-input`) y no están afectados por el highlight de Ionic.
+- `notes.page.scss`: rejilla de Notas alineada con listas — columnas `repeat(2, minmax(0, 1fr))` con media queries 600px (3 col) y 900px (4 col), `gap: 14px`, idéntico a `.board.board-cards`. Contenedor dentro de `.board-scroller` (padding lateral 6px desktop / 8px móvil), igual que Checklists.
+- `note-card.component.*`: sin hueco vacío arriba (eliminado `note-card-handle-slot`; no se reserva espacio para T-008 todavía), pin + título en misma fila en desktop (media query ≥701px), título 15px/650 como listas, padding 12px 14px 14px, borde `#edf0f6`/`--card-surface`, `width: 100%` en grid y `min(100%, 520px)` centrado en modo flow.
+- Quitado `<h2>Notas` redundante de `notes.page.html` (registrado aquí; ningún spec depende de él).
+- Versión: Build `1.64.16-a` (subida por el usuario al iniciar T-006; no se vuelve a subir por los arreglos de este cierre).
+- Validación: `npm test` 709/709 (52 archivos); `npm run build` limpio (solo warnings CSS preexistentes).
+- Playwright verificado: escritorio 1280/1440/1680px y móvil 390px, dos temas — abrir nota guardada y cerrar sin cambios (X/fondo) cierra directo; con cambio aparece "Descartar cambios / Seguir editando"; Nueva lista sin barra verde; margen, ancho de columna y hueco de Notas coinciden con Checklists en todos los tamaños.
+- Archivos: `pages/notes/*` (nuevo), `shared/components/note-card/*` (nuevo), `shared/components/note-editor-content/*` (nuevo), `shared/components/notes-workspace/` (eliminado), `board.page.html/ts` (editado), `styles.css` (editado), `add-task-input.component.scss` (editado por el usuario), `notes.page.spec.ts` (editado), `historial.md` (editado), `pendientes.md` (editado), `decisiones.md` (editado, D-020 sustituye a C9 de D-015).
+
 ---
 
-**Formato para nuevas entradas**:
+## 2026-11-05 — T-004b fase 2 — Nueva nota al sheet-dialog
 
 ```
 ### YYYY-MM-DD — [Título]

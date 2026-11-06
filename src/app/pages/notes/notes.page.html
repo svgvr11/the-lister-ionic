@@ -1,0 +1,97 @@
+<section class="notes-workspace" aria-label="Notas">
+  <div *ngIf="hasSearchResults; else emptyNotes" class="notes-grid"
+    [class.notes-grid--cards]="compactCards"
+    [class.notes-grid--flow]="!compactCards && (isNative || notesFlowMode)"
+    #notesGrid>
+    <app-note-card
+      *ngFor="let note of orderedNotes; trackBy: trackById"
+      #noteCard
+      [note]="note"
+      [pinned]="isPinned(note)"
+      [compact]="compactCards"
+      (cardClick)="editNote($event.note, $event.event.currentTarget)"
+      (cardPinToggle)="togglePin($event.note, $event.event)"
+      (keydown)="openFromKeyboard($event, note)">
+    </app-note-card>
+  </div>
+
+  <ng-template #emptyNotes>
+    <div class="notes-empty">
+      <ion-icon name="image-outline" aria-hidden="true"></ion-icon>
+      <strong>{{ hasNotes ? 'No se encontraron notas' : 'Todavía no hay notas' }}</strong>
+      <span>{{ hasNotes ? 'Prueba con otras palabras.' : 'Crea una nota para empezar.' }}</span>
+    </div>
+  </ng-template>
+</section>
+
+<app-sheet-dialog
+  *ngIf="editorOpen"
+  size="md"
+  [theme]="theme"
+  [mobile]="noteMobilePresentation"
+  [opener]="editorOpener"
+  [restoreFocus]="false"
+  [dismissible]="!editorBusy"
+  [backdropDismissible]="!editorBusy"
+  initialFocusSelector=".note-editor-title input"
+  (closed)="onCloseRequested()"
+  (backdropClick)="onBackdropClick()"
+>
+  <h2 sheet-title id="note-editor-title">{{ editingExistingNote ? 'Editar nota' : 'Nueva nota' }}</h2>
+
+  <app-note-editor-content
+    [draft]="draft"
+    [editingExistingNote]="editingExistingNote"
+    [editorBusy]="editorBusy"
+    [attachmentUrls]="attachmentUrls"
+    (titleChange)="onTitleInput($event)"
+    (editorInput)="onEditorInput($event)"
+    (format)="format($event)"
+    (addAttachments)="addAttachments($event)"
+    (removeAttachment)="removeAttachment($event)"
+    (downloadAttachment)="downloadAttachment($event)">
+  </app-note-editor-content>
+
+  <p *ngIf="editorError" class="note-editor-error" role="alert">{{ editorError }}</p>
+
+  <ng-container sheet-footer>
+    <app-action-button *ngIf="editingExistingNote" variant="danger" [icon]="'trash'" iconPosition="start"
+      [disabled]="editorBusy" (activated)="deleteNote()">
+      {{ confirmDelete ? 'Confirmar eliminación' : 'Eliminar' }}
+    </app-action-button>
+    <span class="note-editor-spacer"></span>
+    <app-action-button variant="secondary" label="Cancelar" [disabled]="editorBusy || confirmDiscard" (activated)="onCloseRequested()">
+      Cancelar
+    </app-action-button>
+    <app-action-button variant="primary" [icon]="'add'" iconPosition="start"
+      [disabled]="editorBusy || !draft?.title?.trim()" (activated)="saveNote()">
+      {{ editorBusy ? 'Guardando…' : 'Guardar nota' }}
+    </app-action-button>
+  </ng-container>
+</app-sheet-dialog>
+
+<app-sheet-dialog
+  *ngIf="confirmDiscard && editorOpen"
+  size="sm"
+  [theme]="theme"
+  [mobile]="noteMobilePresentation"
+  [opener]="editorOpener"
+  [restoreFocus]="false"
+  [dismissible]="true"
+  [backdropDismissible]="true"
+  labelledBy="discard-confirm-title"
+  initialFocusSelector="button"
+  (closed)="closeConfirm()"
+  (backdropClick)="closeConfirm()"
+>
+  <h2 sheet-title id="discard-confirm-title">Descartar cambios</h2>
+  <p id="discard-confirm-message">Tienes cambios sin guardar. ¿Los descartas o sigues editando?</p>
+  <ng-container sheet-footer>
+    <app-action-button variant="secondary" label="Seguir editando" (activated)="closeConfirm()">
+      Seguir editando
+    </app-action-button>
+    <app-action-button variant="danger" label="Descartar cambios" (activated)="discardChanges()">
+      Descartar cambios
+    </app-action-button>
+  </ng-container>
+</app-sheet-dialog>

@@ -5,6 +5,9 @@ ion-input {
   min-width: 0;
   font-size: 14px;
   outline: none;
+  &.ion-valid.sc-ion-input-md-h {
+    --highlight-color: none,
+  }
 }
 
 .add-confirm {

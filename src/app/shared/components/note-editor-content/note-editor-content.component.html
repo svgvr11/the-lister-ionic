@@ -1,0 +1,49 @@
+<app-text-field
+  class="note-editor-title"
+  label="Título"
+  placeholder="Título de la nota"
+  [attr.maxlength]="160"
+  [value]="draft?.title ?? ''"
+  (valueChange)="onTitleInput($event)">
+</app-text-field>
+
+<div class="rich-text-toolbar" role="toolbar" aria-label="Formato del texto">
+  <button type="button" aria-label="Negrita" title="Negrita" (mousedown)="$event.preventDefault()" (click)="formatCommand('bold')"><strong>B</strong><ion-ripple-effect></ion-ripple-effect></button>
+  <button type="button" aria-label="Cursiva" title="Cursiva" (mousedown)="$event.preventDefault()" (click)="formatCommand('italic')"><em>I</em><ion-ripple-effect></ion-ripple-effect></button>
+  <button type="button" aria-label="Lista con viñetas" title="Lista con viñetas" (mousedown)="$event.preventDefault()" (click)="formatCommand('insertUnorderedList')"><ion-icon name="list-outline"></ion-icon><ion-ripple-effect></ion-ripple-effect></button>
+</div>
+<div class="note-rich-editor" contenteditable="true" role="textbox" aria-multiline="true"
+  aria-label="Contenido de la nota" data-placeholder="Escribe tu nota..."
+  [innerHTML]="sanitizedHtml(draft?.contentHtml ?? '')"
+  (input)="onEditorInput($event)"></div>
+
+<div class="note-attachments">
+  <div class="note-attachment-heading">
+    <strong>Adjuntos</strong>
+    <label class="attach-button ion-activatable">
+      <ion-icon name="attach-outline"></ion-icon>
+      <span>Añadir archivos</span>
+      <input type="file" multiple accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+        [disabled]="editorBusy" (change)="onAddAttachments($event)">
+    </label>
+  </div>
+  <div *ngFor="let attachment of draft?.attachments" class="note-attachment">
+    <img *ngIf="isImage(attachment) && attachmentUrls[attachment.id]"
+      [src]="attachmentUrls[attachment.id]" [alt]="attachment.name">
+    <ion-icon *ngIf="!isImage(attachment)" name="attach-outline" aria-hidden="true"></ion-icon>
+    <a *ngIf="attachmentUrls[attachment.id]" [href]="attachmentUrls[attachment.id]"
+      target="_blank" rel="noopener noreferrer">{{ attachment.name }}</a>
+    <span *ngIf="!attachmentUrls[attachment.id]">{{ attachment.name }}</span>
+    <button type="button" [attr.aria-label]="'Descargar ' + attachment.name"
+      [disabled]="editorBusy" (click)="onDownloadAttachment(attachment)">
+      <ion-icon name="download-outline"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+    <button type="button" [attr.aria-label]="'Quitar ' + attachment.name"
+      [disabled]="editorBusy" (click)="onRemoveAttachment(attachment)">
+      <ion-icon name="close"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </button>
+  </div>
+  <p class="attachment-hint">Imágenes o documentos de hasta 10 MB. Se guardan de forma privada.</p>
+</div>

@@ -75,8 +75,10 @@ input {
    Usa selectores de clase de modo (`.md`/`.ios`) para ganar a .sc-ion-input-md-h/.sc-ion-input-ios-h
    que Ionic aplica con mayor especificidad. El foco visible se mantiene via
    :focus-within o :focus-visible en los contenedores. */
+ion-input,
 ion-input.md,
 ion-input.ios,
+ion-textarea,
 ion-textarea.md,
 ion-textarea.ios {
   --highlight-height: 0px;

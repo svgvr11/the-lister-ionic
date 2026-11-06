@@ -722,7 +722,7 @@
     <!-- Anuncios del reordenamiento con teclado (Alt + flechas sobre el handle). -->
     <div class="visually-hidden" role="status" aria-live="polite">{{ listAnnouncement }}</div>
 
-    <app-notes-workspace
+    <app-notes-page
       *ngIf="contentView === 'notes'"
       [notes]="board.notes ?? []"
       [pinnedNoteId]="board.pinnedNoteId ?? null"
@@ -734,7 +734,8 @@
       [themeAccent]="themeAccent"
       (notesChange)="updateNotes($event)"
       (pinnedNoteIdChange)="updatePinnedNoteId($event)"
-    ></app-notes-workspace>
+      (editorOpenChange)="onNotesEditorOpen($event)"
+    ></app-notes-page>
   </div>
   </ng-container>
 

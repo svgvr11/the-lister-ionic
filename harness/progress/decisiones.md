@@ -76,7 +76,24 @@ Decisiones duraderas del proyecto. Cada decisión incluye identificador, fecha, 
 
 ## Decisiones sustituidas
 
-(Ninguna en este momento)
+| ID | Fecha | Contexto | Decisión sustituida | Por | Estado |
+|---|---|---|---|---|---|
+| D-C9 | 2026-11-04 | T-001 condición C9 | board.page es el shell de facto; extraerse al llegar estado Todo (#/all). Registrado como pendiente, no se hace ahora. | D-020 | Sustituida |
+
+### D-020 — Shell app-home sustituye a "Notas como estado en localStorage, sin ruta propia"
+
+- **Fecha**: 2026-11-06
+- **Contexto**: La decisión original de T-001 (C9) mantenía Notas como estado dentro de `board.page`, sin ruta propia, alternando mediante un switch en el tablero. El usuario aprobó un nuevo plan: extraer un shell `app-home` con `app-header`, buscador, switch Checklists/Notas y `app-footer`, con un outlet interno que alterne `app-checklists` y `app-notes`, siguiendo el esquema `claude/04-arquitectura-objetivo-shell.md`.
+- **Decisión adoptada**:
+  - El switch ya no alterna entre vistas dentro de `board.page`, sino entre páginas bajo el shell `app-home`.
+  - Rutas hijas: `#/all` (Todo), `#/checklists`, `#/notes`, con `#/board` redirigiendo a una de ellas.
+  - `board.page` migra su estado a servicios.
+  - Evaluar `router-outlet` plano frente a `ion-router-outlet`.
+  - Scroll único, auth y deep links.
+  - Se planifica en T-009 (investigación, sin código) y se ejecuta por fases en T-010 y siguientes.
+- **Alternativas consideradas**: mantener Notas dentro de `board.page` como estado local (descartada por el nuevo plan de shell).
+- **Consecuencias**: T-006 (mover Notas a `pages/notes/`) sigue vigente como paso intermedio; T-007 (modal de foco y visor de nota) se mantiene; T-008 (reordenar notas) se deja para el final; la rejilla masonry y tarjeta base compartidas se extraen antes de la vista Todo.
+- **Estado**: vigente
 
 ---
 
